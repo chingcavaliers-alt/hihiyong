@@ -1,0 +1,1533 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HIHIYONG 多帳號管理器</title>
+<style id="v1318-ui">
+/* v1.3.18.5 介面整併：原本 7 段疊加的樣式合併為一套設計 token。
+   v1.3.22.0 側邊欄 11 頁併成 5 頁（首頁 / 角色 / 收益統計 / 工具 / 設定），頁內用分頁；所有元素 id 不變。
+   按鈕顏色：綠 = 開始 / 執行、藍 = 儲存、紅 = 停止 / 刪除、白 = 其他。 */
+:root{
+ /* v1.3.22.0 配色：中性灰底＋石墨黑側邊欄，單一靛藍強調色，金色只用在品牌（呼應雙劍圖示的護手） */
+ --bg:#f4f5f7;--surface:#fff;--surface-2:#f8f9fb;--line:#e3e6eb;--line-2:#eef0f3;
+ --text:#151922;--text-2:#4a5263;--muted:#8a93a3;
+ --accent:#3b5bdb;--accent-soft:#edf2ff;--accent-ink:#364fc7;
+ --green:#0f7b55;--green-soft:#e8f5ee;--amber:#b25e09;--amber-soft:#fff4e5;--red:#c92a2a;--red-soft:#fdecec;
+ --gold:#d4a72c;
+ --side:#121419;--side-2:#1d2028;--side-text:#9aa3b2;
+ --radius:10px;--radius-sm:7px;--shadow:0 1px 2px rgba(16,24,40,.05);
+ --font:"Segoe UI","Microsoft JhengHei UI","Microsoft JhengHei",sans-serif;
+ --font-head:var(--font);
+ --page-bg:var(--bg);--topbar:rgba(255,255,255,.92);--input-bg:#fff;--field-line:#d5dae1;--on-accent:#fff;
+ --side-ink:#fff;--side-muted:#5d6676;--card-blur:none;
+}
+/* ===== v1.3.22.0 配色主題（設定 → 其他 → 介面風格）===== */
+/* 1 暗夜電競：近黑底、青色霓虹 */
+:root[data-theme="esports"]{
+ --bg:#0b0e14;--surface:#141923;--surface-2:#1a2030;--line:#252c3b;--line-2:#1e2532;
+ --text:#e6e9ef;--text-2:#aab3c5;--muted:#6d7891;
+ --accent:#22d3ee;--accent-soft:rgba(34,211,238,.12);--accent-ink:#67e8f9;--on-accent:#04222b;
+ --green:#22c55e;--green-soft:rgba(34,197,94,.14);--amber:#f59e0b;--amber-soft:rgba(245,158,11,.14);--red:#f43f5e;--red-soft:rgba(244,63,94,.14);
+ --gold:#22d3ee;--side:#07090d;--side-2:#151b27;--side-text:#8b95a8;--side-muted:#4f5a6e;
+ --page-bg:radial-gradient(1100px 520px at 85% -12%,rgba(34,211,238,.10),transparent 70%),#0b0e14;
+ --topbar:rgba(11,14,20,.82);--input-bg:#0f131c;--field-line:#2c3446;
+ --shadow:0 0 0 1px rgba(255,255,255,.02),0 6px 20px rgba(0,0,0,.35);
+}
+:root[data-theme="esports"] .primary{color:#04140a}
+:root[data-theme="esports"] .nav button.active{box-shadow:inset 3px 0 0 var(--accent),0 0 18px rgba(34,211,238,.12)}
+:root[data-theme="esports"] .title,:root[data-theme="esports"] .section-title{letter-spacing:.4px}
+
+/* 2 黑金尊爵：深咖啡黑、金色、標題襯線體 */
+:root[data-theme="gold"]{
+ --bg:#0f0e0c;--surface:#181613;--surface-2:#201d18;--line:#332d23;--line-2:#25211a;
+ --text:#f1ece2;--text-2:#c9bea8;--muted:#8a7f6b;
+ --accent:#d4af37;--accent-soft:rgba(212,175,55,.12);--accent-ink:#e9c96a;--on-accent:#1a1406;
+ --green:#7bc47f;--green-soft:rgba(123,196,127,.12);--amber:#e3a53b;--amber-soft:rgba(227,165,59,.13);--red:#e0645a;--red-soft:rgba(224,100,90,.13);
+ --gold:#d4af37;--side:#090807;--side-2:#1d1a15;--side-text:#a99d86;--side-muted:#665d4e;
+ --page-bg:linear-gradient(180deg,#14120f,#0d0c0a);
+ --topbar:rgba(15,14,12,.85);--input-bg:#12100d;--field-line:#3a3326;
+ --font-head:Georgia,"Microsoft JhengHei UI",serif;
+ --shadow:0 8px 24px rgba(0,0,0,.4);
+}
+:root[data-theme="gold"] .card,:root[data-theme="gold"] .home-hero,:root[data-theme="gold"] .role-card{border-top:1px solid rgba(212,175,55,.35)}
+:root[data-theme="gold"] .primary{background:#3f7a45}
+:root[data-theme="gold"] .title{letter-spacing:1px}
+
+/* 3 清新晨光：暖白、珊瑚色、淺色側邊欄、大圓角 */
+:root[data-theme="morning"]{
+ --bg:#f7f4ef;--surface:#fffdfa;--surface-2:#f4efe7;--line:#e8e0d3;--line-2:#f0eae0;
+ --text:#2d2a26;--text-2:#5f5850;--muted:#9a9184;
+ --accent:#e07a5f;--accent-soft:#fcebe5;--accent-ink:#c4593e;
+ --green:#3d8361;--green-soft:#e6f2ea;--amber:#c48416;--amber-soft:#fbf1dc;--red:#c8553d;--red-soft:#fbe7e2;
+ --gold:#e07a5f;--side:#fffdfa;--side-2:#f5ede2;--side-text:#6b6359;--side-ink:#2d2a26;--side-muted:#b0a596;
+ --topbar:rgba(247,244,239,.9);--field-line:#e0d6c6;
+ --radius:16px;--radius-sm:10px;--shadow:0 4px 18px rgba(90,64,30,.06);
+}
+:root[data-theme="morning"] .side{border-right:1px solid var(--line)}
+:root[data-theme="morning"] .btn{border-radius:999px;padding:7px 16px}
+
+/* 4 Windows 11：霧面玻璃、藍色、半透明卡片 */
+:root[data-theme="fluent"]{
+ --bg:#eef2f9;--surface:rgba(255,255,255,.72);--surface-2:rgba(255,255,255,.55);--line:rgba(15,23,42,.08);--line-2:rgba(15,23,42,.05);
+ --text:#1b1b1f;--text-2:#45464f;--muted:#7b7d88;
+ --accent:#0067c0;--accent-soft:#e3eefa;--accent-ink:#005299;
+ --green:#0f7b0f;--green-soft:#e3f3e3;--amber:#9d5d00;--amber-soft:#fdf2df;--red:#c42b1c;--red-soft:#fde7e5;
+ --gold:#0067c0;--side:rgba(255,255,255,.45);--side-2:rgba(0,0,0,.05);--side-text:#3b3c46;--side-ink:#0b0b10;--side-muted:#8a8c97;
+ --page-bg:linear-gradient(135deg,#dfe8f7 0%,#eef0f8 45%,#f1e9f6 100%);
+ --topbar:rgba(255,255,255,.55);--input-bg:rgba(255,255,255,.85);--field-line:rgba(15,23,42,.14);
+ --font:"Segoe UI Variable Text","Segoe UI","Microsoft JhengHei UI",sans-serif;
+ --radius:8px;--radius-sm:5px;--shadow:0 2px 10px rgba(15,23,42,.06);--card-blur:blur(24px);
+}
+:root[data-theme="fluent"] .card,:root[data-theme="fluent"] .home-hero,:root[data-theme="fluent"] .role-card,:root[data-theme="fluent"] .side{backdrop-filter:var(--card-blur)}
+:root[data-theme="fluent"] .side{border-right:1px solid var(--line)}
+:root[data-theme="fluent"] .nav button.active{background:rgba(255,255,255,.75);box-shadow:inset 3px 0 0 var(--accent),0 1px 3px rgba(15,23,42,.08)}
+
+/* 5 冒險羊皮紙：羊皮紙底、木頭側邊欄、深紅、標題楷書 */
+:root[data-theme="rpg"]{
+ --bg:#e8dcc2;--surface:#f8efdc;--surface-2:#efe3c8;--line:#cdb48b;--line-2:#e0cfac;
+ --text:#3b2a1a;--text-2:#6b5236;--muted:#9a8263;
+ --accent:#8b1e1e;--accent-soft:#f2dccf;--accent-ink:#6e1515;
+ --green:#4f6b2d;--green-soft:#e4e8cf;--amber:#a5650f;--amber-soft:#f5e3c3;--red:#9b2226;--red-soft:#f3d6cf;
+ --gold:#d4a744;--side:#2a1d14;--side-2:#3d2b1e;--side-text:#d8c3a0;--side-ink:#f6e7c8;--side-muted:#8f7656;
+ --page-bg:radial-gradient(900px 500px at 20% 0%,rgba(255,250,235,.6),transparent 70%),#e8dcc2;
+ --topbar:rgba(240,228,203,.92);--input-bg:#fffaf0;--field-line:#c9b088;
+ --font-head:"DFKai-SB","BiauKai","KaiTi",serif;
+ --radius:6px;--radius-sm:4px;--shadow:0 2px 0 rgba(120,90,50,.18);
+}
+:root[data-theme="rpg"] .card,:root[data-theme="rpg"] .home-hero,:root[data-theme="rpg"] .role-card{box-shadow:inset 0 0 0 1px #fff7e3,0 2px 0 rgba(120,90,50,.18)}
+:root[data-theme="rpg"] .title,:root[data-theme="rpg"] .section-title,:root[data-theme="rpg"] .hp-name,:root[data-theme="rpg"] .home-hero h2{font-weight:400;font-size:1.12em}
+:root[data-theme="rpg"] .nav button{font-family:var(--font-head);font-size:15px}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:var(--font);font-size:14px;line-height:1.5;background:var(--page-bg);color:var(--text);overflow:hidden;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:212px 1fr;height:100vh}
+
+/* 側邊欄 */
+.side{background:var(--side);color:var(--side-text);padding:16px 10px;display:flex;flex-direction:column;overflow:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;color:var(--side-ink);font-family:var(--font-head);font-weight:700;letter-spacing:.2px;line-height:1.25}
+.brand small{display:block;font-weight:400;color:var(--side-muted);font-family:var(--font);font-size:12px;letter-spacing:0}
+.logo{width:36px;height:36px;flex:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav-group{font-size:11px;color:var(--side-muted);letter-spacing:.8px;padding:16px 12px 6px}
+.nav button{border:0;background:transparent;color:var(--side-text);text-align:left;padding:9px 12px;border-radius:8px;font:inherit;font-size:14px;cursor:pointer;display:flex;gap:10px;align-items:center;transition:background .12s,color .12s}
+.ni{display:inline-flex;width:18px;height:18px;flex:none}
+.emo{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;font-style:normal;line-height:1}
+.ni{align-items:center;justify-content:center}.ni .emo{font-size:16px}
+.ico .emo{font-size:21px}
+.section-title .ni{width:auto;height:auto}.section-title .ni .emo{font-size:17px}
+.nav button:hover{background:var(--side-2);color:var(--side-ink)}
+.nav button.active{background:var(--side-2);color:var(--side-ink);font-weight:600;box-shadow:inset 3px 0 0 var(--gold)}
+.foot{margin-top:auto;padding:14px 12px 4px;color:var(--side-muted);font-size:12px;line-height:1.6}
+
+/* 頂列 */
+.main{overflow:auto;padding-bottom:36px}
+.top{height:60px;background:var(--topbar);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:0 24px;position:sticky;top:0;z-index:5}
+.title{font-size:16px;font-weight:700;font-family:var(--font-head)}
+.sub{color:var(--muted);font-size:12px}
+.badge{margin-left:auto;padding:6px 12px;border-radius:999px;background:var(--green-soft);color:var(--green);font-weight:700;font-size:13px;white-space:nowrap}
+.content{padding:20px 24px 28px;max-width:1500px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.page-kicker{display:none}
+/* v1.3.22.0 頁內分頁：工具、設定、角色各自用分頁切換，側邊欄只留 5 頁 */
+.subtabs{display:flex;gap:2px;margin:-4px 0 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.subtabs button{border:0;background:none;font:inherit;font-weight:700;color:var(--text-2);padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.subtabs button:hover{color:var(--text)}
+.subtabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.subpage{display:none}.subpage.active{display:block}
+.subpage>.card+.card,.subpage>.card+.table-card,.subpage>.table-card+.card{margin-top:14px}
+/* 區塊說明預設收起，按標題旁的 ⓘ 才顯示 */
+.info-btn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;width:20px;height:20px;font:700 12px/1 var(--font);cursor:pointer;padding:0;flex:none}
+.info-btn:hover,.info-btn.on{color:var(--accent);border-color:var(--accent)}
+.hint.intro{display:none;margin-bottom:12px}.hint.intro.show{display:block}
+.theme-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.theme-opt{border:2px solid var(--line);border-radius:var(--radius);padding:8px;background:var(--surface);cursor:pointer;text-align:left;font:inherit;color:var(--text)}
+.theme-opt:hover{border-color:var(--accent)}.theme-opt.on{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.theme-sw{display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:6px}.theme-sw i{flex:1}.theme-sw i:first-child{flex:.6}
+.theme-opt b{display:block;font-size:13px}.theme-opt small{color:var(--muted);font-size:11px}
+
+/* 卡片與排版 */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.page>.card+.card,.page>.card+.table-card,.page>.table-card+.card{margin-top:14px}
+.section-title{font-size:15px;font-weight:700;font-family:var(--font-head);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.pill{margin-left:auto;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--text-2);border:1px solid var(--line)}
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.stat{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px;flex:none}
+.ico.g{background:var(--green-soft);color:var(--green)}.ico.r{background:var(--red-soft);color:var(--red)}.ico.b{background:var(--accent-soft);color:var(--accent)}.ico.a{background:var(--amber-soft);color:var(--amber)}
+.label{color:var(--muted);font-size:12px}
+.num{font-size:24px;font-weight:800;line-height:1.2;font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-top:14px}
+.mini{background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:10px 12px}
+.mini .hint,label.hint{background:none;border:0;padding:0;font-size:12px;color:var(--muted)}
+label.hint input{display:block;margin-top:4px}
+
+/* 按鈕與表單 */
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid transparent;border-radius:var(--radius-sm);padding:7px 14px;font:inherit;font-weight:600;font-size:13px;cursor:pointer;transition:filter .12s,box-shadow .12s,background .12s,transform .06s;white-space:nowrap;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+.btn:hover{filter:brightness(.93)}.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;filter:none}
+.primary{background:var(--green);color:#fff}.blue{background:var(--accent);color:var(--on-accent)}.danger{background:var(--red);color:#fff}
+.soft{background:var(--surface);color:var(--text-2);border-color:var(--field-line)}.soft:hover{filter:none;background:var(--surface-2);color:var(--text)}
+.emergency{background:#a61e1e;color:#fff}
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 14px}
+.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:12px;color:var(--muted)}
+input,select{border:1px solid var(--field-line);border-radius:var(--radius-sm);padding:8px 10px;background:var(--input-bg);font:inherit;color:var(--text)}
+input:focus,select:focus{outline:3px solid var(--accent-soft);border-color:var(--accent)}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);vertical-align:-3px}
+label.toggle,.formgrid>label{display:flex;align-items:center;gap:8px}
+.hint{background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--radius-sm);padding:10px 12px;color:var(--text-2);font-size:13px}
+details>summary{cursor:pointer;color:var(--text-2);font-weight:700}
+
+/* 表格 */
+.table-card{margin-top:14px}.table-wrap{overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;background:var(--surface-2);padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:9px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+tbody tr:hover td{background:var(--surface-2)}
+.ok{color:var(--green);font-weight:700}.warn{color:var(--amber);font-weight:700}.bad{color:var(--red);font-weight:700}.muted{color:var(--muted)}.recovery{color:var(--accent);font-weight:700}
+
+/* 狀態標籤 */
+.status-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--text-2);border:1px solid var(--line-2)}
+.status-pill.good{background:var(--green-soft);color:var(--green);border-color:transparent}.status-pill.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent}.status-pill.bad{background:var(--red-soft);color:var(--red);border-color:transparent}
+#toast{position:fixed;right:24px;bottom:24px;z-index:9999;min-width:220px;max-width:420px;padding:11px 14px;border-radius:10px;background:#151922;color:#fff;box-shadow:0 12px 30px rgba(16,24,40,.25);opacity:0;transform:translateY(10px);pointer-events:none;transition:.18s}
+#toast.show{opacity:1;transform:none}
+.scan-feedback{font-size:12px;color:var(--text-2);margin-left:6px}
+.mini-stage{font-size:11px;color:var(--accent);margin-top:2px;font-weight:600}
+
+/* 首頁 */
+.home-hero{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:14px;padding:16px 20px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.home-hero h2{margin:0 0 3px;font-size:18px;font-family:var(--font-head)}.home-hero p{margin:0;color:var(--muted);font-size:13px}
+.hero-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.hero-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.hero-line h2{margin:0;font-size:18px}
+.hero-sub{display:flex;gap:18px;flex-wrap:wrap;color:var(--text-2);font-size:13px;margin-top:6px}
+#homeAttention{color:var(--amber);font-weight:700}
+/* 首頁：目前啟動的功能（綠 = 開著、灰 = 關閉） */
+.feat-card{padding:14px 18px}.feat-card .section-title{margin-bottom:10px}
+.feat-list{display:flex;flex-wrap:wrap;gap:8px}
+.feat{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.feat:hover{border-color:var(--accent)}
+.feat.on{background:var(--green-soft);border-color:transparent;color:var(--green);font-weight:700}
+.feat.busy{background:var(--accent-soft);border-color:transparent;color:var(--accent-ink);font-weight:700}
+.feat small{font-weight:400;color:var(--text-2)}
+.dashboard-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:14px;margin-top:14px}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.feature-card{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px;background:var(--surface-2);display:flex;flex-direction:column;gap:8px}
+.feature-title{font-weight:800;display:flex;align-items:center;gap:6px}.feature-sub{font-size:12px;color:var(--muted)}
+.monitor-switch{display:inline-flex;align-items:center;gap:6px;font-weight:700;white-space:nowrap}
+.account-name{font-weight:800}.account-sub{font-size:12px;color:var(--muted)}
+.keycap{display:inline-block;padding:1px 6px;border:1px solid var(--field-line);border-bottom-width:2px;border-radius:5px;background:var(--input-bg);font-size:11px;font-weight:800;color:var(--text-2)}
+.home-note{font-size:12px;color:var(--muted);margin-top:4px}
+#systemHealthCard{border-left:3px solid var(--accent)}
+#systemHealthCard .actions{margin-top:10px}
+.events{height:220px;overflow:auto}.compact-events{height:200px}
+.event{display:grid;grid-template-columns:66px 14px 1fr;gap:8px;padding:7px 2px;border-bottom:1px solid var(--line-2);font-size:13px;font-variant-numeric:tabular-nums}
+.event>span:first-child{color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);margin-top:6px}.dot.warn{background:var(--amber)}.dot.err{background:var(--red)}
+.home-table td:nth-child(4){font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* 角色卡片（血量 / 背包統計） */
+.hp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.hp-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);min-width:0}
+.hp-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.hp-name{font-size:16px;font-weight:700;font-family:var(--font-head)}
+.hp-value{font-size:24px;font-weight:800;margin:10px 0 6px;font-variant-numeric:tabular-nums}
+.hp-value .emo{font-size:20px}
+.death-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;background:var(--surface-2);border-radius:8px;padding:6px 10px}
+.death-row b{font-size:15px;font-variant-numeric:tabular-nums}.death-row.has b{color:var(--red)}
+.hp-meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;font-size:12px;color:var(--text-2)}
+.hp-spark{height:50px;display:flex;align-items:flex-end;gap:2px;padding:6px;border-radius:8px;background:var(--surface-2);margin:10px 0}
+.hp-spark i{flex:1;min-width:2px;background:var(--accent);border-radius:2px 2px 0 0;opacity:.75}
+.hp-status{font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+/* 角色頁：每個角色一張卡，左邊色條代表狀態 */
+.role-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.role-card{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--green);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);min-width:0}
+.role-card.rc-warn{border-left-color:var(--amber)}.role-card.rc-bad{border-left-color:var(--red)}.role-card.rc-off{border-left-color:var(--line)}.role-card.rc-recovery{border-left-color:var(--accent)}
+.role-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12px;padding:2px 9px;border-radius:999px;background:var(--surface-2);color:var(--text-2);border:1px solid var(--line-2);white-space:nowrap}
+.chip.warn{background:var(--amber-soft);color:var(--amber);border-color:transparent;font-weight:700}
+.role-hp{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;font-size:12px;color:var(--muted)}
+.role-hp b{font-size:18px;color:var(--text);font-variant-numeric:tabular-nums}
+.hp-bar{height:8px;border-radius:999px;background:var(--line-2);overflow:hidden;margin-top:5px}.hp-bar i{display:block;height:100%;background:var(--green);border-radius:999px}
+.hp-bar.low i{background:var(--red)}
+.role-stats{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr) minmax(0,1.25fr);gap:8px;margin-top:12px}
+.role-stats div{background:var(--surface-2);border-radius:8px;padding:7px 9px;min-width:0}
+.role-stats small{display:block;color:var(--muted);font-size:11px}
+.role-stats b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.role-card details{margin-top:10px}
+.role-card details>summary{font-size:12px;color:var(--muted);font-weight:600}
+.role-card .hp-meta{margin-top:8px}
+.hp-status.good{background:var(--green-soft);color:var(--green)}.hp-status.warn{background:var(--amber-soft);color:var(--amber)}.hp-status.bad{background:var(--red-soft);color:var(--red)}.hp-status.off{background:var(--surface-2);color:var(--muted)}
+
+/* 背包統計：道具清單（名稱過長時截斷，數量固定靠右，不再被擠出卡片） */
+.inv-money{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 4px}
+.inv-money div{background:var(--surface-2);border-radius:var(--radius-sm);padding:8px 10px;min-width:0}
+.inv-money small{display:block;color:var(--muted);font-size:11px}
+.inv-money b{display:block;font-size:15px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.money-pos{color:var(--green)}.money-neg{color:var(--red)}
+.inv-sub{font-weight:700;font-size:13px;color:var(--text-2);margin:12px 0 6px;display:flex;align-items:center;gap:6px}
+.inv-sub .count{font-weight:600;color:var(--muted);font-size:12px}
+.item-list{list-style:none;margin:0;padding:0}
+.item-list li{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid var(--line-2);font-size:13px}
+.item-list li:last-child{border-bottom:0}
+.item-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-count{font-weight:800;font-variant-numeric:tabular-nums;color:var(--text);background:var(--surface-2);border-radius:6px;padding:1px 8px;min-width:44px;text-align:right}
+.item-list.cols{column-count:2;column-gap:24px}.item-list.cols li{break-inside:avoid}
+.item-more{font-size:12px;color:var(--muted);padding:6px 2px}
+.item-empty{font-size:13px;color:var(--muted);padding:10px;background:var(--surface-2);border-radius:var(--radius-sm);text-align:center}
+.inv-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+/* 每小時收益：兩張單一數列長條圖（金幣與個數單位不同，不共用座標軸） */
+.hour-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.chart-title{font-size:13px;font-weight:700;color:var(--text-2);margin-bottom:6px;display:flex;justify-content:space-between}
+.chart-title .muted{font-weight:400}
+.rec-bars{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end}.rec-col{text-align:center;font-size:12px;color:var(--text-2)}
+.rec-barbox{height:80px;display:flex;align-items:flex-end;justify-content:center;border-bottom:1px solid var(--line)}.rec-bar{width:60%;max-width:34px;border-radius:5px 5px 0 0;background:var(--green)}.rec-bar.mid{background:var(--amber)}.rec-bar.low{background:var(--red)}
+.rec-col b{display:block;margin-top:4px;color:var(--text)}.rec-col small{color:var(--muted)}
+.hour-chart{position:relative}.hour-chart svg{width:100%;height:auto;display:block;overflow:visible}
+.hour-chart .bar{fill:var(--accent)}.hour-chart .bar.now{fill:var(--accent-ink)}
+.hour-chart .grid{stroke:var(--line);stroke-width:1}.hour-chart .axis{fill:var(--muted);font-size:10px}
+.hour-chart .hit{fill:transparent;cursor:default}.hour-chart .hit:hover+.hl{opacity:1}
+.hour-tip{position:absolute;pointer-events:none;background:#151922;color:#fff;font-size:12px;padding:5px 8px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-110%);opacity:0;transition:opacity .08s}
+.hour-tip.show{opacity:1}
+.select-inline{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400;display:flex;align-items:center;gap:6px}.select-inline select{padding:4px 8px;font-size:13px}
+.inv-card details{margin-top:6px}
+.kill-map{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin:6px 0 2px}
+.kill-map span{color:var(--muted);font-weight:normal}
+.inv-card details>summary{list-style:none;font-size:13px;padding:4px 0}
+.inv-card details>summary::-webkit-details-marker{display:none}
+.inv-card details>summary:before{content:"▸ ";color:var(--muted)}.inv-card details[open]>summary:before{content:"▾ "}
+
+/* 說明 / 精靈 */
+.page-help{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+.page-help summary{cursor:pointer;padding:11px 14px;font-weight:700;color:var(--text-2);list-style:none}
+.page-help summary::-webkit-details-marker{display:none}
+.page-help-body{padding:0 14px 14px;color:var(--text-2);font-size:13px;line-height:1.75}.page-help-body .hint{margin-top:8px}
+.tech-note{font-size:11px;color:var(--muted);margin-top:6px}
+.wizard-flow{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:14px}
+.wizard-step{border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px;background:var(--surface-2);min-height:80px}
+.wizard-step b{display:block;margin-bottom:4px}.wizard-step small{color:var(--muted)}
+.wizard-step.ok{border-color:var(--green);background:var(--green-soft)}.wizard-step.warn{border-color:var(--amber);background:var(--amber-soft)}
+
+@media(max-width:1150px){.dashboard-grid,.row{grid-template-columns:1fr}.home-hero{flex-direction:column;align-items:flex-start}.hero-actions{justify-content:flex-start}.wizard-flow{grid-template-columns:repeat(3,1fr)}.item-list.cols{column-count:1}}
+/* v1.3.22.0 版面隨視窗大小調整：窄於 1000px 時側邊欄只留圖示（滑鼠移上去顯示名稱），窄於 820px 時欄位改成單欄 */
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.table-wrap>table{min-width:560px}
+.hero-main{min-width:0}
+@media(min-width:1700px){.content{max-width:1640px}}
+@media(max-width:600px){.grid3{grid-template-columns:1fr}}
+@media(max-width:1000px){
+ .app{grid-template-columns:64px 1fr}
+ .side{padding:14px 8px}
+ .brand{justify-content:center;padding:4px 0 12px}.brand>div{display:none}
+ .nav-group{font-size:0;padding:0;margin:10px 10px 6px;border-top:1px solid var(--side-2)}
+ .nav button{justify-content:center;font-size:0;padding:10px 0;gap:0}
+ .nav button .ni{width:auto;height:auto}.nav button .ni .emo{font-size:18px}
+ .foot{display:none}
+ .sub{display:none}
+}
+@media(max-width:820px){
+ .content{padding:14px}
+ .top{padding:0 14px;height:54px}
+ .home-hero{padding:14px}
+ .hero-actions{width:100%}.hero-actions .btn{flex:1 1 auto}
+ .wizard-flow{grid-template-columns:repeat(2,1fr)}
+ .grid2{grid-template-columns:1fr}
+ .subtabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.subtabs button{white-space:nowrap}
+ .role-stats{gap:6px}
+}
+/* v1.3.24.0 每日道具：每個角色要換哪些、回城或原地換 */
+.daily-cfg-row{display:grid;grid-template-columns:130px 1fr 280px;gap:10px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.daily-cfg-row:first-child{border-top:0}
+.daily-cfg-opts{display:flex;flex-wrap:wrap;gap:6px 14px}
+.daily-cfg-opts label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.daily-cfg-side{display:flex;gap:8px;align-items:center}
+.daily-cfg-side select{flex:0 0 auto}.daily-cfg-side input{flex:1;min-width:0}
+.daily-cfg-off{opacity:.55}
+/* H-015 掉落率長條（長度用開根號，小機率也看得到） */
+.drop-barbox{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}.drop-bar{height:8px;background:var(--accent);border-radius:4px}
+@media (max-width:1000px){.daily-cfg-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body><div class="app">
+<aside class="side"><div class="brand"><img class="logo" id="appLogo" alt="" src="../HiHiyong.ico" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='../HiHiyong_default.ico';}"><div>HIHIYONG<small>多帳號管理器</small></div></div>
+<nav class="nav" id="nav">
+<div class="nav-group">日常</div>
+<button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
+<div class="nav-group">工具與設定</div>
+<button data-page="tools"><span class="ni" data-icon="logs"></span>工具</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav>
+<div class="foot">v1.3.24.0 · Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div></aside>
+<main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
+<div class="content">
+<section class="page active" id="home">
+<div class="home-hero">
+ <div class="hero-main">
+  <div class="hero-line"><span id="healthBadge" class="status-pill">● 檢查中</span><h2 id="homeSummary">讀取中…</h2></div>
+  <div class="hero-sub"><span>🌐 <span id="homeNetworkStatus">尚未檢查</span></span><span id="homeAttention"></span></div>
+ </div>
+ <div class="hero-actions">
+  <button class="btn primary" onclick="send('batchStart');showToast('▶ 已送出啟動勾選帳號')">▶ 啟動勾選帳號</button>
+  <button class="btn primary" onclick="send('startMonitoring');showToast('▶ 已送出開始監控')">▶ 開始監控</button>
+  <button class="btn emergency" onclick="send('emergencyStop');showToast('■ 已停止所有自動操作（遊戲不會被關閉）')">■ F10 停止自動操作</button>
+ </div>
+</div>
+<div class="card feat-card">
+ <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>目前啟動的功能</div>
+ <div class="hint">綠色 = 開著，灰色 = 關閉。點一下標籤會跳到那個功能的設定。</div>
+ <div class="feat-list" id="featList"><span class="muted">讀取中…</span></div>
+</div>
+<div class="card table-card">
+ <div class="section-title"><span class="ni"><span class="emo">👥</span></span>角色列表</div>
+ <div class="hint">勾選「啟動」的角色會在按「啟動勾選帳號」時一起開啟；「監控」可以每個角色分開開關。任何時候按 F10 都能停止所有自動操作。</div>
+ <div class="table-wrap"><table class="home-table"><thead><tr><th>啟動</th><th>角色</th><th>狀態</th><th>血量（目前 / 最大）</th><th>所在地圖</th><th>監控</th></tr></thead><tbody id="accountRows"></tbody></table></div>
+</div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🔔</span></span>最近事件</div><div class="events compact-events" id="events"><div class="event"><span>--:--:--</span><i class="dot"></i><span>等待監控事件</span></div></div></div>
+</section>
+<section class="page" id="roles">
+<div class="subtabs"><button data-sub="roleCards" class="active">👥 角色狀態</button><button data-sub="daily">🎁 每日道具</button><button data-sub="recovery">🔁 重新登入</button></div>
+<div class="subpage" id="roleCards">
+<div id="hpCards" class="role-grid"><div class="hint">等待角色資料…</div></div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>角色血量監控：</b>直接讀取遊戲中的角色血量（目前 / 最大），不需要把遊戲視窗保持在最前面，也不受其他視窗遮蔽影響。活動圖顯示最近約 30 秒的血量變化。<br><b>今日死亡：</b>每個角色當天死亡的次數（午夜換日重新計算），會保留每天的紀錄。</div><div class="hint"><b>假在線判定：</b>血量、經驗值、金幣或背包任一項有變化，都代表角色正在活動；全部長時間沒有變化時先標示「疑似假在線」，持續不變才會標示「已確認假在線」。只有開啟「自動恢復」的角色才會進行重新登入。</div><div class="tech-note">遊戲維修更新後會自動重新準備讀取位置；只有一直讀不到血量時，才需要到「設定 → 啟動與登入」按「重新校正血量讀取」。</div></div></details>
+</div>
+<div class="subpage" id="daily">
+<div class="card table-card">
+ <div class="section-title"><span class="ni"><span class="emo">⏰</span></span>每日道具到期時間 <span class="pill" id="dailyDelay">到期 5 分鐘後提醒</span></div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>每日道具到期</th><th>預定更換</th><th>狀態</th><th>銀行每日禮包</th><th>自動更換</th></tr></thead><tbody id="dailyRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="hint" id="dailyRunInfo" style="margin-top:8px">時間到會跳出提醒視窗（不搶焦點）並發送 Discord 通知。</div>
+ <div class="hint" style="margin-top:6px">「立即更換」會切到該角色的遊戲視窗自動完成：Q 回城（或原地）→ F6 → 取出並打開每日禮包 → 套上有勾選的造型 / 項鍊 / 勳章 → W → F6。每一步都會確認結果，不符合就停止並通知。執行期間請勿操作鍵盤滑鼠，<b>F10 可隨時中止</b>。</div>
+</div>
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>每個角色要換哪些道具</div>
+ <div class="hint">勾選要自動更換的項目，沒勾的禮盒不打開、裝備欄不動，到期提醒也只看有勾的項目；全部不勾 = 這個角色不自動更換（若上次換到一半中斷，仍會先穿回脫下的裝備、回怪區開 F6）。換完一律 W 前點到怪區並開啟 F6，請確認每個角色都設好 W 前點。</div>
+ <div class="hint" style="margin-top:6px"><b>🏙️ 回城換</b>：Q 回城換完再 W 回怪區（最穩，到期的舊道具過圖就會消失）。<b>📍 原地換</b>：不回城，原地關掉自動攻擊、換完再恢復；換造型時會先脫下裝備，<b>怪物多的地方可能被打</b>，建議只在安全的地方使用。</div>
+ <div id="dailyCfgRows" style="margin-top:8px"><div class="hint">讀取中…</div></div>
+</div>
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">🎬</span></span>示範錄製 <span class="pill" id="recBadge">未錄製</span></div>
+ <div class="hint">需要教程式新的操作時使用：按「開始錄製」後照平常方式手動操作一次，完成後按「停止錄製」。只會記錄這個遊戲視窗的滑鼠點擊與畫面，不會操作遊戲。開始前請先停止「遊戲視窗切換」。</div>
+ <div class="inv-toolbar" style="margin-top:10px">
+  <label>角色 <select id="recRole"></select></label>
+  <button class="btn primary" id="recStartBtn" onclick="send('recstart',{value:document.getElementById('recRole').value})">⏺ 開始錄製</button>
+  <button class="btn soft" id="recStopBtn" onclick="send('recstop')">⏹ 停止錄製</button>
+  <span class="account-sub" id="recStatus"></span>
+ </div>
+</div>
+</div>
+<div class="subpage" id="recovery">
+<div class="card" id="recStatsCard"><div class="section-title"><span class="ni"><span class="emo">🔁</span></span>重新登入成功率（7 天）<span class="pill" id="recStatsPill">—</span></div><div id="recStatsBars"><div class="hint">等待資料…</div></div><div class="table-wrap" style="margin-top:12px" id="recStatsRoles"></div><div class="account-sub" id="recStatsTop" style="margin-top:8px"></div></div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>怎麼算：</b>從日誌找出每一次「開始重新登入」，看最後是成功還是失敗（「需要人工處理」也算失敗）。成功率 = 成功 ÷（成功 + 失敗），手動中止和還在進行中的不算。</div><div class="hint"><b>最常卡住：</b>失敗的那幾次，最後停在哪一步（例如選角畫面、進入遊戲）。同一步一直出現，就是最該改善的地方。</div><div class="tech-note">只讀日誌，不影響任何自動操作；資料最多 1 分鐘更新一次。</div></div></details>
+</div>
+</section>
+<section class="page" id="invstats">
+<div class="subtabs"><button data-sub="invMain" class="active">📦 每日收益</button><button data-sub="dropRates">🎯 掉落率</button></div>
+<div class="subpage" id="invMain">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">📅</span></span>每日背包統計 </div>
+ <div class="inv-toolbar">
+  <label>日期 <select id="invStatsDay" onchange="requestInvStats(this.value)"></select></label>
+  <button class="btn soft" onclick="requestInvStats()">重新整理</button>
+  <button class="btn soft" onclick="send('invstatsexport',{value:invStatsSelected||''})">匯出 CSV</button>
+  <span class="account-sub" id="invStatsHint">讀取中…</span>
+ </div>
+</div>
+<div class="grid4" id="invStatsTotals" style="margin-top:14px"></div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⏱️</span></span>每小時收益<label class="select-inline">角色 <select id="hourRole" onchange="renderHourly()"></select></label></div><div class="hour-grid"><div><div class="chart-title">每小時金幣增加 <span class="muted" id="hourMoneySum"></span></div><div class="hour-chart" id="hourMoneyChart"></div></div><div><div class="chart-title">每小時打怪拾取（個） <span class="muted" id="hourItemsSum"></span></div><div class="hour-chart" id="hourItemsChart"></div></div></div></div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📦</span></span>全部角色合計｜打怪拾取 <span class="pill" id="invStatsTotalPill">—</span></div><div id="invStatsTotalItems"><div class="hint">等待資料…</div></div></div>
+<div id="invStatsRoles" class="hp-grid" style="margin-top:14px"></div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>統計方式：</b>每 5 秒讀取一次各角色的背包、銀行與身上裝備（合併計算），和上一次比較。道具增加計入「打怪拾取」，減少計入「減少」（使用、販賣、丟棄）。</div><div class="hint"><b>角色間轉移：</b>一個角色少了某道具（或金幣），2 分鐘內另一個角色剛好多了一樣的數量，就當成自己角色之間交易或丟給對方，兩邊都不算拾取 / 減少，合計不會重複計算；記在角色卡的「🔁 角色間轉移」。</div><div class="hint"><b>不列入：</b>存取銀行、穿脫裝備、打開禮盒變出的道具、跟 NPC 購買、每日道具（1D）與每日分享禮包。角色重新登入或銀行剛載入時只重新建立基準。</div><div class="tech-note">按「匯出 CSV」可以用 Excel 開啟每天的紀錄。</div></div></details>
+</div>
+<div class="subpage" id="dropRates">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🎯</span></span>怪物掉落率 <span class="pill" id="dropVerPill">—</span></div>
+ <div class="inv-toolbar">
+  <label>版本 <select id="dropVer" onchange="loadDropVer(this.value)"></select></label>
+  <label>地圖 <select id="dropMap" onchange="renderDrop()"></select></label>
+  <label class="toggle"><input type="checkbox" id="dropAll" onchange="renderDropMaps()"> 全部地圖</label>
+  <input id="dropQ" type="text" placeholder="🔍 搜尋道具（例如 骷髏頭）" oninput="renderDrop()" style="min-width:180px">
+  <button class="btn soft" onclick="send('dropcheck')">立即檢查改版</button>
+ </div>
+ <div class="account-sub" id="dropStatus" style="margin-top:8px"></div>
+</div>
+<div class="card" style="margin-top:14px" id="dropChangesCard"><div class="section-title"><span class="ni"><span class="emo">🆕</span></span>這一版的變動 <span class="pill" id="dropChangesPill">—</span></div><div id="dropChanges"></div></div>
+<div id="dropGroups" style="margin-top:14px"><div class="hint">讀取中…</div></div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>資料來源：</b>直接讀遊戲資料夾裡的掉落表（只讀不改），已套用伺服器倍率（道具 ×8、稀有 ×5）。數字是<b>每打死一隻</b>的機率，不含活動加成；只列材料與消耗品（裝備不計）。</div><div class="hint"><b>自動更新：</b>程式啟動 1 分鐘後、之後每小時檢查一次遊戲有沒有改版；有改版就自動重算並通知，版本名稱是遊戲更新的日期（例如「10/24 維修版」）。預設顯示最新版，可以在「版本」選舊版回頭看。</div><div class="hint"><b>變動：</b>和前一版比，機率有變化或新增 / 移除的道具。09/20～10/14 的舊版只有常用地圖的資料。</div></div></details>
+</div>
+</section>
+<section class="page" id="tools">
+<div class="subtabs"><button data-sub="switcher" class="active">🔄 視窗切換</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="inventory">🧹 背包清理</button><button data-sub="mbox">🎁 M 箱</button></div>
+<div class="subpage" id="switcher">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🔄</span></span>遊戲視窗自動切換</div>
+ <div class="hint">依設定順序輪流顯示各角色遊戲視窗。每個角色可設定停留時間與切換後自動按鍵；自動登入或恢復期間會暫停切換，避免互相干擾。</div>
+ <div class="actions" style="margin-top:14px">
+  <button class="btn primary" onclick="send('switchAutoStart');showToast('▶ 已啟動遊戲視窗自動切換')">▶ 啟動自動切換</button>
+  <button class="btn danger" onclick="send('switchAutoStop');showToast('■ 已停止遊戲視窗自動切換')">■ 停止自動切換</button>
+  <button class="btn soft" onclick="send('switchNext')">立即切換下一個</button>
+  <span id="switchStatus" class="status-pill">● 停止</span>
+ </div>
+ <div class="grid3" style="margin-top:14px">
+  <div class="mini"><div class="hint">目前視窗</div><div id="switchCurrent" style="font-weight:800;margin-top:5px">—</div></div>
+  <div class="mini"><div class="hint">剩餘停留</div><div id="switchCountdown" style="font-weight:800;font-size:22px;margin-top:3px">0 秒</div></div>
+  <div class="mini"><div class="hint">下一個視窗</div><div id="switchNextInfo" style="font-weight:800;margin-top:5px">—</div></div>
+ </div>
+ <div class="grid2" style="margin-top:12px;align-items:end">
+  <label class="hint">停止切換的快捷鍵<input id="switchStopHotkey" placeholder="例如：F9；留空不使用" style="width:100%;padding:9px;margin-top:4px"></label>
+  <div><button class="btn blue" onclick="saveSwitchStopHotkey()">儲存停止快捷鍵</button><div class="hint" style="margin-top:5px">F10 已用於緊急停止，請選其他按鍵。</div></div>
+ </div>
+</div>
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">⚙️</span></span>每個視窗設定</div>
+ <div class="formgrid" style="margin-top:12px">
+  <div class="field"><label>角色</label><select id="switchProfile" onchange="loadSwitchProfile()"></select></div>
+  <div class="field"><label>加入視窗切換</label><select id="switchEnabled"><option value="1">加入</option><option value="0">不加入</option></select></div>
+  <div class="field"><label>停留秒數</label><input id="switchSeconds" type="number" min="1" max="3600" value="10"></div>
+  <div class="field"><label>切換後自動按鍵</label><input id="switchKeys" placeholder="例如：H,W,P,D 或 F1,Space"></div>
+ </div>
+ <div id="switchTotal" class="status-pill" style="margin-top:10px">一個循環總設定時間：0 秒</div>
+ <div class="hint" style="margin-top:10px">多個按鍵請用逗號分隔，會依序送出；留空代表只切換視窗、不按鍵。可用單一按鍵、F1～F12、Space、Enter、Tab。</div>
+ <div class="actions" style="margin-top:14px"><button class="btn blue" onclick="saveSwitchSetting()">儲存此視窗設定</button></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>切換清單</div><div class="table-wrap"><table><thead><tr><th>帳號</th><th>遊戲視窗</th><th>加入切換</th><th>停留</th><th>切換後按鍵</th></tr></thead><tbody id="switchRows"></tbody></table></div></div>
+</div>
+<div class="subpage" id="mbox">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>M 箱自動開啟 <span class="pill" id="mboxPill">—</span></div>
+ <div class="hint">勾選的角色會在效果快結束時自動開下一個 M 箱：程式把那個角色的視窗切到前面、按開啟鍵，確認 M 箱數量少 1 之後，馬上切回原本在前面的視窗。每個角色各自計時，沒勾的角色不會被切換。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="mboxEnabled" onchange="saveMBoxCfg()"> 啟用 M 箱自動開啟</label>
+  <label>每隔 <input id="mboxInterval" type="number" min="30" max="3600" value="180" style="width:80px" onchange="saveMBoxCfg()"> 秒開一次（效果時間）</label>
+ </div>
+ <div class="account-sub" id="mboxBlocker" style="margin-top:8px"></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👥</span></span>要開 M 箱的角色</div>
+ <div class="table-wrap"><table><thead><tr><th>開</th><th>角色</th><th>開啟鍵</th><th>下次</th><th>背包 M 箱</th><th>狀態</th></tr></thead><tbody id="mboxRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的 M 箱數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。M 箱快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「🔄 視窗切換」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
+</div>
+<div class="subpage" id="layout">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🗂️</span></span>遊戲視窗配置</div>
+ <div class="hint">每個角色的視窗位置與大小都會保存。開始監控或重新登入成功後，會依照已記錄的位置自動還原。</div>
+ <div class="actions" style="margin-top:14px">
+  <label class="toggle"><input id="layoutAuto" type="checkbox" onchange="setLayoutAuto(this.checked)"> 啟動監控時自動還原</label>
+  <button class="btn soft" onclick="send('layoutSave')">📍 記錄目前全部位置</button>
+  <button class="btn primary" onclick="send('layoutRestore')">↺ 立即全部還原</button>
+ </div>
+ <div class="status-pill" id="layoutStatus" style="margin-top:12px">待命</div>
+ <div class="hint" style="margin-top:10px">如果記錄的位置在目前沒接上的螢幕，該視窗會先略過，不會被搬到看不到的地方。</div>
+</div>
+<div class="card table-card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
+</div>
+</div>
+<div class="subpage" id="inventory">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🧹</span></span>① 選擇要清理的角色</div>
+ <div class="hint">背包清理有自己的清單。可以從已連接的帳號加入，也可以直接選開著的遊戲視窗；不確定是哪個角色時，先按「顯示視窗」確認。</div>
+ <div style="font-weight:700;margin-top:14px">A. 從已連接的帳號加入</div>
+ <div class="formgrid" style="margin-top:8px"><div class="field"><label>帳號</label><select id="invProfileSelect"></select></div></div>
+ <div class="actions"><button class="btn soft" onclick="showInventoryProfileWindow()">👁 顯示視窗</button><button class="btn soft" onclick="addInventoryProfile()">＋ 加入清理清單</button></div>
+ <div style="font-weight:700;margin-top:16px">B. 直接選擇遊戲視窗</div>
+ <div class="formgrid" style="margin-top:8px"><div class="field"><label>遊戲視窗</label><select id="invWindowSelect"></select></div><div class="field"><label>清理名稱</label><input id="invBindName" placeholder="例如：小柯基背包"></div></div>
+ <div class="actions"><button class="btn soft" onclick="send('invBindScan')">↻ 重新掃描</button><button class="btn soft" onclick="showInventoryRawWindow()">👁 顯示視窗</button><button class="btn soft" onclick="addInventoryBinding()">＋ 加入清理清單</button></div>
+ <div style="font-weight:700;margin-top:18px">清理清單</div>
+ <div class="table-wrap"><table><thead><tr><th>清理</th><th>名稱</th><th>狀態</th><th>操作</th></tr></thead><tbody id="invBindRows"></tbody></table></div>
+</div>
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">📐</span></span>② 清理範圍與位置設定</div>
+ <div class="hint">設定要清理背包的哪幾頁、哪幾行。第一次使用要先在遊戲畫面上記錄 9 個位置。</div>
+ <div class="formgrid" style="margin-top:14px">
+  <div class="field"><label>起始頁</label><input id="invStartPage" type="number" min="1" max="5" value="1"></div>
+  <div class="field"><label>起始行</label><input id="invStartRow" type="number" min="1" max="10" value="1"></div>
+  <div class="field"><label>結束頁</label><input id="invEndPage" type="number" min="1" max="5" value="5"></div>
+  <div class="field"><label>結束行</label><input id="invEndRow" type="number" min="1" max="10" value="6"></div>
+  <div class="field"><label>速度</label><select id="invSpeed"><option value="STABLE">穩定</option><option value="FAST">快速</option></select></div>
+  <div class="field"><label>用哪個角色記錄位置</label><select id="invSetupProfile"></select></div>
+ </div>
+ <div class="actions" style="margin-top:12px">
+  <button class="btn blue" onclick="saveInventorySettings()">儲存清理範圍</button>
+  <button class="btn soft" onclick="startInventorySetup()">開始記錄 9 個位置</button>
+ </div>
+ <div class="hint" id="invSetupHint" style="margin-top:10px">尚未記錄位置</div>
+</div>
+
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">▶️</span></span>③ 開始清理</div>
+ <div class="hint">依清單順序一個角色接一個角色清理；有帳號在自動重新登入時會先暫停。</div>
+ <div class="formgrid" style="margin-top:12px">
+  <div class="field"><label>啟動快捷鍵</label><input id="invStartHotkey" placeholder="例如 F3"></div>
+  <div class="field"><label>暫停 / 繼續快捷鍵</label><input id="invPauseHotkey" placeholder="例如 F8"></div>
+  <div class="field"><label>終止快捷鍵</label><input id="invStopHotkey" placeholder="例如 F9"></div>
+ </div>
+ <div class="actions" style="margin-top:10px">
+  <button class="btn blue" onclick="saveInvStartHotkey();saveInvPauseHotkey();saveInvStopHotkey()">儲存快捷鍵</button>
+  <button class="btn primary" onclick="send('inventoryStart')">▶ 清理勾選視窗</button>
+  <button class="btn soft" onclick="send('invPause')">⏸ 暫停 / 繼續</button>
+  <button class="btn danger" onclick="send('inventoryStop')">■ 終止清理</button>
+ </div>
+ <div class="status-pill" id="invStatus" style="margin-top:10px">待命</div>
+</div>
+</div>
+</section>
+<section class="page" id="setup">
+<div class="subtabs"><button data-sub="accounts" class="active">🔑 帳號</button><button data-sub="monitor">🚨 監控</button><button data-sub="settings">🚀 啟動與登入</button><button data-sub="notifyTab">💬 通知與報表</button><button data-sub="logs">🧰 其他</button></div>
+<div class="subpage" id="accounts">
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">🔑</span></span>帳號管理</div><div class="hint">新增的帳號預設不監控；填好帳號密碼並連接遊戲視窗後，再到首頁開啟監控。</div>
+<div class="actions" style="margin-top:14px"><button class="btn soft" onclick="send('accountAdd')">＋ 新增帳號</button><button class="btn blue" onclick="saveAcct()">儲存帳號</button><button class="btn danger" onclick="if(confirm('確定刪除目前選取的帳號？遊戲本身不會被關閉。'))send('accountDelete')">刪除帳號</button></div>
+<div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"></div></div>
+<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">🔗</span></span>遊戲視窗綁定</div><div class="hint">把帳號和開著的遊戲視窗配對。一般按「自動連接」即可（會依遊戲中的角色名稱配對）；配錯時再手動選擇。</div><div class="formgrid" style="margin-top:16px"><div class="field"><label>目前帳號</label><select id="profileSelectMirror" disabled><option>請在上方選擇帳號</option></select></div><div class="field"><label>遊戲視窗</label><select id="gameSelect" onchange="send('gameSelect',{value:Number(this.value)})"></select></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="send('autoBind')">自動連接遊戲視窗</button><button class="btn soft" onclick="send('refreshGames')">重新整理清單</button><button class="btn soft" onclick="send('bindSelected')">連接選定視窗</button><button class="btn danger" onclick="send('unbindSelected')">解除連接</button><button class="btn soft" onclick="send('showWindow')">顯示遊戲視窗</button><button class="btn soft" onclick="send('recordPosition')">記錄視窗位置</button></div></div></div>
+<div class="subpage" id="monitor">
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">👻</span></span>假在線判定</div>
+<div class="formgrid" style="margin-top:12px">
+<div class="field"><label>啟用假在線偵測</label><label class="toggle"><input id="softOn" type="checkbox"> 啟用</label></div>
+<div class="field"><label>多視窗輔助判定</label><label class="toggle"><input id="softMultiAssist" type="checkbox"> 啟用（建議）</label></div>
+<div class="field"><label>至少幾個角色同時異常</label><input id="softVotes" type="number" min="2" value="2"></div>
+
+<div class="field"><label>多少秒沒有任何變化就提醒（秒）</label><input id="softIdle" type="number" min="30" value="90"></div>
+<div class="field"><label>提醒後再等多久才確認（秒）</label><input id="softConfirm" type="number" min="5" value="30"></div>
+</div><input id="softAuto" type="checkbox" style="display:none"><div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveMonitor()">儲存監控設定</button></div>
+<div class="hint" style="margin-top:10px">「多視窗輔助判定」：好幾個角色同時 60 秒完全沒變化，通常是伺服器卡住，會直接確認為假在線。每個角色要不要自動重新登入，看它自己的「自動恢復」開關。</div></div>
+<div class="card" style="margin-top:14px">
+ <div class="section-title"><span class="ni" data-icon="wifi"></span>網路狀態</div>
+ <div class="hint">顯示遊戲連線與電腦網路是否正常，方便出問題時對照；不會觸發任何自動操作。</div>
+ <div class="formgrid" style="margin-top:12px">
+  <div class="field"><label>網路狀態檢查</label><select id="netEnabled" onchange="networkWatchDirty=true"><option value="1">啟用</option><option value="0">停用</option></select></div>
+  <div class="field"><label>檢查間隔（秒）</label><input id="netInterval" type="number" min="3" max="60" value="5"></div>
+ </div>
+ <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveNetworkWatch()">儲存</button><button class="btn soft" onclick="location.href='hihiyong://networkwatchtest/'">立即檢查</button></div>
+ <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>遊戲連線</th><th>電腦網路</th><th>最後檢查</th><th>最近一次異常</th></tr></thead><tbody><tr><td id="netTcpStatus">-</td><td id="netInternetStatus">-</td><td id="netLastCheck">-</td><td id="netLastAnomaly">-</td></tr></tbody></table></div>
+ <details style="margin-top:12px"><summary>進階設定</summary><div class="formgrid" style="margin-top:10px"><div class="field"><label>路由器位址</label><input id="netGateway" placeholder="留空自動偵測"></div><div class="field"><label>外部網路測試位址</label><input id="netInternet" placeholder="1.1.1.1"></div></div><div class="hint" style="margin-top:8px">路由器：<span id="netGwStatus">-</span>｜遊戲伺服器：<span id="netRemote">-</span></div></details>
+</div><details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint">角色血量會在背景持續偵測，用來判斷死亡、復活與假在線。遊戲視窗被遮住不影響角色血量監控；只有血量無法讀取時才使用畫面辨識作備援。</div></div></details></div>
+<div class="subpage" id="settings">
+<div class="card" id="setupWizard">
+ <div class="section-title"><span class="ni"><span class="emo">✅</span></span>設定檢查</div>
+ <div class="hint" style="margin-top:6px">會先檢查目前設定能不能用，只有沒通過的項目才需要重新設定。</div>
+ <div class="formgrid" style="margin-top:12px">
+  <div class="field"><label>遊戲程式</label><div id="wizLauncher" class="status-pill">檢查中…</div></div>
+  <div class="field"><label>登入位置</label><div id="wizCoords" class="status-pill">檢查中…</div></div>
+  <div class="field"><label>角色血量</label><div id="wizHp" class="status-pill">等待遊戲視窗連接</div></div>
+  
+ </div>
+ <div id="wizAdvice" class="hint" style="margin-top:10px">檢查中…</div><div class="wizard-flow" id="wizardFlow">
+ <div class="wizard-step" id="wstep1"><b>1. 帳號</b><small>建立帳號與密碼</small></div><div class="wizard-step" id="wstep2"><b>2. 遊戲視窗</b><small>連接遊戲視窗</small></div><div class="wizard-step" id="wstep3"><b>3. 登入位置</b><small>自動登入要點的位置</small></div><div class="wizard-step" id="wstep4"><b>4. 角色血量</b><small>確認血量讀取正常</small></div><div class="wizard-step" id="wstep5"><b>5. 所在地圖</b><small>讀得到角色位置</small></div><div class="wizard-step" id="wstep6"><b>6. 開始監控</b><small>完成後啟動</small></div>
+ </div>
+ <div class="actions" style="margin-top:12px">
+  <button class="btn primary" onclick="send('selfCheck');send('checkHP');showToast('正在檢查既有設定…')">檢查既有設定</button>
+  <button class="btn soft" onclick="send('coordTest')">測試自動登入位置</button>
+  <button class="btn soft" onclick="send('selfCheck')">系統自檢</button>
+  <button class="btn soft" onclick="send('calibrateHP')" title="只有血量讀不到時才需要">重新校正血量讀取</button>
+ </div>
+ <div id="selfCheckResult" class="hint" style="display:none;margin-top:10px;line-height:1.8"></div>
+ <div class="hint" style="margin-top:9px">換電腦後如果自動登入點錯位置，先確認遊戲視窗大小和 Windows 顯示縮放比例跟原本一樣。</div>
+</div>
+<div id="settingsLauncher">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🚀</span></span>遊戲啟動程式</div>
+ <div class="formgrid" style="margin-top:12px"><div class="field"><label>啟動程式位置</label><div id="webLauncher" class="status-pill">尚未設定</div></div><div class="field"><label>登入完成後自動按鍵</label><input id="webPostKeys" placeholder="例如 F6,A；留空不按"></div></div>
+ <div class="actions" style="margin-top:10px"><button class="btn soft" onclick="send('launcherBrowse')">選擇啟動程式</button><button class="btn blue" onclick="send('postKeys',{value:document.getElementById('webPostKeys').value});setDirty(false);showToast('✓ 啟動設定已儲存')">儲存啟動設定</button></div>
+</div></div>
+<div id="settingsCoords">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>自動登入點擊位置</div><div id="coordSummary" class="status-pill">讀取中…</div><div id="coordPoints" class="hint" style="margin-top:10px;line-height:1.8"></div>
+ <div class="actions" style="margin-top:12px"><button class="btn soft" onclick="send('coordStart')">重新設定 8 個位置</button><button class="btn soft" onclick="send('coordRecord')">記錄目前位置</button><button class="btn soft" onclick="send('coordTest')">測試</button><button class="btn danger" onclick="if(confirm('確定清除全部登入位置？清除後自動登入無法使用，需要重新設定。'))send('coordClear')">清除</button></div>
+</div></div>
+<div id="settingsMap">
+<div class="card" style="margin-top:14px"><details><summary class="section-title" style="margin:0"><span class="ni"><span class="emo">🔬</span></span>進階：登入後位置確認（一般不需要調整）</summary><div class="hint" style="margin-top:10px">自動重新登入後，用畫面辨識確認角色是不是在復活點；在復活點就按前點鍵回到打怪區。</div><div class="formgrid" style="margin-top:12px"><div class="field"><label>測試帳號</label><select id="webMapProfile" onchange="send('mapProfile',{value:Number(this.value)})"></select></div><div class="field"><label>辨識門檻（%，越高越嚴格）</label><input id="webMapConf" type="number" min="1" max="99"></div><div class="field"><label>辨識前拉近鏡頭次數</label><input id="webMapZoom" type="number" min="1" max="30"></div><div class="field"><label>在復活點時按的前點鍵</label><input id="webMapReturn" placeholder="例如 W"></div></div>
+ <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="send('mapConf',{value:Number(document.getElementById('webMapConf').value)});send('mapZoom',{value:Number(document.getElementById('webMapZoom').value)});send('mapReturn',{value:document.getElementById('webMapReturn').value});setDirty(false);showToast('✓ 辨識設定已儲存')">儲存辨識設定</button><button class="btn soft" onclick="send('mapTest')">測試辨識</button></div><div id="webMapResult" class="status-pill" style="margin-top:10px">辨識結果：尚未測試</div>
+</details></div></div>
+</div>
+<div class="subpage" id="notifyTab"><div id="settingsNotify">
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">💬</span></span>Discord 通知</div><div class="formgrid" style="margin-top:12px"><div class="field"><label>斷線 / 自動重新登入通知</label><label class="toggle"><input id="recDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>這台電腦的名稱（顯示在通知裡）</label><input id="discordPc"></div><div class="field"><label>斷線通知網址（Discord Webhook）</label><input id="recWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div><div class="field"><label>死亡 / 復活通知</label><label class="toggle"><input id="deathDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>死亡通知網址（Discord Webhook）</label><input id="deathWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div></div>
+ <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveNotify()">儲存 Discord 設定</button><button class="btn soft" onclick="send('recoveryTest')">發送測試：斷線通知</button><button class="btn soft" onclick="send('deathTest')">發送測試：死亡通知</button></div><div class="hint" style="margin-top:8px">網址儲存後會加密保存；欄位留空代表沿用原本的網址。</div>
+</div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📨</span></span>報表與截圖（發到斷線通知的 Discord）</div>
+ <div class="formgrid">
+  <div class="field"><label>每日報表發送時間（發送前一天的完整報表；留空不發）</label><input id="repTime" placeholder="例如 08:00"></div>
+  <div class="field"><label>定時截圖（所有遊戲視窗拼成一張）</label><select id="repShot"><option value="0">不發送</option><option value="30">每 30 分鐘</option><option value="60">每 1 小時</option><option value="120">每 2 小時</option><option value="240">每 4 小時</option></select></div>
+  <div class="field"><label>異常時截圖</label><label class="toggle"><input id="repErr" type="checkbox"> 斷線、假在線、卡復活、每日道具失敗、沒在自動打怪時附上當下畫面</label></div>
+ </div>
+ <div class="actions" style="margin-top:12px"><button class="btn blue" onclick="saveReports()">儲存報表 / 截圖設定</button><button class="btn soft" onclick="send('reportnow');showToast('📊 已送出今天到目前為止的報表')">立即發送今天的報表</button><button class="btn soft" onclick="send('snapshotnow');showToast('📸 正在截圖並發送')">立即發送截圖</button></div>
+ <div class="hint" style="margin-top:8px">報表內容：每個角色的金幣、打怪拾取、死亡次數、自動重新登入次數，以及當天拾取最多的道具。截圖不需要把遊戲視窗切到最上層。</div>
+</div></div>
+</div>
+<div class="subpage" id="logs"><div class="card"><div class="section-title"><span class="ni"><span class="emo">🧰</span></span>記錄與工具</div><div class="actions"><button class="btn soft" onclick="send('openLog')">開啟執行紀錄</button><button class="btn soft" onclick="send('equipdump');showToast('📄 正在匯出角色資料')">匯出角色裝備 / 背包 / 銀行</button></div><div class="hint" style="margin-top:8px">遇到問題時，把執行紀錄或匯出的角色資料提供給協助你的人即可。匯出只讀取資料，不會操作遊戲。</div></div>
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">🎨</span></span>介面風格</div><div class="hint">只改變管理程式的配色與字體，不影響任何功能。選了馬上套用。</div>
+ <div class="theme-list" id="themeList"></div></div>
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">🖥️</span></span>桌面捷徑</div><div class="hint">從發佈包第一次啟動時，桌面會自動出現「HiHiyong帳號管理」捷徑，之後從桌面開就好；資料夾搬到別的地方，從新位置啟動一次捷徑就會跟著更新。圖示可以換成自己的圖片（png、jpg、bmp 或 ico），會自動縮成正方形。</div>
+ <div class="actions"><button class="btn soft" onclick="send('shortcuticon');showToast('請選擇要當圖示的圖片')">🖼️ 更換桌面圖示…</button><button class="btn soft" onclick="send('shortcuticonreset')">↺ 還原預設圖示</button><button class="btn soft" onclick="send('shortcutcreate')">重新建立桌面捷徑</button></div></div></div>
+</section>
+</div></main></div>
+<script>
+// v1.3.18.7 統一彩色 emoji 圖示（Windows 10 內建的 Segoe UI Emoji 都有）
+const ICONS={
+ home:'🏠',hpmonitor:'❤️',invstats:'📦',daily:'🎁',switcher:'🔄',inventory:'🧹',layout:'🗂️',
+ accounts:'🔑',monitor:'🚨',settings:'⚙️',logs:'🧰',people:'👥',window:'🎮',alert:'⚠️',wifi:'🌐',
+ coin:'💰',trend:'📈',shield:'🛡️',skull:'💀'
+};
+function icon(name){return `<span class="emo" aria-hidden="true">${ICONS[name]||''}</span>`;}
+function applyIcons(root=document){root.querySelectorAll('[data-icon]').forEach(e=>{if(!e.dataset.iconDone){e.innerHTML=icon(e.dataset.icon);e.dataset.iconDone='1';}});}
+applyIcons();
+let networkWatchDirty=false;
+
+const titles={home:'首頁',roles:'角色',invstats:'收益統計',tools:'工具',setup:'設定'};
+
+
+function normalizePrimaryMonitorControls(){
+ document.querySelectorAll('button').forEach(b=>{
+   if(b.id==='mainStartBtn'||b.id==='mainStopBtn'||b.id==='mainLaunchBtn')return;
+   const t=(b.textContent||'').trim();
+   if((t.includes('開始監控')||t.includes('停止監控')) && b.closest('.card')?.querySelector('.section-title')?.textContent==='快速操作') b.style.display='none';
+ });
+}
+normalizePrimaryMonitorControls();
+
+function moveCardByHeading(heading,targetId){
+  const target=document.getElementById(targetId); if(!target)return;
+  const cards=[...document.querySelectorAll('#home .card')];
+  const card=cards.find(c=>{
+    const t=(c.querySelector('.section-title')?.textContent||c.querySelector('div')?.textContent||'').trim();
+    return t.includes(heading);
+  });
+  if(card) target.appendChild(card);
+}
+function organizePages(){
+  // Move the actual v0.9.7 tested cards. No duplicate controls / IDs.
+  moveCardByHeading('帳號管理','accounts');
+  moveCardByHeading('Discord 通報','notify');
+  moveCardByHeading('遊戲程式啟動','launcher');
+  moveCardByHeading('8 點登入座標','coords');
+  moveCardByHeading('地圖 / 位置判定','map');
+  moveCardByHeading('監控 / 假在線','monitor');
+  moveCardByHeading('Log / 工具','logs');
+
+  // Remove old Preview placeholder cards once the real tested card exists on a page.
+  const cleanup=['accounts','notify','launcher','coords','map','monitor','logs'];
+  cleanup.forEach(id=>{
+    const page=document.getElementById(id); if(!page)return;
+    [...page.children].forEach(el=>{
+      if(el.classList?.contains('card') && !el.querySelector('input,select') &&
+         !el.querySelector('#profileSelect,#gameSelect') &&
+         (el.textContent.includes('下一階段')||el.textContent.includes('此 Preview')||
+          el.textContent.includes('沿用 v0.7.5.9')||el.textContent.includes('保留 8 點')||
+          el.textContent.includes('手動測試會先')||el.textContent.includes('HP 背景監控不搶前景')))
+        el.remove();
+    });
+  });
+}
+organizePages();
+
+
+const pageDescriptions={
+ home:'日常操作與帳號總覽',
+ hpmonitor:'每個角色的血量與假在線狀態',
+ accounts:'帳號密碼與遊戲視窗配對',
+ notify:'自動恢復 / 死亡事件 Discord 通知',
+ launcher:'Launcher 與登入後按鍵',
+ coords:'8 點登入座標校正',
+ map:'怪物區 / 復活點安全判定',
+ monitor:'多帳號即時狀態、HP 變化、假在線偵測與 自動恢復',settings:'遊戲啟動程式、自動登入位置與 Discord 通知',switcher:'輪流顯示各角色的遊戲視窗',inventory:'依序清理多個角色的背包',layout:'記錄與還原每個遊戲視窗的位置',
+ monitor:'假在線判定與網路狀態監看',
+ invstats:'每日打怪拾取與金幣變化',
+ daily:'一日道具到期提醒、自動更換與示範錄製',
+ logs:'執行紀錄與診斷工具',
+ roles:'每個角色的血量、地圖、死亡、擊殺、每日道具與重新登入',
+ tools:'視窗切換、視窗位置與背包清理',
+ setup:'帳號、監控、自動登入與通知（設定好之後很少需要再動）'
+};
+pageDescriptions.home='角色狀態總覽';
+pageDescriptions.invstats='每日金幣、打怪拾取與擊殺';
+function ensurePageKickers(){
+ Object.entries(pageDescriptions).forEach(([id,txt])=>{
+   const p=document.getElementById(id); if(!p||p.querySelector('.page-kicker'))return;
+   const d=document.createElement('div'); d.className='page-kicker'; d.textContent=txt; p.prepend(d);
+ });
+}
+function showToast(msg){
+ const t=document.getElementById('toast'); if(!t)return;
+ t.textContent=msg; t.classList.add('show'); clearTimeout(window.toastTimer);
+ window.toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+function ensureScanFeedback(){
+ document.querySelectorAll('button').forEach(b=>{
+   if((b.textContent||'').includes('掃描 game.exe') && !b.dataset.scanWrapped){
+     b.dataset.scanWrapped='1';
+     const span=document.createElement('span'); span.className='scan-feedback'; span.dataset.scanFeedback='1';
+     span.textContent='尚未掃描'; b.insertAdjacentElement('afterend',span);
+     b.addEventListener('click',()=>showToast('正在掃描 game.exe…'));
+   }
+ });
+}
+ensurePageKickers(); ensureScanFeedback();
+
+
+function cleanupLegacyWebUI(){
+ document.querySelectorAll('.card').forEach(c=>{
+   const t=(c.textContent||'');
+   if(t.includes('Web 設定中心 · Phase 1')) c.remove();
+ });
+ document.querySelectorAll('button').forEach(b=>{
+   if((b.textContent||'').trim()==='完整設定') b.style.display='none';
+ });
+}
+cleanupLegacyWebUI();
+
+// v1.3.9.6: consolidate configuration pages while keeping monitoring independent.
+(function consolidateSettings(){
+  const targets={launcher:'settingsLauncher',coords:'settingsCoords',map:'settingsMap',notify:'settingsNotify'};
+  Object.entries(targets).forEach(([src,dst])=>{
+    const source=document.getElementById(src), target=document.getElementById(dst);
+    if(!source||!target)return;
+    [...source.children].forEach(el=>target.appendChild(el));
+    source.remove();
+  });
+  const mon=document.getElementById('monitor');
+  if(mon){
+    // v1.3.18.5：不再改寫監控頁標題（原本的空白標題卡已移除）
+  }
+})();
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');document.getElementById('pageTitle').textContent=titles[b.dataset.page];const ps=document.getElementById('pageSub');if(ps)ps.textContent=pageDescriptions[b.dataset.page]||'';document.querySelector('.main').scrollTop=0;const st=document.querySelector(`#${b.dataset.page} .subtabs button.active`);if(st)onSubShown(st.dataset.sub)});
+// v1.3.22.0 介面風格：存在主程式設定檔；本機也記一份，開啟時先套用避免閃一下預設色
+const THEMES=[
+ ['','石墨（預設）','簡潔專業的淺色',['#121419','#f4f5f7','#3b5bdb','#ffffff']],
+ ['esports','暗夜電競','深色、青色霓虹',['#07090d','#0b0e14','#22d3ee','#141923']],
+ ['gold','黑金尊爵','深色、金色、襯線標題',['#090807','#0f0e0c','#d4af37','#181613']],
+ ['morning','清新晨光','暖白、珊瑚色、圓角',['#fffdfa','#f7f4ef','#e07a5f','#fffdfa']],
+ ['fluent','Windows 11','霧面玻璃、藍色',['#e9eef8','#eef2f9','#0067c0','#ffffff']],
+ ['rpg','冒險羊皮紙','羊皮紙、木頭、楷書',['#2a1d14','#e8dcc2','#8b1e1e','#f8efdc']],
+];
+function applyTheme(t){t=t||'';if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;try{localStorage.setItem('hhTheme',t);}catch(e){}renderThemeList();}
+function renderThemeList(){const el=document.getElementById('themeList');if(!el)return;const cur=document.documentElement.dataset.theme||'';
+ el.innerHTML=THEMES.map(([id,name,desc,c])=>`<button type="button" class="theme-opt${id===cur?' on':''}" onclick="applyTheme('${id}');send('uitheme',{value:'${id}'})"><span class="theme-sw">${c.map(x=>`<i style="background:${x}"></i>`).join('')}</span><b>${name}</b><small>${desc}</small></button>`).join('');}
+try{const t=localStorage.getItem('hhTheme');if(t)document.documentElement.dataset.theme=t;}catch(e){}
+renderThemeList();
+// v1.3.22.0 側邊欄只剩圖示時，滑鼠移上去顯示名稱
+document.querySelectorAll('#nav button').forEach(b=>{b.title=(b.textContent||'').trim();});
+// 換了桌面圖示後由主程式呼叫：左上角圖示跟著換
+function refreshLogo(){const l=document.getElementById('appLogo');if(!l)return;l.dataset.fb='';l.src='../HiHiyong.ico?t='+Date.now();}
+// v1.3.22.0 頁內分頁
+function showSub(page,sub){
+ document.querySelectorAll(`#${page} .subtabs button`).forEach(x=>x.classList.toggle('active',x.dataset.sub===sub));
+ document.querySelectorAll(`#${page} > .subpage`).forEach(x=>x.classList.toggle('active',x.id===sub));
+ document.querySelector('.main').scrollTop=0;
+ onSubShown(sub);
+}
+function onSubShown(sub){
+ if(sub==='daily'||sub==='roleCards')send('dailystate');
+ if(sub==='recovery')send('recstats');
+ if(sub==='dropRates')send('dropindex');
+ if(sub==='mbox')send('mboxstate');
+ if(sub==='invMain')requestInvStats();
+ if(sub==='roleCards'&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats('');
+}
+document.querySelectorAll('.subtabs').forEach(t=>{
+ const page=t.closest('.page').id;
+ t.querySelectorAll('button').forEach(b=>b.onclick=()=>showSub(page,b.dataset.sub));
+ const first=t.querySelector('button.active'); if(first)document.getElementById(first.dataset.sub)?.classList.add('active');
+});
+// 看得到才算（分頁在沒顯示的頁面裡也會帶 active）
+function isShown(id){const e=document.getElementById(id);return !!e&&e.offsetParent!==null;}
+// 區塊標題下第一段說明收進 ⓘ：第一次使用時點開看，平常不佔畫面
+document.querySelectorAll('.section-title').forEach(t=>{
+ const h=t.nextElementSibling;
+ if(!h||!h.classList.contains('hint')||h.id)return;
+ h.classList.add('intro');
+ const b=document.createElement('button');b.className='info-btn';b.type='button';b.textContent='i';b.title='說明';
+ b.onclick=e=>{e.preventDefault();e.stopPropagation();b.classList.toggle('on',h.classList.toggle('show'));};
+ const pill=t.querySelector('.pill'); pill?t.insertBefore(b,pill):t.appendChild(b);
+});
+function send(action,payload={}){
+const map={startMonitoring:'start',emergencyStop:'emergencystop',monitorcheck:'monitorcheck',batchStart:'batchstart',oneClick:'oneclick',switchNext:'switchnext',switchAutoStart:'switchautostart',switchAutoStop:'switchautostop',switchSave:'switchsave',inventoryStart:'inventorystart',inventoryStop:'inventorystop',layoutSave:'layoutsave',layoutRestore:'layoutrestore',invBindScan:'invbindscan',invPause:'invpause',resetAllStats:'resetallstats',restartChecked:'restartchecked',autoBind:'autobind',stopMonitoring:'stop',refreshGames:'refresh',checkHP:'checkhp',calibrateHP:'calibratehp',
+profileSelect:'profile',gameSelect:'game',bindSelected:'bind',unbindSelected:'unbind',
+showWindow:'show',recordPosition:'position',manualRecover:'recover',resetStats:'resetstats',
+evidenceTest:'evidence',openLog:'log',openSettings:'settings',launcherPage:'launcherpage',coordPage:'coordpage',mapPage:'mappage',monitorPage:'monitorpage',notifyPage:'notifypage',toolsPage:'toolspage',launcherBrowse:'launcherbrowse',postKeys:'postkeys',coordStart:'coordstart',coordRecord:'coordrecord',coordClear:'coordclear',mapProfile:'mapprofile',mapTest:'maptest',mapConf:'mapconf',mapZoom:'mapzoom',mapReturn:'mapreturn',accountAdd:'accountadd',accountSave:'accountsave',accountDelete:'accountdelete',accountToggle:'accounttoggle',notifySave:'notifysave',recoveryTest:'recoverytest',deathTest:'deathtest',monitorSave:'monitorsave',evidenceTest2:'evidencetest',showLog2:'showlog',saveAll2:'saveall',selfCheck:'selfcheck'};
+const cmd=map[action]||action; const hasValue=Object.prototype.hasOwnProperty.call(payload,'value');
+const v=hasValue?payload.value:'';
+location.href='hihiyong://'+cmd+(hasValue?'/'+encodeURIComponent(String(v)):'');
+}
+
+const dirtyFields=new Set();
+function markFieldDirty(id){dirtyFields.add(id);setDirty(true);}
+function clearFieldDirty(id){dirtyFields.delete(id);}
+function isEditing(id){const e=document.getElementById(id);return !!e&&(document.activeElement===e||dirtyFields.has(id));}
+function bindStableInputs(){
+ ['discordPc','recWebhook','deathWebhook','softIdle','softConfirm','softVotes','softMultiAssist','webPostKeys','webMapConf','webMapZoom','webMapReturn','acctName','acctLogin','acctPassword','repTime','repShot','repErr'].forEach(id=>{
+  const e=document.getElementById(id);if(e){e.addEventListener('input',()=>markFieldDirty(id));e.addEventListener('change',()=>markFieldDirty(id));}
+ });
+}
+bindStableInputs();
+
+let latestState=null;
+
+
+function setLayoutAuto(on){
+ location.href='hihiyong://layoutauto/'+(on?1:0);
+ showToast(on?'✓ 已開啟監控啟動自動還原':'已關閉監控啟動自動還原');
+}
+
+function toggleAcctPassword(){
+ const e=document.getElementById('acctPassword'); if(!e)return;
+ e.type=e.type==='password'?'text':'password';
+ event.currentTarget.textContent=e.type==='password'?'顯示':'隱藏';
+}
+
+function showInventoryRawWindow(){
+ const hwnd=Number(document.getElementById('invWindowSelect')?.value||0); if(!hwnd){showToast('請先選擇遊戲視窗');return;} location.href='hihiyong://invshowwindow/'+hwnd;
+}
+function showInventoryProfileWindow(){
+ const o=document.getElementById('invProfileSelect')?.selectedOptions?.[0]; const hwnd=Number(o?.dataset?.hwnd||0); if(!hwnd){showToast('請先選擇已綁定帳號');return;} location.href='hihiyong://invshowwindow/'+hwnd;
+}
+function addInventoryProfile(){
+ const idx=Number(document.getElementById('invProfileSelect')?.value||0); if(!idx){showToast('請先選擇已綁定帳號');return;} location.href='hihiyong://invbindaddprofile/'+idx;
+}
+function addInventoryBinding(){
+ const sel=document.getElementById('invWindowSelect');
+ const hwnd=Number(sel?.value||0);
+ if(!hwnd){showToast('請先選擇遊戲視窗');return;}
+ const name=encodeURIComponent((document.getElementById('invBindName')?.value||'').trim());
+ location.href='hihiyong://invbindadd/'+hwnd+'~'+name;
+}
+function removeInventoryBinding(idx){
+ if(!confirm('確定把這個角色從清理清單移除？不影響帳號本身。'))return;
+ location.href='hihiyong://invbindremove/'+idx;
+}
+function setInventoryBindingCheck(idx,on){
+ location.href='hihiyong://invbindcheck/'+idx+'~'+(on?1:0);
+}
+
+function saveNetworkWatch(){
+ const en=document.getElementById('netEnabled')?.value||'0',gw=(document.getElementById('netGateway')?.value||'').trim(),inet=(document.getElementById('netInternet')?.value||'1.1.1.1').trim(),sec=document.getElementById('netInterval')?.value||'1';
+ networkWatchDirty=true;
+ location.href='hihiyong://networkwatchsave/'+[en,gw,inet,sec].map(encodeURIComponent).join('~');
+ setTimeout(()=>{networkWatchDirty=false;},1500);
+}
+function saveInvStartHotkey(){
+ const v=(document.getElementById('invStartHotkey')?.value||'').trim();
+ if(!v){showToast('請輸入啟動快捷鍵');return;}
+ location.href='hihiyong://invstarthotkey/'+encodeURIComponent(v);
+}
+function saveInvPauseHotkey(){
+ const v=(document.getElementById('invPauseHotkey')?.value||'').trim();
+ if(!v){showToast('請輸入暫停快捷鍵');return;}
+ location.href='hihiyong://invpausehotkey/'+encodeURIComponent(v);
+}
+function saveInvStopHotkey(){
+ const v=(document.getElementById('invStopHotkey')?.value||'').trim();
+ if(!v){showToast('請輸入終止快捷鍵');return;}
+ location.href='hihiyong://invstophotkey/'+encodeURIComponent(v);
+}
+function saveInventorySettings(){
+ const vals=[
+  Math.max(1,Math.min(5,Number(document.getElementById('invStartPage')?.value||1))),
+  Math.max(1,Math.min(10,Number(document.getElementById('invStartRow')?.value||1))),
+  Math.max(1,Math.min(5,Number(document.getElementById('invEndPage')?.value||5))),
+  Math.max(1,Math.min(10,Number(document.getElementById('invEndRow')?.value||6))),
+  document.getElementById('invSpeed')?.value||'STABLE'
+ ];
+ location.href='hihiyong://inventorysave/'+vals.join('~');
+ showToast('✓ 已儲存背包清理範圍');
+}
+function startInventorySetup(){
+ const idx=Number(document.getElementById('invSetupProfile')?.value||0);
+ if(!idx){showToast('請先選擇已綁定角色');return;}
+ location.href='hihiyong://inventorysetup/'+idx;
+ showToast('請回到遊戲視窗，依提示按 F6 記錄 9 個點');
+}
+function setInventoryCheck(idx,on){
+ location.href='hihiyong://inventorycheck/'+idx+'~'+(on?1:0);
+}
+
+function loadSwitchProfile(){
+ const sel=document.getElementById('switchProfile'); if(!sel||!latestState)return;
+ const p=(latestState.accounts||[]).find(x=>x.index===Number(sel.value)); if(!p)return;
+ document.getElementById('switchEnabled').value=p.switchEnabled?'1':'0';
+ document.getElementById('switchSeconds').value=p.switchSeconds||10;
+ document.getElementById('switchKeys').value=p.switchKeys||'';
+}
+function saveSwitchSetting(){
+ const idx=Number(document.getElementById('switchProfile')?.value||0); if(!idx){showToast('請先選擇帳號');return;}
+ const en=document.getElementById('switchEnabled').value;
+ const sec=Math.max(1,Number(document.getElementById('switchSeconds').value||10));
+ const keys=(document.getElementById('switchKeys').value||'').replace(/~/g,'');
+ send('switchSave',{value:`${idx}~${en}~${sec}~${keys}`}); showToast('✓ 已儲存此視窗切換設定');
+}
+
+function quickSwitchToggle(idx,on){
+ const p=(latestState?.accounts||[]).find(x=>x.index===idx); if(!p)return;
+ const sec=p.switchSeconds||10, keys=(p.switchKeys||'').replace(/~/g,'');
+ send('switchSave',{value:`${idx}~${on?1:0}~${sec}~${keys}`});
+ showToast(`${p.name}：${on?'已加入':'已排除'}視窗切換`);
+}
+function saveSwitchStopHotkey(){
+ const v=(document.getElementById('switchStopHotkey')?.value||'').trim();
+ send('switchStopHotkey',{value:v}); showToast(v?`✓ 停止快捷鍵已設定：${v}`:'✓ 已停用停止快捷鍵');
+}
+function renderSwitchPage(s){
+ latestState=s;
+ const sel=document.getElementById('switchProfile');
+ if(sel){const old=Number(sel.value||0);sel.innerHTML='<option value="0">請選擇帳號</option>'+(s.accounts||[]).map(x=>`<option value="${x.index}">${esc(x.name)}${x.hwnd?'':'（未連接）'}</option>`).join('');if(old)sel.value=String(old);if(!Number(sel.value)&&s.accounts?.length)sel.value=String(s.accounts[0].index);if(document.activeElement!==document.getElementById('switchEnabled')&&document.activeElement!==document.getElementById('switchSeconds')&&document.activeElement!==document.getElementById('switchKeys'))loadSwitchProfile();}
+ const rows=document.getElementById('switchRows');if(rows)rows.innerHTML=(s.accounts||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${x.hwnd?'✓ 已連接':'未連接'}</td><td><label class="monitor-switch"><input type="checkbox" ${x.switchEnabled?'checked':''} onchange="quickSwitchToggle(${x.index},this.checked)"> ${x.switchEnabled?'加入':'不加入'}</label></td><td>${x.switchSeconds||10}s</td><td>${esc(x.switchKeys||'—')}</td></tr>`).join('');
+ const hn=document.getElementById('homeSwitchNext');if(hn)hn.textContent=s.autoSwitchNextName||'—';
+ const hc=document.getElementById('homeSwitchCountdown');if(hc)hc.textContent=s.autoSwitchRunning?`目前：${s.autoSwitchCurrentName||'—'}｜剩餘 ${s.autoSwitchRemain||0} 秒`:'目前：已停止';
+ const st=document.getElementById('switchStatus');if(st){st.textContent=s.autoSwitchRunning?(s.autoSwitchRecoveryPaused?'⏸ 重新登入中，暫停切換':'● 運行中'):'● 停止';st.className='status-pill '+(s.autoSwitchRunning?'good':'');}
+ const cur=document.getElementById('switchCurrent');if(cur)cur.textContent=s.autoSwitchRunning?`${s.autoSwitchCurrentName||'—'}`:'—';
+ const cd=document.getElementById('switchCountdown');if(cd)cd.textContent=`${s.autoSwitchRemain||0} 秒`;
+ const nx=document.getElementById('switchNextInfo');if(nx)nx.textContent=`${s.autoSwitchNextName||'—'}`;
+ const tt=document.getElementById('switchTotal');if(tt){const sec=Number(s.autoSwitchTotalSeconds||0),m=Math.floor(sec/60),r=sec%60;tt.textContent=`一個循環總設定時間：${sec} 秒${m?`（${m} 分 ${r} 秒）`:''}`;}
+ const hk=document.getElementById('switchStopHotkey');if(hk&&document.activeElement!==hk)hk.value=s.switchStopHotkey||'';
+
+
+const la=document.getElementById('layoutAuto');if(la)la.checked=!!s.layoutAutoRestore;
+const lst=document.getElementById('layoutStatus');if(lst)lst.textContent=s.layoutStatus||'待命';
+const lr=document.getElementById('layoutRows');if(lr)lr.innerHTML=(s.accounts||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${x.hwnd?'✓ 已連接':'未連接'}</td><td>${x.hasPos?`X ${x.winX} / Y ${x.winY}`:'未記錄'}</td><td>${x.hasPos?`${x.winW} × ${x.winH}`:'-'}</td><td>${esc(x.state||'')}</td></tr>`).join('');
+
+const iprof=document.getElementById('invProfileSelect');
+if(iprof){const old=Number(iprof.value||0);iprof.innerHTML='<option value="0">請選擇帳號</option>'+(s.inventoryProfileCandidates||[]).map(x=>`<option value="${x.index}" data-hwnd="${x.hwnd}">${esc(x.name)}</option>`).join('');if(old)iprof.value=String(old);}
+const iws=document.getElementById('invWindowSelect');
+if(iws){const old=Number(iws.value||0);iws.innerHTML='<option value="0">請選擇遊戲視窗</option>'+(s.inventoryWindows||[]).map((x,i)=>`<option value="${x.hwnd}">遊戲視窗 ${i+1}｜${x.charName?'角色 '+esc(x.charName):'尚未進入遊戲'}</option>`).join('');if(old)iws.value=String(old);}
+const ibr=document.getElementById('invBindRows');
+if(ibr)ibr.innerHTML=(s.inventoryBindings||[]).map(x=>`<tr><td><input type="checkbox" ${x.enabled?'checked':''} onchange="setInventoryBindingCheck(${x.index},this.checked)"></td><td>${esc(x.name)}</td><td>${x.alive?'🟢 在線':'⚪ 視窗已關閉'}</td><td><button class="btn soft" style="padding:5px 8px;margin-right:5px" onclick="location.href='hihiyong://invshowwindow/'+${x.hwnd}">顯示</button><button class="btn danger" style="padding:5px 8px" onclick="removeInventoryBinding(${x.index})">移除</button></td></tr>`).join('');
+const ips=document.getElementById('invSetupProfile');
+if(ips){const old=Number(ips.value||0);ips.innerHTML='<option value="0">請選擇角色</option>'+(s.inventoryBindings||[]).filter(x=>x.alive).map(x=>`<option value="${x.index}">${esc(x.name)}</option>`).join('');if(old)ips.value=String(old);}
+[['invStartPage',s.inventoryStartPage],['invStartRow',s.inventoryStartRow],['invEndPage',s.inventoryEndPage],['invEndRow',s.inventoryEndRow]].forEach(([id,v])=>{const e=document.getElementById(id);if(e&&document.activeElement!==e)e.value=v||1;});
+const isp=document.getElementById('invSpeed');if(isp&&document.activeElement!==isp)isp.value=s.inventorySpeed||'STABLE';
+const ih=document.getElementById('invSetupHint');if(ih)ih.textContent=s.inventorySetupMode?`記錄中：第 ${s.inventorySetupStep}/9 個位置｜回到遊戲按 ${s.inventorySetupHotkey||'F6'} 記錄滑鼠所在位置`:(s.inventoryConfigured?'✓ 位置已設定':'尚未記錄位置');
+const ne=document.getElementById('netEnabled');if(ne&&!networkWatchDirty&&document.activeElement!==ne)ne.value=s.networkWatchEnabled?'1':'0';
+const ng=document.getElementById('netGateway');if(ng&&document.activeElement!==ng)ng.value=s.networkGateway||'';
+const ni=document.getElementById('netInternet');if(ni&&document.activeElement!==ni)ni.value=s.networkInternetTarget||'1.1.1.1';
+const ns=document.getElementById('netInterval');if(ns&&document.activeElement!==ns)ns.value=s.networkIntervalSec||1;
+[['netGwStatus',netText(s.networkLastGateway)],['netInternetStatus',netText(s.networkLastInternet)],['netTcpStatus',netText(s.networkLastGameTcp)],['netRemote',s.networkLastGameRemote],['netLastCheck',s.networkLastCheck],['netLastAnomaly',s.networkLastAnomaly==='-'?'沒有':s.networkLastAnomaly]].forEach(x=>{const e=document.getElementById(x[0]);if(e)e.textContent=x[1]??'-';});
+const hns=document.getElementById('homeNetworkStatus');
+if(hns){
+ if(!s.networkWatchEnabled)hns.textContent='⚪ 未啟用';
+ else if(s.networkOutageActive)hns.textContent='🔴 網路異常';
+ else if(!s.networkLastCheck||s.networkLastCheck==='-')hns.textContent='🟡 等待檢查';
+ else if(s.networkLastGameTcp==='ESTABLISHED')hns.textContent='🟢 遊戲連線正常';
+ else hns.textContent='🟢 網路正常';
+}
+const hnc=document.getElementById('homeNetworkCheck');if(hnc)hnc.textContent=`最後檢查 ${s.networkLastCheck||'—'}`;
+const isth=document.getElementById('invStartHotkey');if(isth&&document.activeElement!==isth)isth.value=s.inventoryStartHotkey||'F3';
+const iph=document.getElementById('invPauseHotkey');if(iph&&document.activeElement!==iph)iph.value=s.inventoryPauseHotkey||'F8';
+const ish=document.getElementById('invStopHotkey');if(ish&&document.activeElement!==ish)ish.value=s.inventoryStopHotkey||'F9';
+const ist=document.getElementById('invStatus');if(ist)ist.textContent=`${s.inventoryStatus||'待命'}${s.inventoryTotal?`｜進度 ${s.inventoryProcessed||0} / ${s.inventoryTotal}`:''}`;
+
+}
+// 網路檢查結果（主程式回傳的英文代碼）轉成白話
+function netText(v){v=String(v??'');if(v==='ESTABLISHED')return '🟢 已連線';if(v==='OK')return '🟢 正常';if(v.startsWith('Ping TIMEOUT'))return '🟡 測試無回應（電腦網路仍連線中）';if(v.startsWith('TIMEOUT（'))return '🟡 無回應（不影響遊戲）';if(v==='TIMEOUT')return '🔴 沒有網路';if(v==='無在線 game.exe')return '⚪ 沒有開著的遊戲';if(v==='無 ESTABLISHED TCP')return '🔴 遊戲沒有連線';if(v==='TCP 查詢失敗')return '⚪ 無法檢查';if(v==='未檢查'||v==='')return '尚未檢查';return v;}
+function setState(s){
+renderSwitchPage(s);
+[['monitored',(s.monitoring||0)+' / '+(s.total||0)],['abnormal',s.abnormal||0],['queue',s.queue||0]].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v;});
+const gch=document.getElementById('gameCountHome');if(gch)gch.textContent=s.gameCount||0;
+document.getElementById('runBadge').textContent=s.running?'● 系統運行中':'● 系統待命';
+const up=document.getElementById('uptime'); if(up){const sec=Number(s.uptimeSec||0),hh=String(Math.floor(sec/3600)).padStart(2,'0'),mm=String(Math.floor(sec%3600/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');up.textContent=`${hh}:${mm}:${ss}`;}
+updateHealth(s); renderFeatures(s);
+if(s.uiTheme!==undefined&&(document.documentElement.dataset.theme||'')!==s.uiTheme)applyTheme(s.uiTheme);
+renderAccounts(s.accounts||[]); renderHpMonitor(s.accounts||[]); const ii=document.getElementById('iniInfo'); if(ii)ii.textContent='INI：'+(s.iniInfo||'未回報');
+const ps=document.getElementById('profileSelect'); if(ps){ps.innerHTML='<option value="0">請選擇帳號</option>'+(s.accounts||[]).map(x=>`<option value="${x.index}">${esc(x.name)} / ${esc(x.account)}</option>`).join(''); ps.value=String(s.selectedProfile||0);}
+const psm=document.getElementById('profileSelectMirror'); if(psm){const sp=(s.accounts||[]).find(x=>x.index==s.selectedProfile);psm.innerHTML=`<option>${sp?esc(sp.name)+' / '+esc(sp.account):'請先選擇上方遊戲帳號'}</option>`;}
+const gs=document.getElementById('gameSelect'); if(gs){gs.innerHTML='<option value="0">請選擇遊戲視窗</option>'+(s.games||[]).map(x=>`<option value="${x.index}">${esc(x.label)}</option>`).join(''); gs.value=String(s.selectedGame||0);}
+document.querySelectorAll('[data-scan-feedback]').forEach(el=>el.textContent=`找到 ${s.gameCount??(s.games||[]).length} 個遊戲視窗`);
+const gc=Number(s.gameCount??(s.games||[]).length);
+if(window.lastGameCount!==undefined && gc!==window.lastGameCount) showToast(`遊戲視窗：${gc} 個`);
+window.lastGameCount=gc;
+const selected=(s.accounts||[]).find(x=>x.index==s.selectedProfile);
+const an=document.getElementById('acctName'), al=document.getElementById('acctLogin'), ap=document.getElementById('acctPassword');
+if(selected){
+ const profileChanged=(window.accountFormProfile!==Number(s.selectedProfile||0));
+ if(profileChanged){
+   window.accountFormProfile=Number(s.selectedProfile||0);
+   window.accountFormDirty=false;
+   if(an)an.value=selected.name||'';
+   if(al)al.value=selected.account||'';
+   if(ap){ap.value=selected.password||'';ap.type='password';}
+ }
+ if(ap)ap.placeholder=selected.hasPassword?'已載入已儲存密碼':'請輸入密碼';
+ if(!window.accountFormDirty){
+   ['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{const e=document.getElementById('acct'+k);if(e)e.checked=({Enabled:selected.enabled,Launch:selected.launch,Death:selected.deathDetect,Notify:selected.deathNotify,Soft:selected.soft})[k]||false;}); const as=document.getElementById('acctSoftAuto');if(as)as.checked=!!selected.softAutoRecover; const af=document.getElementById('acctFirst');if(af)af.checked=!!selected.recoveryFirst;
+ }
+} else {
+ window.accountFormProfile=0;
+}
+const rdo=document.getElementById('recDiscordOn'); if(rdo && !isEditing('recDiscordOn'))rdo.checked=!!s.discordEnabled;
+const dpc=document.getElementById('discordPc'); if(dpc && !isEditing('discordPc'))dpc.value=s.discordPc||'';
+const rw=document.getElementById('recWebhook'); if(rw)rw.placeholder=s.discordHasWebhook?'已儲存（留空沿用）':'貼上 Discord Webhook 網址';
+const ddo=document.getElementById('deathDiscordOn'); if(ddo && !isEditing('deathDiscordOn'))ddo.checked=!!s.deathDiscordEnabled;
+const dw=document.getElementById('deathWebhook'); if(dw)dw.placeholder=s.deathDiscordHasWebhook?'已儲存（留空沿用）':'貼上 Discord Webhook 網址';
+const so=document.getElementById('softOn'); if(so && !isEditing('softOn'))so.checked=!!s.softEnabled;
+const si=document.getElementById('softIdle'); if(si && !isEditing('softIdle'))si.value=s.softIdle??90;
+const sc=document.getElementById('softConfirm'); if(sc && !isEditing('softConfirm'))sc.value=s.softConfirm??30;
+const sv=document.getElementById('softVotes'); if(sv && !isEditing('softVotes'))sv.value=s.softMinVotes??2;
+const sm=document.getElementById('softMultiAssist'); if(sm && !isEditing('softMultiAssist'))sm.checked=!!s.softMultiAssist;
+const sa=document.getElementById('softAuto'); if(sa && !isEditing('softAuto'))sa.checked=!!s.softAutoRecover;
+const es=document.getElementById('evidenceState'); if(es)es.textContent=s.evidenceBusy?'測試進行中…':'待命';
+const wl=document.getElementById('webLauncher'); if(wl)wl.textContent=s.launcher||'尚未設定';
+updateSetupWizard(s);
+const pk=document.getElementById('webPostKeys'); if(pk && !isEditing('webPostKeys'))pk.value=s.postKeys||'';
+const rt=document.getElementById('repTime'); if(rt && !isEditing('repTime'))rt.value=s.reportDailyTime??'08:00';
+const rs=document.getElementById('repShot'); if(rs && !isEditing('repShot'))rs.value=String(s.reportSnapshotMin??60);
+const re=document.getElementById('repErr'); if(re && !isEditing('repErr'))re.checked=s.reportErrorShots!==false;
+const cs=document.getElementById('coordSummary'); if(cs)cs.textContent=s.coordSetup?`設定中：第 ${s.coordIndex||1}/8 個位置${s.coordTargetValid?'':'｜⚠ 原本的遊戲視窗已關閉'}`:(s.coordConfigured?'✓ 8 個位置都已設定，自動登入可以使用':'⚠ 還沒設定完成，自動登入無法使用');
+
+
+const sd=document.getElementById('serverDisconnectState'); if(sd)sd.textContent=`伺服器斷線偵測：開啟｜最近一次：${s.serverDisconnectLast||'沒有發生過'}`;
+const cp=document.getElementById('coordPoints'); if(cp)cp.innerHTML=(s.points||[]).map(x=>`${x.configured?'✓':'○'} ${esc(x.name)}`).join('<br>');
+const mp=document.getElementById('webMapProfile'); if(mp){mp.innerHTML='<option value="0">選擇測試帳號</option>'+(s.mapProfiles||[]).map(x=>`<option value="${x.index}">${esc(x.name)}</option>`).join(''); mp.value=String(s.mapSelected||0);}
+const mc=document.getElementById('webMapConf'); if(mc && !isEditing('webMapConf'))mc.value=s.mapConfidence??70;
+const mz=document.getElementById('webMapZoom'); if(mz && !isEditing('webMapZoom'))mz.value=s.mapZoom??8;
+const mr=document.getElementById('webMapReturn'); if(mr && !isEditing('webMapReturn'))mr.value=s.mapReturn||'W';
+const mres=document.getElementById('webMapResult'); if(mres)mres.textContent='辨識結果：'+(s.mapResult||'尚未測試');
+}
+function updateSetupWizard(s){
+ const launcherOk=!!(s.launcher&&String(s.launcher).trim());
+ const coordOk=!!s.coordConfigured;
+ const accounts=s.accounts||[], accountOk=accounts.length>0&&accounts.every(x=>String(x.account||'').trim()&&x.hasPassword);
+ const bound=accounts.filter(x=>Number(x.hwnd||0)>0), boundOk=accounts.length>0&&bound.length===accounts.length;
+ const enabled=accounts.filter(x=>x.enabled), memOk=enabled.length>0&&enabled.every(x=>x.memHpReadOk);
+ const mapOk=accounts.length>0&&accounts.some(x=>x.location&&x.location!=='不確定'&&!String(x.location).includes('無法確認'));
+ const set=(id,txt,ok)=>{const e=document.getElementById(id);if(!e)return;e.textContent=(ok?'✓ ':'⚠ ')+txt;e.className='status-pill '+(ok?'good':'warn');};
+ set('wizLauncher',launcherOk?'已設定':'尚未設定',launcherOk); set('wizCoords',coordOk?'已設定':'尚未設定',coordOk);
+ const hp=document.getElementById('wizHp');if(hp){if(!enabled.length){hp.textContent='○ 尚無啟用監控帳號';hp.className='status-pill';}else set('wizHp',memOk?`角色血量正常 ${enabled.length}/${enabled.length}`:`部分角色血量尚未讀取`,memOk);}
+ 
+ const steps=[accountOk,boundOk,coordOk,memOk,mapOk,accountOk&&boundOk&&coordOk&&memOk]; steps.forEach((ok,i)=>{const e=document.getElementById('wstep'+(i+1));if(e)e.className='wizard-step '+(ok?'ok':'warn');});
+ const a=document.getElementById('wizAdvice');if(a){
+  if(!accountOk)a.textContent='下一步：先到「設定 → 帳號」完成帳號 / 密碼。';
+  else if(!boundOk)a.textContent='下一步：到「設定 → 帳號」按「自動連接遊戲視窗」。';
+  else if(!coordOk)a.textContent='下一步：設定自動登入要點的 8 個位置。';
+  else if(!memOk)a.textContent='下一步：開始監控後，到「角色」頁確認每個角色都讀得到血量。';
+  else if(!mapOk)a.textContent='角色進入遊戲後就會顯示所在地圖，不需要另外設定。';
+  else a.textContent='✓ 設定都完成了，可以回首頁開始監控。';
+ }
+}
+
+function friendlyState(x){
+ const st=x.state||'-';
+ if(st==='監控中')return ['🟢','正常','ok'];
+ if(st==='排隊中'||st==='恢復中')return ['🔵',st==='排隊中'?'等待重新登入':'重新登入中','recovery'];
+ if(st==='載入中')return ['🔵','遊戲載入中','recovery'];
+ if(st==='需要人工確認')return ['🟡','需要人工確認','warn'];
+ if(st==='恢復失敗')return ['🟡','等待重試','warn'];
+ if(st==='需要人工處理')return ['🔴','需要人工處理','bad'];
+ if(st==='人工操作')return ['🟡','人工操作','warn'];
+ if(!x.enabled)return ['⚪','停用','muted'];
+ return ['⚪',st,'warn'];
+}
+const hpHistory={};
+// v1.3.22.0 角色卡：血量、地圖、自動攻擊、今日死亡 / 擊殺、每日道具放在同一張；診斷數字收進「詳細」
+let dailyCache=null;
+const roleDetailOpen=new Set();
+function roleKills(name){
+ const d=invStatsData; if(!d||d.day!==d.today)return null;
+ const r=(d.roles||[]).find(x=>x.name===name); if(!r)return null;
+ return (r.kills||[]).reduce((s,m)=>s+Number(m.total||0),0);
+}
+function renderHpMonitor(a,push=true){
+ const el=document.getElementById('hpCards'); if(!el)return;
+ if(push)a.forEach(x=>{const k=String(x.index); if(!hpHistory[k])hpHistory[k]=[]; if(x.memHpReadOk&&Number(x.memHp)>=0){hpHistory[k].push(Number(x.memHp));if(hpHistory[k].length>30)hpHistory[k].shift();}});
+ if(!a.length){el.innerHTML='<div class="hint">尚未建立帳號。</div>';return;}
+ el.innerHTML=a.map(x=>{
+   const f=friendlyState(x); let label=f[1], cls=f[2];
+   const soft=x.memSoftState||'';
+   if(x.enabled&&cls==='ok'){
+     if(!x.memHpReadOk){label='血量讀不到';cls='bad';}
+     else if(soft==='疑似假在線'){label=soft;cls='warn';}
+     else if(soft==='已確認假在線'){label=soft;cls='bad';}
+     else if(x.autoAttack===0){label='沒在打怪';cls='warn';}
+   }
+   if(cls==='muted')cls='off';
+   const pill={ok:'good',warn:'warn',bad:'bad',recovery:'',off:'off'}[cls]??'';
+   const hist=hpHistory[String(x.index)]||[], vals=hist.length?hist:[0], lo=Math.min(...vals), hi=Math.max(...vals), span=Math.max(1,hi-lo);
+   const bars=vals.map(v=>`<i style="height:${Math.max(4,Math.round(4+(v-lo)/span*22))}px"></i>`).join('');
+   const cur=x.memHpReadOk&&Number(x.memHp)>=0?Number(x.memHp):-1, max=Number(x.memHpLearnedMax)||0;
+   const pct=cur>=0&&max>0?Math.max(0,Math.min(100,Math.round(cur/max*100))):0;
+   const dr=(dailyCache?.roles||[]).find(r=>r.name===x.name);
+   const dailyTxt=dr?(dr.expiry||dr.status||'—'):'—', dailyWarn=dr&&!String(dr.status||'').startsWith('有效')&&dr.status!=='讀取中';
+   const kills=roleKills(x.name), deaths=Number(x.deathToday||0);
+   const chips=[`<span class="chip">🗺️ ${esc(x.location||'未知地圖')}</span>`];
+   if(x.autoAttack===1)chips.push('<span class="chip">⚔️ 自動攻擊中</span>'); else if(x.autoAttack===0)chips.push('<span class="chip warn">💤 自動攻擊關閉</span>');
+   if(x.enabled&&!x.hwnd)chips.push('<span class="chip warn">⚠ 沒有連接遊戲視窗</span>');
+   return `<div class="role-card rc-${cls}"><div class="hp-head"><div class="hp-name">${esc(x.name)}${x.recoveryFirst?' <span class="chip" title="重新登入時優先">👑 隊長</span>':''}</div><span class="hp-status ${pill}">${esc(label)}</span></div>`
+    +`<div class="role-chips">${chips.join('')}</div>`
+    +`<div class="role-hp"><span>❤️ 血量</span><span><b>${cur>=0?cur.toLocaleString():'—'}</b> / ${max>0?max.toLocaleString():'—'}</span></div><div class="hp-bar${pct&&pct<30?' low':''}"><i style="width:${pct}%"></i></div>`
+    +`<div class="role-stats"><div><small>💀 今日死亡</small><b class="${deaths>0?'bad':''}">${deaths} 次</b></div><div><small>⚔️ 今日擊殺</small><b>${kills===null?'—':kills.toLocaleString()+' 隻'}</b></div><div title="${esc(dr?.status||'')}"><small>🎁 道具到期</small><b class="${dailyWarn?'warn':''}">${esc(dailyTxt)}</b></div></div>`
+    +`<details ${roleDetailOpen.has(x.index)?'open':''} ontoggle="this.open?roleDetailOpen.add(${x.index}):roleDetailOpen.delete(${x.index})"><summary>詳細與開關</summary>`
+    +`<div class="hp-spark" style="height:34px" title="最近約 30 秒角色血量變化">${bars||'<i style="height:4px"></i>'}</div>`
+    +`<div class="hp-meta"><span>昨日死亡：${Number(x.deathYesterday||0)} 次</span><span>最後死亡：${esc(x.deathLast||'—')}</span><span>距上次血量變動：${x.memHpStaticSec??0} 秒</span><span>最長未變動：${x.memHpMaxStaticSec??0} 秒</span><span>重連保護：${x.memHpGraceSec>0?'剩餘 '+x.memHpGraceSec+' 秒':'未啟用'}</span><span title="伺服器時間停止更新可能代表假在線（目前只記錄）">伺服器時間：${Number(x.srvStaticSec)>=0?Number(x.srvStaticSec)+' 秒前更新':'—'}</span></div>`
+    +`<div class="actions" style="margin-top:10px"><label class="monitor-switch"><input type="checkbox" ${x.soft?'checked':''} onchange="location.href='hihiyong://softdetect/${x.index}~'+(this.checked?1:0)"> 假在線偵測</label><label class="monitor-switch"><input type="checkbox" ${x.softAutoRecover?'checked':''} onchange="location.href='hihiyong://softautorecover/${x.index}~'+(this.checked?1:0)"> 自動恢復</label><label class="monitor-switch" title="一起重新登入時排在最前面"><input type="checkbox" ${x.recoveryFirst?'checked':''} onchange="location.href='hihiyong://recoveryfirst/${x.index}~'+(this.checked?1:0)"> 優先重新登入（隊長）</label></div></details></div>`;
+ }).join('');
+}
+let lastAccountStructureSig='';
+// 首頁血量欄：「目前 / 最大」；讀不到目前血量時只顯示最大值。
+function homeHpText(x){const mx=Number(x.memHpLearnedMax||0),max=mx>0?mx.toLocaleString():'—';return x.memHpReadOk&&Number(x.memHp)>=0?`${Number(x.memHp).toLocaleString()} / ${max}`:(mx>0?`— / ${max}`:'—');}
+function renderAccounts(a){
+ const el=document.getElementById('accountRows');if(!el)return;
+ const sig=JSON.stringify(a.map(x=>[x.index,x.name,x.state,x.recoveryStage,x.location,x.enabled,x.launch,x.pid,x.hwnd,x.autoAttack]));
+ if(sig===lastAccountStructureSig){
+   a.forEach(x=>{const c=el.querySelector(`[data-hp-index="${x.index}"]`);if(c){const v=homeHpText(x);if(c.textContent!==v)c.textContent=v;c.className=x.memHpReadOk?'ok':'muted';}});
+   return;
+ }
+ lastAccountStructureSig=sig;
+ el.innerHTML=a.map(x=>{const f=friendlyState(x);return `<tr><td><input type="checkbox" ${x.launch?'checked':''} onchange="send('launchcheck',{value:'${x.index}~'+(this.checked?1:0)})" title="套用於批次啟動帳號"></td><td><div class="account-name">${f[0]} ${esc(x.name)}</div></td><td class="${f[2]}">${esc(f[1])}${x.autoAttack===0?'<div class="account-sub warn">💤 自動攻擊關閉</div>':''}${!x.hwnd&&x.enabled?'<div class="account-sub warn" title="到「設定 → 帳號」按「自動連接遊戲視窗」">⚠ 沒有連接遊戲視窗</div>':''}</td><td data-hp-index="${x.index}" class="${x.memHpReadOk?'ok':'muted'}">${homeHpText(x)}</td><td>${esc(x.location||'-')}</td><td><label class="monitor-switch"><input type="checkbox" ${x.enabled?'checked':''} onchange="send('monitorcheck',{value:'${x.index}~'+(this.checked?1:0)});showToast('${esc(x.name)} 監控 '+(this.checked?'ON':'OFF'))">${x.enabled?'ON':'OFF'}</label></td></tr>`}).join('');
+}
+// v1.3.22.0 首頁「目前啟動的功能」：每個功能一個標籤，點了跳到設定
+function goTo(page,sub){document.querySelector(`#nav [data-page="${page}"]`)?.click();if(sub)showSub(page,sub);}
+function renderFeatures(s){
+ const el=document.getElementById('featList'); if(!el)return;
+ const a=s.accounts||[], en=a.filter(x=>x.enabled), auto=en.filter(x=>x.softAutoRecover).length;
+ const inv=String(s.inventoryStatus||'待命'), invBusy=!/待命|完成|終止|停止/.test(inv);
+ const shot=Number(s.reportSnapshotMin||0), rep=String(s.reportDailyTime||'').trim();
+ const daily=dailyCache?(dailyCache.autorun?'on':'off'):'unk';
+ const items=[
+  ['🛡️','監控 / 自動重新登入',s.running?'on':'off',s.running?`${en.length} 個角色`:'已停止','home'],
+  ['👻','假在線偵測',s.softEnabled?'on':'off',s.softEnabled?`自動恢復 ${auto}/${en.length}`:'','setup','monitor'],
+  ['🔄','視窗自動切換',s.autoSwitchRunning?'on':'off',s.autoSwitchRunning?(s.autoSwitchCurrentName||''):'','tools','switcher'],
+  ['🗂️','監控時還原視窗位置',s.layoutAutoRestore?'on':'off','','tools','layout'],
+  ['🧹','背包清理',invBusy?'busy':'off',invBusy?inv:'','tools','inventory'],
+  ['🎁','每日道具無人自動更換',daily==='unk'?'off':daily,daily==='unk'?'讀取中':'','roles','daily'],
+  ['🌐','網路檢查',s.networkWatchEnabled?'on':'off','','setup','monitor'],
+  ['💬','斷線通知',s.discordEnabled?'on':'off','','setup','notifyTab'],
+  ['💀','死亡通知',s.deathDiscordEnabled?'on':'off','','setup','notifyTab'],
+  ['📊','每日報表',rep?'on':'off',rep?`每天 ${rep}`:'','setup','notifyTab'],
+  ['📸','定時截圖',shot>0?'on':'off',shot>0?(shot>=60?`每 ${shot/60} 小時`:`每 ${shot} 分`):'','setup','notifyTab'],
+ ];
+ // 開著的排前面；同一組內保持原本順序（sort 是穩定排序）
+ const html=items.sort((x,y)=>(x[2]==='off')-(y[2]==='off')).map(([ic,name,st,det,pg,sb])=>`<button class="feat ${st==='off'?'':st}" onclick="goTo('${pg}'${sb?`,'${sb}'`:''})" title="${st==='off'?'目前關閉':'目前開著'}｜點一下前往設定"><span class="emo">${ic}</span>${st==='off'?'○':'●'} ${esc(name)}${det?` <small>${esc(det)}</small>`:''}</button>`).join('');
+ if(el.innerHTML!==html)el.innerHTML=html;
+}
+// v1.3.22.0 首頁一句話總結：幾個正常、幾個重新登入中、哪些需要注意
+function updateHealth(s){
+ const a=s.accounts||[], en=a.filter(x=>x.enabled);
+ const cls=x=>friendlyState(x)[2];
+ const ok=en.filter(x=>cls(x)==='ok'&&x.hwnd&&x.autoAttack!==0), rec=en.filter(x=>cls(x)==='recovery');
+ const att=en.filter(x=>!ok.includes(x)&&!rec.includes(x));
+ const badge=document.getElementById('healthBadge'),sum=document.getElementById('homeSummary'),note=document.getElementById('homeAttention');
+ let bc='status-pill good',bt='● 一切正常';
+ if(!s.running){bc='status-pill';bt='● 待命';}
+ if(att.some(x=>cls(x)==='bad'||x.state==='需要人工確認')){bc='status-pill bad';bt='● 需要處理';}
+ else if(att.length||!s.coordConfigured){bc='status-pill warn';bt='● 有注意事項';}
+ else if(rec.length){bc='status-pill';bt='● 重新登入中';}
+ if(badge){badge.className=bc;badge.textContent=bt;}
+ if(sum)sum.textContent=en.length?`${en.length} 個角色監控中：${ok.length} 個正常`+(rec.length?`、${rec.length} 個重新登入中`:'')+(att.length?`、${att.length} 個需要注意`:''):'目前沒有角色在監控';
+ if(note){
+  const why=x=>!x.hwnd?'沒有連接遊戲視窗':(cls(x)==='ok'&&x.autoAttack===0?'自動攻擊關閉':friendlyState(x)[1]);
+  const parts=att.map(x=>`${x.name}（${why(x)}）`);
+  if(!s.coordConfigured)parts.push('自動登入位置還沒設定');
+  note.textContent=parts.length?'⚠ '+parts.join('、'):'';
+ }
+}
+function addEvent(e){let d=document.getElementById('events'),c=document.createElement('div');c.className='event';c.innerHTML=`<span>${esc(e.time||'')}</span><i class="dot ${e.level==='error'?'err':e.level==='warn'?'warn':''}"></i><span>${esc(e.text||'')}</span>`;d.prepend(c);while(d.children.length>30)d.lastChild.remove();}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+['acctName','acctLogin','acctPassword'].forEach(id=>{
+ const el=document.getElementById(id);
+ if(el)el.addEventListener('input',()=>{window.accountFormDirty=true;});
+});
+
+
+let settingsDirty=false;
+function setDirty(v=true){
+ settingsDirty=v;
+ const b=document.getElementById('dirtyBadge'); if(b)b.style.display=v?'inline-flex':'none';
+}
+function bindDirtySettings(){
+ ['discordPc','recWebhook','deathWebhook','softIdle','softConfirm','softVotes','softMultiAssist','webPostKeys','webMapConf','webMapZoom','webMapReturn'].forEach(id=>{
+  const e=document.getElementById(id); if(e)e.addEventListener('input',()=>setDirty(true));
+ });
+ ['recDiscordOn','deathDiscordOn','softOn','softAuto','softMultiAssist'].forEach(id=>{
+  const e=document.getElementById(id); if(e)e.addEventListener('change',()=>{dirtyFields.add(id);setDirty(true);});
+ });
+ ['acctName','acctLogin','acctPassword'].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener('input',()=>setDirty(true));});
+}
+bindDirtySettings();
+
+function packVals(vals){return vals.map(v=>encodeURIComponent(String(v))).join('~');}
+function saveNotify(){
+ ['recDiscordOn','recWebhook','discordPc','deathDiscordOn','deathWebhook'].forEach(clearFieldDirty); setDirty(false); showToast('✓ Discord 設定已儲存');
+ const vals=[
+   document.getElementById('recDiscordOn')?.checked?1:0,
+   document.getElementById('recWebhook')?.value||'',
+   document.getElementById('discordPc')?.value||'',
+   document.getElementById('deathDiscordOn')?.checked?1:0,
+   document.getElementById('deathWebhook')?.value||''
+ ];
+ location.href='hihiyong://notifysave/'+packVals(vals);
+ if(document.getElementById('recWebhook'))document.getElementById('recWebhook').value='';
+ if(document.getElementById('deathWebhook'))document.getElementById('deathWebhook').value='';
+}
+function saveReports(){
+ ['repTime','repShot','repErr'].forEach(clearFieldDirty); setDirty(false);
+ const t=(document.getElementById('repTime')?.value||'').trim(), m=document.getElementById('repShot')?.value||'0', e=document.getElementById('repErr')?.checked?1:0;
+ if(t&&!/^([01]?\d|2[0-3]):[0-5]\d$/.test(t)){showToast('時間格式請輸入例如 08:00');return;}
+ send('reportsave',{value:`${t}~${m}~${e}`}); showToast('✓ 報表 / 截圖設定已儲存');
+}
+function saveMonitor(){
+ ['softOn','softIdle','softConfirm','softVotes','softAuto','softMultiAssist'].forEach(clearFieldDirty); setDirty(false); showToast('✓ 監控設定已儲存');
+ const vals=[
+   document.getElementById('softOn')?.checked?1:0,
+   document.getElementById('softIdle')?.value||90,
+   document.getElementById('softConfirm')?.value||30,
+   document.getElementById('softVotes')?.value||3,
+   document.getElementById('softAuto')?.checked?1:0,
+   document.getElementById('softMultiAssist')?.checked?1:0
+ ];
+ location.href='hihiyong://monitorsave/'+packVals(vals);
+}
+function saveAcct(){
+ ['acctName','acctLogin','acctPassword'].forEach(clearFieldDirty); setDirty(false); showToast('✓ 帳號設定已儲存');
+ const n=document.getElementById('acctName')?.value||'', a=document.getElementById('acctLogin')?.value||'', p=document.getElementById('acctPassword')?.value||'';
+ const packed=[n,a,p].map(x=>encodeURIComponent(x)).join('~');
+ location.href='hihiyong://accountsave/'+packed;
+ if(document.getElementById('acctPassword'))document.getElementById('acctPassword').value='';
+ setTimeout(()=>{window.accountFormDirty=false;},1200);
+}
+['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{
+ const el=document.getElementById('acct'+k);
+ if(el)el.addEventListener('change',()=>location.href='hihiyong://accounttoggle/'+k.toLowerCase()+'~'+(el.checked?1:0));
+});
+
+const acctFirst=document.getElementById('acctFirst'); if(acctFirst)acctFirst.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://recoveryfirst/'+idx+'~'+(acctFirst.checked?1:0);});
+const acctSoftAuto=document.getElementById('acctSoftAuto'); if(acctSoftAuto)acctSoftAuto.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://softautorecover/'+idx+'~'+(acctSoftAuto.checked?1:0);});
+
+function showSelfCheck(d){
+ const box=document.getElementById('selfCheckResult'); if(!box)return;
+ box.style.display='block';
+ box.innerHTML=`<b>系統檢查：${d.ok}/${d.total} 正常</b><br>`+(d.items||[]).map(x=>`${x.ok?'✓':'⚠'} ${esc(x.name)}　${esc(x.detail)}`).join('<br>');
+ showToast(`系統檢查完成：${d.ok}/${d.total} 項正常`);
+}
+// v1.3.18.8 每小時收益曲線
+let invStatsData=null;
+function renderHourly(){
+ const d=invStatsData; if(!d)return;
+ const sel=document.getElementById('hourRole'), roles=d.roles||[];
+ if(sel){const keep=sel.value;const opts='<option value="">全部角色</option>'+roles.map(r=>`<option value="${esc(r.name)}">${esc(r.name)}</option>`).join('');if(sel.dataset.opts!==opts){sel.innerHTML=opts;sel.dataset.opts=opts;sel.value=roles.some(r=>r.name===keep)?keep:'';}}
+ const pick=sel?sel.value:'', chosen=roles.filter(r=>!pick||r.name===pick);
+ const sum=k=>Array.from({length:24},(_,h)=>chosen.reduce((s,r)=>s+Number((r[k]||[])[h]||0),0));
+ const money=sum('hourMoney'), items=sum('hourItems');
+ const nowH=d.day===d.today?new Date().getHours():-1;
+ drawHourChart('hourMoneyChart',money,v=>fmtMoney(v),nowH);
+ drawHourChart('hourItemsChart',items,v=>Number(v).toLocaleString()+' 個',nowH);
+ const ms=document.getElementById('hourMoneySum');if(ms)ms.textContent='合計 '+fmtMoney(money.reduce((a,b)=>a+b,0));
+ const is=document.getElementById('hourItemsSum');if(is)is.textContent='合計 '+items.reduce((a,b)=>a+b,0).toLocaleString()+' 個';
+}
+// 單一數列長條圖：24 小時，柱頂 4px 圓角、柱間 2px 間隔，滑鼠移上顯示數值（不畫每根柱子的數字）
+function drawHourChart(id,vals,fmt,nowH){
+ const el=document.getElementById(id); if(!el)return;
+ const W=600,H=170,L=34,R=4,T=10,B=20,cw=(W-L-R)/24,max=Math.max(...vals,0);
+ const top=max>0?niceMax(max):1, y=v=>T+(H-T-B)*(1-v/top);
+ let g='';
+ [0,.5,1].forEach(f=>{const v=top*f,yy=y(v);g+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis" x="${L-4}" y="${yy+3}" text-anchor="end">${f?esc(fmt(v).replace(' 個','')):'0'}</text>`;});
+ for(let h=0;h<24;h+=3)g+=`<text class="axis" x="${L+cw*h+cw/2}" y="${H-5}" text-anchor="middle">${h}</text>`;
+ vals.forEach((v,h)=>{
+  const x=L+cw*h+1,w=cw-2,yy=y(v),hh=H-B-yy,r=Math.min(4,w/2,hh);
+  if(v>0)g+=hh>r?`<path class="bar${h===nowH?' now':''}" d="M${x},${H-B} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+w-r} Q${x+w},${yy} ${x+w},${yy+r} V${H-B} Z"/>`:`<rect class="bar" x="${x}" y="${yy}" width="${w}" height="${Math.max(hh,1)}"/>`;
+  g+=`<rect class="hit" x="${L+cw*h}" y="${T}" width="${cw}" height="${H-T-B}" data-h="${h}" data-v="${esc(fmt(v))}"/>`;
+ });
+ el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每小時數值">${g}</svg><div class="hour-tip"></div>`;
+ const tip=el.querySelector('.hour-tip');
+ el.querySelectorAll('.hit').forEach(r=>{
+  r.addEventListener('mouseenter',()=>{const b=r.getBoundingClientRect(),c=el.getBoundingClientRect(),h=Number(r.dataset.h);tip.textContent=`${String(h).padStart(2,'0')}:00–${String(h+1).padStart(2,'0')}:00｜${r.dataset.v}`;tip.style.left=(b.left-c.left+b.width/2)+'px';tip.style.top=(Number(r.getAttribute('y'))/H*c.height+8)+'px';tip.classList.add('show');});
+  r.addEventListener('mouseleave',()=>tip.classList.remove('show'));
+ });
+}
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p;}
+// v1.3.13.0 每日背包統計
+let invStatsSelected='',invStatsToday='';
+function requestInvStats(day){if(day!==undefined)invStatsSelected=day;send('invstats',{value:invStatsSelected||''});}
+function fmtNum(n){return n===null||n===undefined?'—':Number(n).toLocaleString();}
+function fmtSigned(n){n=Number(n||0);return `<span class="${n>0?'money-pos':n<0?'money-neg':''}" title="${n.toLocaleString()}">${n>0?'+':''}${fmtMoney(n)}</span>`;}
+// 金幣簡寫：1 億以上顯示「x.xx 億」、1 萬以上顯示「x.x 萬」；完整數字放在滑鼠提示
+function fmtMoney(n){if(n===null||n===undefined||n==='')return '—';n=Number(n);const a=Math.abs(n);if(a>=1e8)return (n/1e8).toFixed(2)+' 億';if(a>=1e4)return (n/1e4).toFixed(a>=1e6?0:1)+' 萬';return n.toLocaleString();}
+function invItemTable(list,limit,cols){
+ if(!list||!list.length)return '<div class="item-empty">沒有紀錄</div>';
+ const shown=limit?list.slice(0,limit):list;
+ return `<ul class="item-list${cols?' cols':''}">`+shown.map(x=>{const n=x.name||'（未知道具）';return `<li title="${esc(n)}｜ID ${esc(x.key)}"><span class="item-name">${esc(n)}</span><span class="item-count">×${Number(x.count).toLocaleString()}</span></li>`}).join('')+'</ul>'+(limit&&list.length>limit?`<div class="item-more">…另有 ${list.length-limit} 種</div>`:'');
+}
+// v1.3.18.9 每日擊殺：依地圖分組，列出各怪物隻數
+function killBlock(maps){
+ if(!maps||!maps.length)return '';
+ const total=maps.reduce((s,m)=>s+Number(m.total),0);
+ return `<div class="inv-sub">⚔️ 擊殺 <span class="count">${total.toLocaleString()} 隻</span></div>`
+  +maps.map(m=>`<div class="kill-map">🗺️ ${esc(m.map)}<span>${Number(m.total).toLocaleString()} 隻</span></div>`
+   +`<ul class="item-list">`+(m.mobs||[]).map(x=>`<li><span class="item-name">👾 ${esc(x.name)}</span><span class="item-count">×${Number(x.count).toLocaleString()}</span></li>`).join('')+'</ul>').join('');
+}
+function renderInvStats(d){
+ invStatsData=d;renderHourly(); if(latestState)renderHpMonitor(latestState.accounts||[],false);
+ invStatsSelected=d.day;invStatsToday=d.today;
+ const sel=document.getElementById('invStatsDay');
+ if(sel){const opts=(d.days||[]).map(x=>`<option value="${x}"${x===d.day?' selected':''}>${x}${x===d.today?'（今天）':''}</option>`).join('');if(sel.innerHTML!==opts)sel.innerHTML=opts;}
+ const hint=document.getElementById('invStatsHint');
+ if(hint)hint.textContent=!d.pdbReady?'遊戲資料讀取尚未就緒，暫時無法統計（遊戲更新後第一次啟動需要幾十秒）':d.day===d.today?'自動更新中':'歷史紀錄';
+ const t=d.totals||{},gained=t.gained||[],totalCount=gained.reduce((s,x)=>s+Number(x.count),0);
+ const tot=document.getElementById('invStatsTotals');
+ if(tot)tot.innerHTML=`<div class="card stat"><div class="ico g">${icon('coin')}</div><div><div class="label">金幣淨變化</div><div class="num">${fmtSigned(t.moneyNet)}</div></div></div>`
+  +`<div class="card stat"><div class="ico b">${icon('trend')}</div><div><div class="label">金幣增加 / 減少</div><div class="num" style="font-size:20px"><span title="${fmtNum(t.moneyGain)}">${fmtMoney(t.moneyGain)}</span> / <span title="${fmtNum(t.moneySpend)}">${fmtMoney(t.moneySpend)}</span></div></div></div>`
+  +`<div class="card stat"><div class="ico a">${icon('invstats')}</div><div><div class="label">打怪拾取</div><div class="num" style="font-size:18px">${gained.length} 種 / ${totalCount.toLocaleString()} 個</div></div></div>`
+  +`<div class="card stat"><div class="ico b">${icon('people')}</div><div><div class="label">統計角色</div><div class="num">${(d.roles||[]).length}</div></div></div>`;
+ const ti=document.getElementById('invStatsTotalItems');if(ti)ti.innerHTML=invItemTable(gained,40,true);
+ const tp=document.getElementById('invStatsTotalPill');if(tp)tp.textContent=`${gained.length} 種｜${totalCount.toLocaleString()} 個`;
+ const rl=document.getElementById('invStatsRoles');
+ if(rl)rl.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const gn=(r.gained||[]).reduce((s,x)=>s+Number(x.count),0);return `<div class="hp-card inv-card"><div class="hp-head"><div class="hp-name">${esc(r.name)}</div><span class="hp-status ${r.live?'good':'off'}">${r.live?'統計中':'未連線'}</span></div>`
+  +`<div class="inv-money"><div><small>開始金幣</small><b title="${fmtNum(r.moneyStart)}">${fmtMoney(r.moneyStart)}</b></div><div><small>目前金幣</small><b title="${fmtNum(r.moneyNow)}">${fmtMoney(r.moneyNow)}</b></div><div><small>今日增加</small><b class="money-pos" title="增加 ${fmtNum(r.moneyGain)}｜減少 ${fmtNum(r.moneySpend)}">+${fmtMoney(r.moneyGain)}</b></div></div>`
+  +killBlock(r.kills)
+  +`<div class="inv-sub">打怪拾取 <span class="count">${(r.gained||[]).length} 種｜${gn.toLocaleString()} 個</span></div>${invItemTable(r.gained,15)}`
+  +((r.removed||[]).length?`<details><summary>減少道具（${r.removed.length} 種）</summary>${invItemTable(r.removed)}</details>`:'')
+  +(((r.xferIn||[]).length||(r.xferOut||[]).length||r.moneyXferIn||r.moneyXferOut)?`<details><summary>🔁 角色間轉移（不算拾取）</summary>${r.moneyXferIn||r.moneyXferOut?`<div class="account-sub">💰 轉入 ${fmtMoney(r.moneyXferIn||0)}｜轉出 ${fmtMoney(r.moneyXferOut||0)}</div>`:''}${(r.xferIn||[]).length?`<div class="inv-sub">⬅️ 從其他角色收到</div>${invItemTable(r.xferIn)}`:''}${(r.xferOut||[]).length?`<div class="inv-sub">➡️ 給了其他角色</div>${invItemTable(r.xferOut)}`:''}</details>`:'')+`</div>`}).join('')
+  :'<div class="hint">這一天還沒有統計資料。角色登入遊戲後會自動開始統計。</div>';
+}
+// H-017 M 箱自動開啟
+let mboxSig='';
+function renderMBox(d){
+ const en=document.getElementById('mboxEnabled'),iv=document.getElementById('mboxInterval'),bl=document.getElementById('mboxBlocker'),pill=document.getElementById('mboxPill');
+ if(en&&document.activeElement!==en)en.checked=!!d.enabled;
+ if(iv&&document.activeElement!==iv)iv.value=d.interval;
+ const on=(d.roles||[]).filter(r=>r.on).length;
+ if(pill)pill.textContent=d.enabled?`啟用中｜${on} 個角色`:'未啟用';
+ if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
+ const box=document.getElementById('mboxRows');if(!box)return;
+ const ae=document.activeElement;if(box.contains(ae)&&ae.tagName==='INPUT'&&ae.type==='text')return;   // 正在輸入按鍵時不重畫
+ box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr data-idx="${r.index}" data-name="${esc(r.name)}"><td><input type="checkbox" ${r.on?'checked':''} onchange="saveMBoxRole(this)"></td>`
+  +`<td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td>`
+  +`<td><input type="text" value="${esc(r.key)}" maxlength="3" style="width:60px" onchange="saveMBoxRole(this)"></td>`
+  +`<td>${r.on?(r.nextIn>0?r.nextIn+' 秒後':(d.enabled?'馬上':'—')):'—'}</td><td>${r.count>=0?r.count+' 個':'—'}</td><td class="account-sub">${esc(r.status||'')}</td></tr>`).join('')
+  :'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
+}
+function saveMBoxCfg(){send('mboxcfg',{value:`${document.getElementById('mboxEnabled').checked?1:0}~${Math.max(30,Number(document.getElementById('mboxInterval').value)||180)}`});}
+function saveMBoxRole(el){const tr=el.closest('tr');const key=(tr.querySelector('input[type=text]').value||'e').trim();
+ send('mboxrole',{value:`${tr.dataset.idx}~${tr.querySelector('input[type=checkbox]').checked?1:0}~${key}~${tr.dataset.name}`});}
+// H-016 GitHub 更新：有新版時頂端出現「🆕 有新版」，按了確認才更新
+let updateState=null,updateLastStatus='';
+function renderUpdate(d){
+ updateState=d;const b=document.getElementById('updateBadge'),l=document.getElementById('updateLink');
+ if(b){b.style.display=d.available?'':'none';if(d.available)b.textContent='🆕 有新版 '+d.available.version;}
+ if(l)l.textContent=d.checking?'檢查中…':'檢查更新';
+ if(d.status&&d.status!==updateLastStatus)showToast(d.status);updateLastStatus=d.status||'';
+}
+function askUpdate(){
+ const a=updateState&&updateState.available;if(!a)return;
+ const notes=(a.notes||[]).map(n=>'・'+n).join('\n');
+ if(updateState.busy){alert(`目前${updateState.busy}，請稍後再更新。`);return;}
+ if(confirm(`更新到 ${a.version}${a.date?'（'+a.date+'）':''}？\n\n${notes||'（沒有更新說明）'}\n\n只會換程式檔：帳號密碼、Discord、統計、日誌、遊戲偏移設定都不會動；舊版會先備份到 app\\backup。\n更新完管理程式會自動重新啟動。`))send('updateapply');
+}
+// H-015 怪物掉落率
+let dropIndex=null,dropDoc=null,dropWant='';
+const dropPct=p=>p>=0.01?(p*100).toFixed(2)+'%':p>=0.0001?(p*100).toFixed(3)+'%':(p*100).toFixed(4)+'%';
+const dropEvery=p=>p>0?'約 '+Math.round(1/p).toLocaleString()+' 隻 1 個':'—';
+// 同名的不同怪物（例如兩種「綠能原石」）只列一次
+const dropMobNames=mobs=>[...new Set(mobs.map(x=>x[0]))].join('、');
+function renderDropIndex(d){
+ dropIndex=d.index;const st=document.getElementById('dropStatus');
+ if(st)st.textContent=(d.running?'🔄 正在檢查遊戲改版… ':'')+(d.status||'');
+ const sel=document.getElementById('dropVer');if(!sel)return;
+ const vers=(dropIndex&&dropIndex.versions)||[];
+ if(!vers.length){document.getElementById('dropGroups').innerHTML='<div class="hint">還沒有掉落率資料。程式啟動 1 分鐘後會自動計算，或按「立即檢查改版」。</div>';sel.innerHTML='';return;}
+ const latest=dropIndex.latest||vers[0].id;
+ const opts=vers.map(v=>`<option value="${esc(v.id)}">${esc(v.label)}${v.id===latest?'（最新）':''}</option>`).join('');
+ if(sel.innerHTML!==opts)sel.innerHTML=opts;
+ // 預設看最新版；有新版出現時自動切過去
+ if(!dropWant||!vers.some(v=>v.id===dropWant)||(sel.dataset.latest&&sel.dataset.latest!==latest))dropWant=latest;
+ sel.dataset.latest=latest;sel.value=dropWant;
+ if(!dropDoc||dropDoc.id!==dropWant)send('dropver',{value:dropWant});
+}
+function loadDropVer(id){dropWant=id;send('dropver',{value:id});}
+function renderDropVer(doc){if(!doc||doc.id!==dropWant)return;dropDoc=doc;renderDropMaps();renderDropChanges();}
+function renderDropMaps(){
+ if(!dropDoc)return;const sel=document.getElementById('dropMap'),all=document.getElementById('dropAll').checked;
+ const names=Object.keys(dropDoc.maps||{}),fav=(dropDoc.favorites||[]).filter(n=>names.includes(n));
+ const list=all||!fav.length?names:fav,keep=sel.value;
+ sel.innerHTML=list.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('');
+ if(list.includes(keep))sel.value=keep;
+ const pill=document.getElementById('dropVerPill');if(pill)pill.textContent=`${dropDoc.label}｜${names.length} 張地圖`;
+ renderDrop();
+}
+function renderDropChanges(){
+ const box=document.getElementById('dropChanges'),pill=document.getElementById('dropChangesPill');if(!box)return;
+ const ch=(dropDoc.changes||[]).filter(c=>c.kind==='change');
+ if(pill)pill.textContent=dropDoc.prev?`和 ${dropDoc.prevLabel} 比｜${ch.length} 項`:'第一個版本';
+ box.innerHTML=!dropDoc.prev?'<div class="hint">這是最早的版本，沒有可以比較的。</div>':!ch.length?'<div class="hint">🎉 這一版掉落率沒有變動。</div>'
+  :'<div class="table-wrap"><table><thead><tr><th>地圖</th><th>道具</th><th>變動（每隻）</th><th>怪物</th></tr></thead><tbody>'+ch.map(c=>{
+   const tag=!c.old?'<span class="ok">🆕 新增</span>':!c.new?'<span class="warn">移除</span>':(c.new>c.old?'<span class="ok">⬆ 提高</span>':'<span class="warn">⬇ 降低</span>');
+   return `<tr><td class="account-name">${esc(c.map)}</td><td>${esc(c.item)}</td><td>${tag} ${c.old?dropPct(c.old):'—'} → ${c.new?dropPct(c.new):'—'}</td><td class="account-sub">${c.mobs.map(esc).join('、')}</td></tr>`}).join('')+'</tbody></table></div>';
+}
+function dropTable(rows,withMap){
+ if(!rows.length)return '<div class="hint">沒有符合的道具</div>';
+ const max=rows[0].p;
+ return '<div class="table-wrap"><table><thead><tr>'+(withMap?'<th>地圖</th><th>怪物</th>':'')+'<th>道具</th><th>每隻機率</th><th>大約</th><th style="width:30%"></th></tr></thead><tbody>'
+  +rows.map(r=>`<tr>${withMap?`<td class="account-name">${esc(r.map)}</td><td class="account-sub">${esc(r.mobs)}</td>`:''}<td>${esc(r.item)}</td><td><b>${dropPct(r.p)}</b></td><td class="account-sub">${dropEvery(r.p)}</td><td><div class="drop-barbox"><div class="drop-bar" style="width:${Math.max(2,Math.round(100*Math.sqrt(r.p/max)))}%"></div></div></td></tr>`).join('')+'</tbody></table></div>';
+}
+function renderDrop(){
+ const box=document.getElementById('dropGroups');if(!box||!dropDoc)return;
+ const q=document.getElementById('dropQ').value.trim();
+ if(q){ // 搜尋道具：列出所有地圖（勾「全部地圖」時）或常用地圖中掉這個道具的怪
+  const all=document.getElementById('dropAll').checked,fav=dropDoc.favorites||[],rows=[];
+  for(const [m,v] of Object.entries(dropDoc.maps))if(all||!fav.length||fav.includes(m))for(const g of v.groups)for(const [it,p] of g.items)if(it.includes(q))rows.push({map:m,mobs:dropMobNames(g.mobs),item:it,p});
+  rows.sort((a,b)=>b.p-a.p);
+  box.innerHTML=`<div class="card"><div class="section-title"><span class="ni"><span class="emo">🔍</span></span>「${esc(q)}」<span class="pill">${rows.length} 筆</span></div>${dropTable(rows,true)}</div>`;return;
+ }
+ const m=dropDoc.maps[document.getElementById('dropMap').value];
+ if(!m){box.innerHTML='<div class="hint">請選擇地圖</div>';return;}
+ box.innerHTML=m.groups.map(g=>`<div class="card" style="margin-bottom:14px"><div class="section-title"><span class="ni"><span class="emo">👾</span></span>${esc(dropMobNames(g.mobs))}<span class="pill">${g.items.length} 種</span></div>`
+  +dropTable(g.items.map(([it,p])=>({item:it,p})),false)+'</div>').join('');
+}
+// H-003 重新登入成功率卡片（H-012 起放在「角色 → 🔁 重新登入」分頁）（rate=-1 → 「—」且無長條）
+function fmtSec(n){n=Math.round(Number(n)||0);if(n<=0)return '—';return n>=60?Math.floor(n/60)+' 分 '+(n%60)+' 秒':n+' 秒';}
+function recPct(r){return r<0?'—':Math.round(r*100)+'%';}
+function renderRecStats(d){
+ const bars=document.getElementById('recStatsBars'),roles=document.getElementById('recStatsRoles'),pill=document.getElementById('recStatsPill'),top=document.getElementById('recStatsTop');
+ if(!bars||!d)return;
+ const t=d.total||{};
+ if(pill)pill.textContent=!d.files?'沒有日誌':(t.total?`共 ${t.total} 次｜成功率 ${recPct(t.rate)}`:'沒有紀錄');
+ bars.innerHTML=(d.byDay||[]).length?'<div class="rec-bars">'+d.byDay.map(x=>{const r=Number(x.rate),h=r<0?0:Math.max(3,Math.round(r*80)),c=r>=0.8?'':(r>=0.5?' mid':' low');
+  return `<div class="rec-col" title="${esc(x.day)}｜${x.total} 次｜成功 ${x.ok}｜失敗 ${x.fail}"><div class="rec-barbox">${r<0?'':`<div class="rec-bar${c}" style="height:${h}px"></div>`}</div><b>${recPct(r)}</b><small>${esc(String(x.day).slice(5))}</small></div>`}).join('')+'</div>'
+  :'<div class="hint">還沒有資料。</div>';
+ if(roles)roles.innerHTML=(d.roles||[]).length?'<table><thead><tr><th>角色</th><th>次數</th><th>成功率</th><th>平均耗時</th><th>最長耗時</th><th>最常卡住</th></tr></thead><tbody>'+d.roles.map(r=>{const s=(r.topSteps||[])[0];return `<tr><td class="account-name">${esc(r.name)}</td><td>${r.total}</td><td>${recPct(Number(r.rate))}</td><td>${fmtSec(r.avgSec)}</td><td>${fmtSec(r.maxSec)}</td><td>${s?esc(s.label)+' ×'+s.count:'🎉 沒有'}</td></tr>`}).join('')+'</tbody></table>':'';
+ const ts=t.topSteps||[];
+ if(top)top.textContent=ts.length?'🚧 整體最常卡住：'+ts.map(x=>`${x.label} ×${x.count}`).join('、'):'';
+}
+document.querySelector('#nav [data-page="invstats"]')?.addEventListener('click',()=>requestInvStats(''));
+// v1.3.16.0 每日道具 / 示範錄製
+// v1.3.24.0 每日道具角色設定：勾選項目、回城 / 原地換、武器造型種類
+let dailyCfgSig='';
+function renderDailyCfg(d){
+ const box=document.getElementById('dailyCfgRows');if(!box)return;
+ const ae=document.activeElement;if(box.contains(ae)&&ae.type==='text')return;   // 正在輸入武器名稱時不重畫
+ const roles=d.roles||[],opts=d.options||[];
+ const sig=JSON.stringify([opts,d.weaponDefault,roles.map(r=>[r.index,r.name,r.items,r.mode,r.weapon])]);
+ if(sig===dailyCfgSig)return;dailyCfgSig=sig;
+ if(!roles.length){box.innerHTML='<div class="hint">沒有開啟監控的角色</div>';return;}
+ box.innerHTML=roles.map(r=>{const has=new Set(String(r.items||'').split(',').filter(Boolean));
+  return `<div class="daily-cfg-row${has.size?'':' daily-cfg-off'}" data-idx="${r.index}" data-name="${esc(r.name)}"><div class="account-name">${esc(r.name)}${has.size?'':'<div class="account-sub">不自動更換</div>'}</div>`
+   +`<div class="daily-cfg-opts">${opts.map(o=>`<label><input type="checkbox" data-opt="${o[0]}" ${has.has(o[0])?'checked':''} onchange="saveDailyCfg(this)"> ${esc(o[1])}</label>`).join('')}</div>`
+   +`<div class="daily-cfg-side"><select onchange="saveDailyCfg(this)" title="在哪裡換"><option value="town"${r.mode==='here'?'':' selected'}>🏙️ 回城換</option><option value="here"${r.mode==='here'?' selected':''}>📍 原地換</option></select>`
+   +`<input type="text" value="${esc(r.weapon||'')}" placeholder="武器：${esc(d.weaponDefault||'')}（共用）" title="武器造型選擇盒要選的武器（例如 雙槍、弓、劍）；空白用共用設定" onchange="saveDailyCfg(this)"></div></div>`}).join('');
+}
+function saveDailyCfg(el){
+ const row=el.closest('.daily-cfg-row');if(!row)return;
+ const items=[...row.querySelectorAll('input[data-opt]:checked')].map(x=>x.dataset.opt).join(',');
+ const mode=row.querySelector('select').value,weapon=row.querySelector('input[type=text]').value.replace(/[~|\r\n]/g,'').trim();
+ row.classList.toggle('daily-cfg-off',!items);dailyCfgSig='';
+ send('dailycfg',{value:`${row.dataset.idx}~${items}~${mode}~${weapon}~${row.dataset.name}`});
+}
+function renderDaily(d){
+ dailyCache=d; if(latestState)renderFeatures(latestState); if(latestState)renderHpMonitor(latestState.accounts||[],false);
+ const delay=document.getElementById('dailyDelay');if(delay)delay.textContent=`到期 ${d.delay} 分鐘後提醒`;
+ const rows=document.getElementById('dailyRows');
+ if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td></tr>`}).join(''):'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
+ renderDailyCfg(d);
+ const info=document.getElementById('dailyRunInfo');
+ if(info)info.textContent=(d.running?`🔄 正在自動更換：${d.running}　`:'')+(d.queue?`等待中：${d.queue}　`:'')+(d.autorun?`到期後跳出提醒；${d.idle} 秒內沒有鍵鼠操作就自動更換。`:'到期後跳出提醒（目前未開啟無人自動執行，可在提醒視窗按「立即更換」）。');
+ const sel=document.getElementById('recRole');
+ if(sel&&document.activeElement!==sel){const keep=sel.value;const opts=(d.roles||[]).filter(r=>r.alive).map(r=>`<option value="${r.index}">${esc(r.name)}｜${esc(r.status)}</option>`).join('');if(sel.innerHTML!==opts){sel.innerHTML=opts;if(keep)sel.value=keep;}}
+ const rec=d.recorder||{},badge=document.getElementById('recBadge'),st=document.getElementById('recStatus');
+ if(badge){badge.textContent=rec.active?'● 錄製中':'未錄製';badge.style.color=rec.active?'var(--red)':'';}
+ if(st)st.textContent=rec.active?`${rec.name}｜已記錄 ${rec.count} 次滑鼠操作｜${rec.seconds} 秒`:'';
+ const sb=document.getElementById('recStartBtn'),eb=document.getElementById('recStopBtn');
+ if(sb)sb.disabled=!!rec.active; if(eb)eb.disabled=!rec.active;
+}
+setInterval(()=>{if(isShown('daily'))send('dailystate');},5000);
+setInterval(()=>{if(isShown('recovery'))send('recstats');},60000);
+setInterval(()=>{if(isShown('dropRates'))send('dropindex');},30000);
+setInterval(()=>{if(isShown('mbox'))send('mboxstate');},2000);
+setInterval(()=>{if(isShown('home')||!dailyCache)send('dailystate');},60000);
+setTimeout(()=>send('dailystate'),1500);
+setTimeout(()=>send('updatestate'),2500);
+setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
+setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);});}
+</script><div id="toast"></div></body></html>

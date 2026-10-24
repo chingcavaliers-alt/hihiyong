@@ -1,0 +1,245 @@
+{
+    "version":  "v1.3.24.0",
+    "files":  [
+                  {
+                      "path":  ".gitattributes",
+                      "sha256":  "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+                  },
+                  {
+                      "path":  "CHANGELOG.md",
+                      "sha256":  "f22a8a4932e6486a65f8f2540293d27a8bb6c09319522d92ecf510ded9f969f9"
+                  },
+                  {
+                      "path":  "DailyTemplates\\character_title.bmp",
+                      "sha256":  "323b521df1c8f90603e7506ebfa78437e6cc2c2790ee71140c53c255d6a5e3b8"
+                  },
+                  {
+                      "path":  "DailyTemplates\\choice_title.bmp",
+                      "sha256":  "a091530d68a985b787028ca78c110cb242365a56fd9b0aef2847fb0a73ac1185"
+                  },
+                  {
+                      "path":  "DailyTemplates\\confirm_take.bmp",
+                      "sha256":  "b300aaed79a0c0d906f177870db3fa1aeeb8fc5b518d096109cf5abe3153d6e0"
+                  },
+                  {
+                      "path":  "DailyTemplates\\inventory_title.bmp",
+                      "sha256":  "96a60d0fc4a5d74926b89bfb7c7946137a30a63c052f943d8bbfa36061aaf7ac"
+                  },
+                  {
+                      "path":  "DailyTemplates\\revive_button.bmp",
+                      "sha256":  "960dcafb56e704708c7031f6a443ddad25b1d805c010ebc227e086f6e7a09dfc"
+                  },
+                  {
+                      "path":  "DisconnectTemplates\\DisconnectConfirm.bmp",
+                      "sha256":  "508c2d5f04aede10f30d4ad5aadc0a5d7993a61cbe1f3e5353097c33cd3aad9d"
+                  },
+                  {
+                      "path":  "DisconnectTemplates\\DisconnectText.bmp",
+                      "sha256":  "2594d3422aa2aad3f1947c3f84d7c0b24d99872ecd4b2beb68e837210fe09aaa"
+                  },
+                  {
+                      "path":  "HiHiyong_default.ico",
+                      "sha256":  "856c174610030eb16f3c6e08244fa083a506849c8d1d212c12201360bc5a501b"
+                  },
+                  {
+                      "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
+                      "sha256":  "ac11160e9e193f956fe0aad9cdc22b1a241ca890b80b47524dc79f13a013143a"
+                  },
+                  {
+                      "path":  "Lib\\ComVar.ahk",
+                      "sha256":  "ec4737bc2e577b0171015dda32a445a63ecfb09f641170f8f10d300d43771ca0"
+                  },
+                  {
+                      "path":  "Lib\\Promise.ahk",
+                      "sha256":  "55badd351716cc8c345ef719806098f705b560e70eee7eabc9f6180ab19b777b"
+                  },
+                  {
+                      "path":  "Lib\\WebView2\\64bit\\WebView2Loader.dll",
+                      "sha256":  "bf2fefaff7fd4775ea1e07328cc3142721943948f16d261fb82cbd978b7f99e2"
+                  },
+                  {
+                      "path":  "Lib\\WebView2\\WebView2.ahk",
+                      "sha256":  "cbdde2c8e6d9624e3f0f78ff19dddd13e677d998fb17cc71701bdad5505440ee"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__末日禁地島.bmp",
+                      "sha256":  "fc522c8f0011c39910634c12548dc6b6f2855ddbd363a697c314d3341ccaf969"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__波斯宮.bmp",
+                      "sha256":  "8060787f389b2c2a16509dc34dd44ffc688d82d3c6185511c0fe9f97865eac68"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__重力迴廊.bmp",
+                      "sha256":  "0c836fc6a3f17cde4baa6a5834565847162dcf082f40a3b78553553854c65822"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__異形空降區.bmp",
+                      "sha256":  "5d949d411c8826ca9634a1e9783b21d58909c733901ed9e1bef07b34b7b46f6e"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__童話世界.bmp",
+                      "sha256":  "9dab19b680f3d15404d270933bb96d7b23bd60589623649a654b9ea94c3965c8"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__裂變時空.bmp",
+                      "sha256":  "a82a1c8a834a3d0d75e996f3b851cf3c3fde7222feaaedd919075d8b88debd51"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__機械區.bmp",
+                      "sha256":  "370dbbdc5c506ea44bd998bf60a3317b4bf30e4b08498764fa5a1965f492d633"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__機械區_2區.bmp",
+                      "sha256":  "561fd3759c27317c56165a31d69b9244ef953c8e87c961d6cf2c4c868b277cf4"
+                  },
+                  {
+                      "path":  "MapTemplates\\NORMAL__魔術區.bmp",
+                      "sha256":  "754c7515ce0e332e0a01eff29ceb19f4f8be07e2502853c03fbbe18297dd5c75"
+                  },
+                  {
+                      "path":  "MapTemplates\\REVIVE__玄岩學院.bmp",
+                      "sha256":  "b240a0fda4fbadde72c0f2e015ce003ea6e7f60ec14767da06f96cbc3db6dfca"
+                  },
+                  {
+                      "path":  "MapTemplates\\REVIVE__聖門學院.bmp",
+                      "sha256":  "3b8e88e028e22a357866ca1bf406088b7d5fdb4ded9fd546a4a19ef7dc5e5eda"
+                  },
+                  {
+                      "path":  "MapTemplates\\REVIVE__鳳凰學院.bmp",
+                      "sha256":  "28f5ecf0dc743b4f4d1992e0aff92c5935ff0e2c5fa689b05bd18eaa687cce0a"
+                  },
+                  {
+                      "path":  "MapTemplates\\REVIVE__學院廣場.bmp",
+                      "sha256":  "68db8bcd0b22fa209af4f02cea645a417e01245cb3ca82718a63e4669238c641"
+                  },
+                  {
+                      "path":  "modules\\AsyncLoading.ahk",
+                      "sha256":  "5b91132bd4a69c21d36141b5cf7449fe243845c12363f08a02958eafa686bf96"
+                  },
+                  {
+                      "path":  "modules\\AutoAttack.ahk",
+                      "sha256":  "e683d19274c588eaea616f5520d2fc65bdf2cafd152e996f356a5eb9cec74188"
+                  },
+                  {
+                      "path":  "modules\\DailyItems.ahk",
+                      "sha256":  "5bfc6edc440dbce1053e49b356169459768180517b5db5cf9896bf4ac4aa1b6e"
+                  },
+                  {
+                      "path":  "modules\\DailyRoutine.ahk",
+                      "sha256":  "eb5e9ad10d97616f70b07c614c634f8b9792df8e4909109538ad4f5e7f68afb0"
+                  },
+                  {
+                      "path":  "modules\\DeathStats.ahk",
+                      "sha256":  "dce561085b2dd9f1b6605f91570717e39d2b77ec8aa4b236d56653d9fd62d4db"
+                  },
+                  {
+                      "path":  "modules\\DesktopShortcut.ahk",
+                      "sha256":  "b9171b2f056c0c0f260d70617b54d4a9fe0fb4347a3fcc146318ef3ef9fb185f"
+                  },
+                  {
+                      "path":  "modules\\DropRates.ahk",
+                      "sha256":  "06d16b3cc72e51ee674ccf9ad9d2c728edd61593e10b4faed7b8a5f56f384f67"
+                  },
+                  {
+                      "path":  "modules\\FocusWatch.ahk",
+                      "sha256":  "58c099816c1bf79cbcf1dcb6c1c34c4092e39e1af300f8cf9780ae924da3605a"
+                  },
+                  {
+                      "path":  "modules\\GameData.ahk",
+                      "sha256":  "fa60a42adbcd133cf3c2fcf75136e658a94fd0f6c30f0b39dddeed5cdf362287"
+                  },
+                  {
+                      "path":  "modules\\InventoryStats.ahk",
+                      "sha256":  "495cddf787a8ce24375a66a437852eb83a8e350c43590343996ef3ba367399bb"
+                  },
+                  {
+                      "path":  "modules\\KillStats.ahk",
+                      "sha256":  "25d3a24fe1d13c32e5d59904d2f5be9fd576048c428482e08aea26823e868fa6"
+                  },
+                  {
+                      "path":  "modules\\MBox.ahk",
+                      "sha256":  "995d00a1000b3ae91b985c9301f1a9a1bebc517e69b67ffeb8ed53708107c6dd"
+                  },
+                  {
+                      "path":  "modules\\Mining.ahk",
+                      "sha256":  "797ba4d5c9ecdb8bfd13f7c83b19551318fe0a37e6eb91298f4b28c60c1ff682"
+                  },
+                  {
+                      "path":  "modules\\QuietHours.ahk",
+                      "sha256":  "9c0febf0f35e47730756346b24a99ccf9525c1d84c7e90f2b1664254133bd583"
+                  },
+                  {
+                      "path":  "modules\\Recorder.ahk",
+                      "sha256":  "2d92cca32eaa3ff5018acc36afef693e2aba3086f04188f08308fe4ba0b66d8c"
+                  },
+                  {
+                      "path":  "modules\\RecoveryGuard.ahk",
+                      "sha256":  "7b5f978584a9a91041e468eed66da49e6f5085fa19cb7e041987881239ce4d8e"
+                  },
+                  {
+                      "path":  "modules\\RecoveryQueue.ahk",
+                      "sha256":  "485f5df1df21f472c66c91836eca91cfede05fee463c59408b49198275b2a186"
+                  },
+                  {
+                      "path":  "modules\\RecoveryStats.ahk",
+                      "sha256":  "2c7b85d822f34880fc8e73b47709b007e74d05e24d78d1064e00ee33d11aaf8e"
+                  },
+                  {
+                      "path":  "modules\\RecoveryStatsView.ahk",
+                      "sha256":  "eead9d95ee486c018fb937c11c5afd07f8fb4a360d69f1c8408e4654afcdb376"
+                  },
+                  {
+                      "path":  "modules\\Reports.ahk",
+                      "sha256":  "bce121ce4578fbe7d3af71147552fe0361b8e533314356362c2245dc7bf6f76c"
+                  },
+                  {
+                      "path":  "modules\\ReviveAssist.ahk",
+                      "sha256":  "3cda5c2a0c50a5f9abfa1d6759cecb79d4a5489888fa34543b911703f0aa0ad0"
+                  },
+                  {
+                      "path":  "modules\\Signals.ahk",
+                      "sha256":  "d6ff8535316a9fe4475eabfd1ba2c146aec2015a51a0d138f62d5bd5de2bf74f"
+                  },
+                  {
+                      "path":  "modules\\Updater.ahk",
+                      "sha256":  "9ce9dbbe712334a0f8501ecc663de65f9f8d2d079ff82ab7d13bfe126685f4a3"
+                  },
+                  {
+                      "path":  "README_v1.3.13.0.txt",
+                      "sha256":  "c73bda8e35485f805d96ae0ab390d7c1e9707a1e8f36499a509c9e5076a44893"
+                  },
+                  {
+                      "path":  "tools\\droprates\\droprates.py",
+                      "sha256":  "23e1245ce5f35d19a2fee7c41c559c66ac5c0dce5c9a34f650815b08d189a987"
+                  },
+                  {
+                      "path":  "tools\\droprates\\seed\\20260920-0000.json",
+                      "sha256":  "3ee0313c248accf6311666f280f9d3a1c394bf95d0a500249ced69194a5f2eaa"
+                  },
+                  {
+                      "path":  "tools\\droprates\\seed\\20260924-0800.json",
+                      "sha256":  "351d48a6acc53f922b303d7031f20a15411f1191eeedf747f4cbafa4e5ccf5a8"
+                  },
+                  {
+                      "path":  "tools\\droprates\\seed\\20261014-1824.json",
+                      "sha256":  "d27c2021f22024f6e09af912cacd9af2feb81c75de879cbf2b6d372ec126137d"
+                  },
+                  {
+                      "path":  "tools\\package\\HiHiyong帳號管理.bat",
+                      "sha256":  "38dbbad49c55e308fae1857a577f0dabc609a28dee951d20b81dce7df6b20cba"
+                  },
+                  {
+                      "path":  "tools\\package\\使用說明.txt",
+                      "sha256":  "ece874059a75a3ccdac2dfc608d19b4b0d47a114a9c88a30baa766c1472cbb89"
+                  },
+                  {
+                      "path":  "tools\\resolve_game_offsets.py",
+                      "sha256":  "ab22903e471ad41af0639963ccc493de75c8d3bedabf407f208c8ec04f815354"
+                  },
+                  {
+                      "path":  "ui\\index.html",
+                      "sha256":  "dcda8ef2199c6875ce7f675d191625020d1fd1be6eed07ef68c1c8f0dd3b748d"
+                  }
+              ]
+}

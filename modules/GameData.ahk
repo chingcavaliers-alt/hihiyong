@@ -1,0 +1,694 @@
+; ============================================================================
+; v1.3.13.0 GameData：依 Game.pdb 解析出的位置直接讀取角色資料（唯讀）。
+;
+; HIHIYONG_GameOffsets.ini 由 tools\resolve_game_offsets.py 從 game.exe + Game.pdb 產生。
+; game.exe 版本（維修更新）改變時會在背景自動重新解析，不需要手動校正 HP。
+; 解析失敗時，HP 退回 v1.3.12.6 的 offset + 動態校正流程。
+; ============================================================================
+
+global GAME_OFFSETS_INI := A_ScriptDir "\HIHIYONG_GameOffsets.ini"
+global STATS_DIR := A_ScriptDir "\Stats"
+global ITEM_NAMES_INI := STATS_DIR "\ItemNames.ini"
+global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
+; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
+global GAME_OFFSETS_TOOL_VERSION := 13
+global gameMapInfoCache := Map()      ; "主ID-子ID" → {name, peace}（地圖清單在遊戲執行期間不變）
+global gameOffsets := Map()
+global gameBuildByPid := Map()        ; pid → game.exe 版本（每個 PID 只讀一次 PE header）
+global memoryHpLiveMax := Map()       ; pid → 最近一次讀到的最大 HP
+global itemNameCache := Map()
+global itemTimeLimitCache := Map()    ; "主ID-子ID" → 時間限制（秒）
+global itemSuitCache := Map()         ; "主ID-子ID" → 裝備部位（EMSUIT）
+global itemTypeCache := Map()         ; "主ID-子ID" → 道具類型（EMITEM_TYPE）
+global GAME_BOX_ITEM_TYPES := Map(12,1,20,1,22,1,60,1,79,1)   ; ITEM_BOX / PREMIUMSET / RANDOMITEM / REWARD_BOX / GACHA_BOX
+global GAME_EQUIP_SLOT_COUNT := 23    ; EMSLOT：0 頭、1 上衣、2 褲子、3 手套、4 鞋子、5 右手武器、6 左手、7 項鍊、8 手鐲…
+global GAME_EQUIP_SLOT_NAMES := ["頭部","上衣","褲子","手套","鞋子","右手武器","左手","項鍊","手鐲","右戒指","左戒指","翅膀"
+    ,"右手武器(副)","左手(副)","坐騎","腰帶","交換","血寶","重生","額外1","額外2","持有","烙印"]
+global gameOffsetsResolvePid := 0
+global gameOffsetsResolveBuild := ""
+global gameOffsetsResolveStart := 0
+global gameOffsetsResolveTried := Map() ; build → 已自動嘗試過（失敗不重複執行）
+
+; MSVC x64 std::map 節點：_Left, _Parent, _Right, _Color, _Isnil, _Myval(key, value)
+global STDMAP_NODE_ISNIL := 0x19
+global STDMAP_NODE_VALUE_PTR := 0x28
+global STDMAP_NODE_SIZE := 0x30
+; std::map<std::string,std::string> 節點：key 字串在 +0x20、value 字串在 +0x40（MSVC x64 std::string = 32 bytes）
+global STDMAP_STR_KEY := 0x20
+global STDMAP_STR_VALUE := 0x40
+global STDMAP_MAX_DEPTH := 64
+; SITEM.strName 是字串表的 key（例如 IN_001_254），要再查 GLStringTable 才是顯示名稱。
+global ITEM_NAME_KEY_PATTERN := "^[A-Z]{2}_\d+_\d+$"
+
+LoadGameOffsets() {
+    global gameOffsets,GAME_OFFSETS_INI
+    gameOffsets:=Map()
+    if !FileExist(GAME_OFFSETS_INI)
+        return false
+    try section:=IniRead(GAME_OFFSETS_INI,"GameOffsets")
+    catch
+        return false
+    for line in StrSplit(section,"`n","`r") {
+        pos:=InStr(line,"=")
+        if pos
+            gameOffsets[SubStr(line,1,pos-1)]:=SubStr(line,pos+1)
+    }
+    return GameOffsetsLoadedOk()
+}
+
+GameOffsetsLoadedOk() {
+    global gameOffsets,GAME_OFFSETS_TOOL_VERSION
+    return gameOffsets.Has("Status") && gameOffsets["Status"]="OK"
+        && gameOffsets.Has("ToolVersion") && Integer(gameOffsets["ToolVersion"])>=GAME_OFFSETS_TOOL_VERSION
+}
+
+GameOffset(key) {
+    global gameOffsets
+    return gameOffsets.Has(key) ? Integer(gameOffsets[key]) : 0
+}
+
+GameBuildOf(pid) {
+    global gameBuildByPid
+    if (build:=gameBuildByPid.Get(pid,""))!=""
+        return build
+    build:=GetGameBuildStamp(pid)
+    if build!=""
+        gameBuildByPid[pid]:=build
+    return build
+}
+
+; 這個 PID 的 game.exe 是否已有對應版本的 Game.pdb 位置；沒有就在背景開始解析。
+GameOffsetsReady(pid) {
+    global gameOffsets
+    if !pid
+        return false
+    build:=GameBuildOf(pid)
+    if build=""
+        return false
+    if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build
+        return true
+    StartGameOffsetsResolve(pid,build)
+    return false
+}
+
+GameOffsetsResolving() {
+    global gameOffsetsResolvePid
+    return gameOffsetsResolvePid && ProcessExist(gameOffsetsResolvePid)
+}
+
+FindPythonLauncher() {
+    ; v1.3.18.6：優先使用資料夾附帶的 Python（runtime\python），換電腦不用另外安裝
+    bundled:=A_ScriptDir "\runtime\python\python.exe"
+    if FileExist(bundled)
+        return '"' bundled '"'
+    for path in [A_WinDir "\py.exe", EnvGet("LOCALAPPDATA") "\Programs\Python\Launcher\py.exe"]
+        if FileExist(path)
+            return '"' path '" -3'
+    return ""
+}
+
+StartGameOffsetsResolve(pid,build) {
+    global gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,gameOffsetsResolveTried,GAME_OFFSETS_INI
+    global GAME_OFFSETS_TOOL_VERSION
+    tryKey:=build "#" GAME_OFFSETS_TOOL_VERSION
+    if GameOffsetsResolving() || gameOffsetsResolveTried.Has(tryKey)
+        return
+    gameOffsetsResolveTried[tryKey]:=A_TickCount
+    exe:=""
+    try exe:=ProcessGetPath(pid)
+    pdb:=RegExReplace(exe,"[^\\]+$","Game.pdb")
+    if exe="" || !FileExist(pdb) {
+        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 game.exe 或 Game.pdb（" exe "）｜HP 改用動態校正")
+        return
+    }
+    python:=FindPythonLauncher()
+    if python="" {
+        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 Python（py.exe）｜HP 改用動態校正")
+        AddRecentEvent("⚠ 找不到 Python，無法自動解析新版遊戲資料位置")
+        return
+    }
+    cmd:=python ' -I "' A_ScriptDir '\tools\resolve_game_offsets.py" --exe "' exe '" --out "' GAME_OFFSETS_INI '"'
+    newPid:=0
+    try Run(cmd,A_ScriptDir,"Hide",&newPid)
+    catch as err {
+        EventLog("GLOBAL","GAME_OFFSETS_FAIL","無法執行解析工具：" err.Message)
+        return
+    }
+    gameOffsetsResolvePid:=newPid
+    gameOffsetsResolveBuild:=build
+    gameOffsetsResolveStart:=A_TickCount
+    EventLog("GLOBAL","GAME_OFFSETS_RESOLVE","game.exe 版本 " build "｜由 Game.pdb 解析 HP / 金幣 / 背包位置")
+    AddRecentEvent("🔎 偵測到 game.exe 版本 " build "，正在由 Game.pdb 解析資料位置")
+    SetTimer GameOffsetsResolveTick,500
+}
+
+GameOffsetsResolveTick() {
+    global gameOffsets,gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,GAME_OFFSETS_RESOLVE_TIMEOUT_MS,profiles
+    if GameOffsetsResolving() {
+        if A_TickCount-gameOffsetsResolveStart<GAME_OFFSETS_RESOLVE_TIMEOUT_MS
+            return
+        try ProcessClose gameOffsetsResolvePid
+        EventLog("GLOBAL","GAME_OFFSETS_FAIL","解析逾時 " Floor(GAME_OFFSETS_RESOLVE_TIMEOUT_MS/1000) " 秒｜HP 改用動態校正")
+    }
+    SetTimer GameOffsetsResolveTick,0
+    gameOffsetsResolvePid:=0
+    if LoadGameOffsets() && gameOffsets["Build"]=gameOffsetsResolveBuild {
+        EventLog("GLOBAL","GAME_OFFSETS_OK","Build=" gameOffsets["Build"] "｜Gaea=" gameOffsets["GaeaInstanceRva"] "｜HP=Char+" gameOffsets["HpNowOffset"] "｜Money=Char+" gameOffsets["MoneyOffset"])
+        AddRecentEvent("✓ 已取得新版遊戲資料位置（HP / 金幣 / 背包），不需要校正")
+        ; 讓目前的 session 改用新位置，並重新走「連續讀到合理 HP 才啟用死亡判定」。
+        for p in profiles {
+            if !p.HasOwnProp("memHpStale") || !ProfileGameAlive(p)
+                continue
+            p.memHpStale:=0,p.memHpArmed:=0,p.memHpPlausibleStreak:=0
+            p.memHpUnarmedSince:=A_TickCount,p.memHpSuspectLogged:=0
+        }
+    } else {
+        err:=gameOffsets.Has("Error") ? gameOffsets["Error"] : "沒有產生結果"
+        EventLog("GLOBAL","GAME_OFFSETS_FAIL",err "｜HP 改用動態校正")
+        AddRecentEvent("⚠ Game.pdb 解析失敗，HP 改用動態校正（詳見 Log）")
+    }
+}
+
+GameForgetPid(pid) {
+    global gameBuildByPid,memoryHpLiveMax
+    try gameBuildByPid.Delete(pid)
+    try memoryHpLiveMax.Delete(pid)
+}
+
+GameProcHandle(pid) {
+    global memoryHpHandles
+    ; 只讀一次：Has() 與取值之間若被其他計時器（行程結束時關閉並移除 handle）插隊，會出現「Item has no value」
+    h:=memoryHpHandles.Get(pid,0)
+    if h
+        return h
+    h:=DllCall("OpenProcess","UInt",0x0410,"Int",0,"UInt",pid,"Ptr")
+    if h
+        memoryHpHandles[pid]:=h
+    return h
+}
+
+GameReadBuf(hProc,addr,size) {
+    buf:=Buffer(size,0),bytesRead:=0
+    if !DllCall("ReadProcessMemory","Ptr",hProc,"Ptr",addr,"Ptr",buf.Ptr,"UPtr",size,"UPtr*",&bytesRead,"Int") || bytesRead!=size
+        return 0
+    return buf
+}
+
+; type: "UShort" / "UInt" / "Int64" / "Ptr"；讀取失敗回傳 ""。
+GameReadNum(hProc,addr,type) {
+    size:=type="UShort" ? 2 : (type="UInt" ? 4 : 8)
+    buf:=GameReadBuf(hProc,addr,size)
+    return buf ? NumGet(buf,0,type) : ""
+}
+
+GameVftableMatches(rva) {
+    global gameOffsets
+    for s in StrSplit(gameOffsets["GaeaVftableRvas"],"|")
+        if Integer(s)=rva
+            return true
+    return false
+}
+
+; GLGaeaClient 物件位址；遊戲尚未初始化（vftable 不符）時回傳 0。
+GameGaeaBase(pid) {
+    if !GameOffsetsReady(pid)
+        return 0
+    hProc:=GameProcHandle(pid)
+    base:=hProc ? GetGameModuleBase(pid,hProc) : 0
+    if !base
+        return 0
+    inst:=base+GameOffset("GaeaInstanceRva")
+    vf:=GameReadNum(hProc,inst,"Ptr")
+    if vf="" || !GameVftableMatches(vf-base)
+        return 0
+    return inst
+}
+
+; 角色物件位址；遊戲尚未初始化時回傳 0。
+GameCharBase(pid) {
+    inst:=GameGaeaBase(pid)
+    return inst ? inst+GameOffset("CharOffset") : 0
+}
+
+; 伺服器時間（time_t 秒）；舊版 offsets 檔沒有這個欄位時回傳 false。
+ReadGameServerTime(pid,&serverTime) {
+    serverTime:=0
+    if !GameOffset("ServerTimeOffset")
+        return false
+    inst:=GameGaeaBase(pid)
+    v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("ServerTimeOffset"),"Int64") : ""
+    if v=""
+        return false
+    serverTime:=v
+    return true
+}
+
+; 角色是否已進入遊戲：伺服器已送來角色資料（最大 HP > 0）。
+GameCharacterLoaded(pid) {
+    hpNow:=0,hpMax:=0
+    return ReadGameHP(pid,&hpNow,&hpMax) && hpMax>0
+}
+
+; 角色真的在遊戲世界裡：有角色資料，而且已經進入地圖。
+; v1.3.21.0：選角畫面時遊戲就會先讀入角色資料（最大 HP > 0），但還沒有地圖；
+; 只看 HP 會把「開始遊戲沒按到、停在選角畫面」誤判成已進入遊戲（2026-10-23 欸等欸）。
+GameInWorld(pid) {
+    return GameCharacterLoaded(pid) && ReadGameMapId(pid)!=""
+}
+
+ReadGameHP(pid,&hpNow,&hpMax) {
+    hpNow:=0,hpMax:=0
+    charBase:=GameCharBase(pid)
+    if !charBase
+        return false
+    hProc:=GameProcHandle(pid)
+    n:=GameReadNum(hProc,charBase+GameOffset("HpNowOffset"),"UInt")
+    m:=GameReadNum(hProc,charBase+GameOffset("HpMaxOffset"),"UInt")
+    if n="" || m=""
+        return false
+    hpNow:=n,hpMax:=m
+    return true
+}
+
+ReadGameMoney(pid,&money) {
+    money:=0
+    charBase:=GameCharBase(pid)
+    v:=charBase ? GameReadNum(GameProcHandle(pid),charBase+GameOffset("MoneyOffset"),"Int64") : ""
+    if v=""
+        return false
+    money:=v
+    return true
+}
+
+ReadGameExp(pid,&expNow) {
+    expNow:=0
+    charBase:=GameCharBase(pid)
+    v:=charBase ? GameReadNum(GameProcHandle(pid),charBase+GameOffset("ExpNowOffset"),"Int64") : ""
+    if v=""
+        return false
+    expNow:=v
+    return true
+}
+
+; 背包內容：Map("主ID-子ID" → 數量)。讀到不一致的資料（遊戲正在改動背包）回傳 0，呼叫端略過這一輪。
+ReadGameInventory(pid) {
+    slots:=ReadGameInventorySlots(pid,"InvenOffset")
+    if !IsObject(slots)
+        return 0
+    items:=Map()
+    for s in slots
+        items[s.key]:=(items.Has(s.key) ? items[s.key] : 0)+s.count
+    return items
+}
+
+; 角色持有的全部道具（背包 + 銀行 + 身上裝備 + 滑鼠上拿著的）：Map("主ID-子ID" → 數量)。
+; 在背包、銀行、裝備欄之間移動不會改變總數；任一部分讀取不一致回傳 0。
+; invCount：其中背包本身有幾種道具（換地圖瞬間背包可能讀到空的，呼叫端據此判斷）。
+; bankCount：銀行有幾格（銀行要打開一次銀行分頁才會載入，0 可能代表尚未載入）。
+ReadGameHoldings(pid, &invCount:=0, &bankCount:=0) {
+    invCount:=0,bankCount:=0
+    items:=ReadGameInventory(pid)
+    if !IsObject(items)
+        return 0
+    invCount:=items.Count
+    if GameOffset("BankOffset") {
+        bank:=ReadGameInventorySlots(pid,"BankOffset")
+        if !IsObject(bank)
+            return 0
+        bankCount:=bank.Length
+        for s in bank
+            items[s.key]:=(items.Has(s.key) ? items[s.key] : 0)+s.count
+    }
+    equip:=ReadGameEquipment(pid)
+    if IsObject(equip) {
+        for s in equip
+            if s
+                items[s.key]:=(items.Has(s.key) ? items[s.key] : 0)+Max(1,s.count)
+    }
+    return items
+}
+
+; 背包 / 銀行每一格：[{key, x, y, count, born, disguiseKey, disguiseTime}]。
+; invenKey：GameOffsets 的欄位名稱（"InvenOffset" = 背包、"BankOffset" = 銀行）。
+ReadGameInventorySlots(pid, invenKey) {
+    global STDMAP_NODE_ISNIL,STDMAP_NODE_VALUE_PTR,STDMAP_NODE_SIZE
+    charBase:=GameCharBase(pid)
+    if !charBase || !GameOffset(invenKey)
+        return 0
+    hProc:=GameProcHandle(pid)
+    mapObj:=charBase+GameOffset(invenKey)+GameOffset("ItemMapOffset")
+    head:=GameReadNum(hProc,mapObj,"Ptr")
+    size:=GameReadNum(hProc,mapObj+8,"Ptr")
+    if head="" || size="" || !head || size>2000
+        return 0
+    slots:=[]
+    root:=GameReadNum(hProc,head+8,"Ptr")
+    if root="" || !root || root=head
+        return size=0 ? slots : 0
+
+    customOff:=GameOffset("InvenItemCustomOffset")
+    posOff:=GameOffset("InvenItemPosOffset")
+    span:=customOff+Max(GameOffset("TurnNumOffset")+2,GameOffset("DisguiseTimeOffset")+8,GameOffset("BornTimeOffset")+8)
+    stack:=[root],visited:=0
+    while stack.Length {
+        node:=stack.Pop()
+        nb:=GameReadBuf(hProc,node,STDMAP_NODE_SIZE)
+        if !nb
+            return 0
+        if NumGet(nb,STDMAP_NODE_ISNIL,"UChar")
+            continue
+        visited+=1
+        if visited>size+8
+            return 0
+        itemPtr:=NumGet(nb,STDMAP_NODE_VALUE_PTR,"Ptr")
+        if itemPtr {
+            ib:=GameReadBuf(hProc,itemPtr,span)
+            if !ib
+                return 0
+            slot:=GameItemCustomFromBuf(ib,customOff)
+            if slot {
+                ; 不可堆疊的道具 wTurnNum 可能是 0，至少算 1 個。
+                slot.count:=Max(1,slot.count)
+                slot.x:=NumGet(ib,posOff,"UShort"),slot.y:=NumGet(ib,posOff+2,"UShort")
+                slots.Push(slot)
+            }
+        }
+        left:=NumGet(nb,0,"Ptr"),right:=NumGet(nb,0x10,"Ptr")
+        if left && left!=head
+            stack.Push(left)
+        if right && right!=head
+            stack.Push(right)
+    }
+    ; 走訪到的節點數必須等於 map 大小；不一致代表讀取期間遊戲正在改動背包。
+    return visited=size ? slots : 0
+}
+
+; 從緩衝區的 SITEMCUSTOM（位於 base 位移）取出道具資訊；空的欄位回傳 0。
+GameItemCustomFromBuf(buf, base) {
+    nid:=base+GameOffset("NativeIdOffset")
+    mid:=NumGet(buf,nid,"UShort"),sid:=NumGet(buf,nid+2,"UShort")
+    if mid=0xFFFF
+        return 0
+    dis:=base+GameOffset("DisguiseIdOffset")
+    dmid:=NumGet(buf,dis,"UShort"),dsid:=NumGet(buf,dis+2,"UShort")
+    return {key:mid "-" sid
+        ,count:NumGet(buf,base+GameOffset("TurnNumOffset"),"UShort")
+        ,born:NumGet(buf,base+GameOffset("BornTimeOffset"),"Int64")
+        ,disguiseKey:dmid=0xFFFF ? "" : dmid "-" dsid
+        ,disguiseTime:NumGet(buf,base+GameOffset("DisguiseTimeOffset"),"Int64")}
+}
+
+; 角色身上 23 個裝備欄：陣列索引 = EMSLOT + 1；空欄位為 0。
+ReadGameEquipment(pid) {
+    charBase:=GameCharBase(pid)
+    size:=GameOffset("ItemCustomSize")
+    if !charBase || !size
+        return 0
+    buf:=GameReadBuf(GameProcHandle(pid),charBase+GameOffset("PutOnItemsOffset"),size*GAME_EQUIP_SLOT_COUNT)
+    if !buf
+        return 0
+    slots:=[]
+    Loop GAME_EQUIP_SLOT_COUNT
+        slots.Push(GameItemCustomFromBuf(buf,(A_Index-1)*size))
+    return slots
+}
+
+ReadGameCharClass(pid) {
+    charBase:=GameCharBase(pid)
+    v:=charBase ? GameReadNum(GameProcHandle(pid),charBase+GameOffset("CharClassOffset"),"UInt") : ""
+    return v="" ? 0 : v
+}
+
+; 目前所在地圖（GLGaeaClient.m_pLandMClient → m_sMapID，"主ID-子ID"）；讀不到回傳 ""。
+ReadGameMapId(pid) {
+    inst:=GameGaeaBase(pid)
+    if !inst
+        return ""
+    hProc:=GameProcHandle(pid)
+    land:=GameReadNum(hProc,inst+GameOffset("LandPtrOffset"),"Ptr")
+    if !land
+        return ""
+    buf:=GameReadBuf(hProc,land+GameOffset("LandMapIdOffset"),4)
+    return buf ? NumGet(buf,0,"UShort") "-" NumGet(buf,2,"UShort") : ""
+}
+
+; 地圖資訊（GLMapList.m_MapList → SMAPNODE）：{name: 地圖名稱, peace: 是否安全區}；查不到回傳 0。
+; m_MapList 是 stdext::hash_map，走訪它內部的 std::list（約數百張地圖，只在換地圖時查一次並快取）。
+GameMapInfo(pid, mapId) {
+    global gameMapInfoCache
+    if mapId=""
+        return 0
+    if gameMapInfoCache.Has(mapId)
+        return gameMapInfoCache[mapId]
+    inst:=GameGaeaBase(pid)
+    if !inst || !GameOffset("MapListOffset")
+        return 0
+    parts:=StrSplit(mapId,"-")
+    hProc:=GameProcHandle(pid)
+    list:=inst+GameOffset("MapListOffset")
+    head:=GameReadNum(hProc,list,"Ptr"),size:=GameReadNum(hProc,list+8,"Ptr")
+    if !head || size="" || size>20000
+        return 0
+    nodeOff:=GameOffset("MapNodeValueOffset")+GameOffset("MapPairNodeOffset")
+    node:=GameReadNum(hProc,head,"Ptr")
+    Loop size {
+        if !node || node=head
+            break
+        idBuf:=GameReadBuf(hProc,node+nodeOff+GameOffset("MapIdInNodeOffset"),4)
+        if !idBuf
+            return 0
+        if NumGet(idBuf,0,"UShort")=Integer(parts[1]) && NumGet(idBuf,2,"UShort")=Integer(parts[2]) {
+            name:=Trim(ReadStdString(hProc,node+nodeOff+GameOffset("MapNameOffset"),"CP950"))
+            ; 名稱若是字串表代碼（英數字），改查顯示文字
+            if RegExMatch(name,"^[\x21-\x7E]+$") && (text:=GameStringLookup(pid,name))!=""
+                name:=text
+            peace:=GameReadNum(hProc,node+nodeOff+GameOffset("MapPeaceZoneOffset"),"UShort")
+            info:={name:name,peace:peace!="" && (peace&0xFF)!=0}
+            if name!=""
+                gameMapInfoCache[mapId]:=info
+            return info
+        }
+        node:=GameReadNum(hProc,node,"Ptr")
+    }
+    return 0
+}
+
+; 選擇盒 / 禮盒內容，依遊戲中顯示的順序：["主ID-子ID", …]。
+; 先讀 SITEM.sBox.sITEMS；沒有內容時改讀 SITEM.sRandomBox.vecBOX（選擇盒可能用這個清單）。
+GameBoxItems(pid, key) {
+    node:=GameItemNode(pid,key)
+    if !node
+        return []
+    hProc:=GameProcHandle(pid)
+    item:=node+GameOffset("ItemNodeItemOffset")
+    items:=[]
+    count:=GameOffset("BoxItemCount"),size:=GameOffset("BoxItemSize")
+    buf:=(count && size) ? GameReadBuf(hProc,item+GameOffset("BoxItemsOffset"),count*size) : 0
+    if buf {
+        Loop count {
+            mid:=NumGet(buf,(A_Index-1)*size,"UShort"),sid:=NumGet(buf,(A_Index-1)*size+2,"UShort")
+            if mid!=0xFFFF && (mid || sid)
+                items.Push(mid "-" sid)
+        }
+    }
+    if items.Length || !GameOffset("RandomItemSize")
+        return items
+    ; std::vector：+0 開頭指標、+8 結尾指標
+    vec:=item+GameOffset("RandomBoxVecOffset")
+    first:=GameReadNum(hProc,vec,"Ptr"),last:=GameReadNum(hProc,vec+8,"Ptr")
+    size:=GameOffset("RandomItemSize")
+    if !first || !last || last<=first || Mod(last-first,size) || (last-first)//size>32
+        return items
+    buf:=GameReadBuf(hProc,first,last-first)
+    if !buf
+        return items
+    idOff:=GameOffset("RandomItemIdOffset")
+    Loop (last-first)//size {
+        mid:=NumGet(buf,(A_Index-1)*size+idOff,"UShort"),sid:=NumGet(buf,(A_Index-1)*size+idOff+2,"UShort")
+        if mid!=0xFFFF
+            items.Push(mid "-" sid)
+    }
+    return items
+}
+
+; 角色名稱（GLCharacter.m_szName，Big5）；角色尚未載入時回傳 ""。
+ReadGameCharName(pid) {
+    charBase:=GameCharBase(pid)
+    buf:=charBase ? GameReadBuf(GameProcHandle(pid),charBase+GameOffset("CharNameOffset"),33) : 0
+    return buf ? Trim(StrGet(buf,33,"CP950")) : ""
+}
+
+; 道具是不是禮盒 / 箱子（打開後會變出其他道具）：依道具類型，名稱含禮包 / 禮盒 / 選擇盒 也算。
+GameItemIsBox(pid, key) {
+    global itemTypeCache,GAME_BOX_ITEM_TYPES
+    if !itemTypeCache.Has(key) && GameOffset("ItemTypeOffset") {
+        node:=GameItemNode(pid,key)
+        v:=node ? GameReadNum(GameProcHandle(pid),node+GameOffset("ItemNodeItemOffset")+GameOffset("ItemTypeOffset"),"UInt") : ""
+        if v!=""
+            itemTypeCache[key]:=v
+    }
+    if itemTypeCache.Has(key) && GAME_BOX_ITEM_TYPES.Has(itemTypeCache[key])
+        return true
+    name:=GameItemName(key,pid)
+    return InStr(name,"禮包") || InStr(name,"禮盒") || InStr(name,"選擇盒")
+}
+
+; 裝備部位（SITEM.sSuitOp.emSuit：0 頭、1 上衣、2 褲子、3 手套、4 鞋子、5 手持武器…）；讀不到回傳 -1。
+GameItemSuit(pid, key) {
+    global itemSuitCache
+    if itemSuitCache.Has(key)
+        return itemSuitCache[key]
+    node:=GameItemNode(pid,key)
+    v:=node ? GameReadNum(GameProcHandle(pid),node+GameOffset("ItemNodeItemOffset")+GameOffset("SuitOffset"),"UInt") : ""
+    if v=""
+        return -1
+    itemSuitCache[key]:=v
+    return v
+}
+
+; 道具的時間限制（秒，SITEM.sDrugOp.tTIME_LMT）；0 = 沒有限制或讀不到。
+GameItemTimeLimit(pid, key) {
+    global itemTimeLimitCache
+    if itemTimeLimitCache.Has(key)
+        return itemTimeLimitCache[key]
+    node:=GameItemNode(pid,key)
+    v:=node ? GameReadNum(GameProcHandle(pid),node+GameOffset("ItemNodeItemOffset")+GameOffset("ItemTimeLimitOffset"),"Int64") : ""
+    if v=""
+        return 0
+    itemTimeLimitCache[key]:=v
+    return v
+}
+
+LoadItemNameCache() {
+    global itemNameCache,ITEM_NAMES_INI,ITEM_NAME_KEY_PATTERN
+    itemNameCache:=Map()
+    if !FileExist(ITEM_NAMES_INI)
+        return
+    try section:=IniRead(ITEM_NAMES_INI,"Names")
+    catch
+        return
+    for line in StrSplit(section,"`n","`r") {
+        pos:=InStr(line,"=")
+        if !pos
+            continue
+        name:=SubStr(line,pos+1)
+        ; v1.3.13.0 初版存的是字串表 key（IN_xxx_yyy），略過讓它重新查出中文名稱。
+        if !RegExMatch(name,ITEM_NAME_KEY_PATTERN)
+            itemNameCache[SubStr(line,1,pos-1)]:=name
+    }
+}
+
+; 道具名稱：先查快取；沒有就從任一隻已登入角色的遊戲記憶體讀取（GLItemMan → GLStringTable）。
+; 只有查到中文名稱才寫入快取檔；暫時只有 key 時回傳 key，下次再試。
+GameItemName(key,pid:=0) {
+    global itemNameCache,ITEM_NAMES_INI,profiles,ITEM_NAME_KEY_PATTERN
+    if itemNameCache.Has(key)
+        return itemNameCache[key]
+    parts:=StrSplit(key,"-")
+    if parts.Length!=2
+        return ""
+    if !pid {
+        for p in profiles
+            if p.pid && ProfileGameAlive(p) && GameOffsetsReady(p.pid) {
+                pid:=p.pid
+                break
+            }
+    }
+    name:=pid ? ReadGameItemName(pid,Integer(parts[1]),Integer(parts[2])) : ""
+    if RegExMatch(name,ITEM_NAME_KEY_PATTERN) {
+        display:=GameStringLookup(pid,name)
+        if display=""
+            return name
+        name:=display
+    }
+    if name!="" {
+        itemNameCache[key]:=name
+        EnsureUnicodeIni(ITEM_NAMES_INI)
+        try IniWrite name,ITEM_NAMES_INI,"Names",key
+    }
+    return name
+}
+
+; MSVC std::string：+0 內嵌緩衝或指標、+0x10 長度、+0x18 容量（容量 ≥ 16 時資料在堆積）。
+ReadStdString(hProc,addr,encoding:="CP950") {
+    sb:=GameReadBuf(hProc,addr,32)
+    if !sb
+        return ""
+    len:=NumGet(sb,0x10,"UPtr"),cap:=NumGet(sb,0x18,"UPtr")
+    if len=0 || len>512 || cap<len
+        return ""
+    if cap<16
+        return StrGet(sb,len,encoding)
+    textBuf:=GameReadBuf(hProc,NumGet(sb,0,"Ptr"),len)
+    return textBuf ? StrGet(textBuf,len,encoding) : ""
+}
+
+; 依 GLStringTable 的字串表（std::map，以 key 字典序排序）查顯示名稱；約 15 次讀取。
+; mapKey："ItemStringMapOffset" = 道具 / 地圖、"CrowStringMapOffset" = 怪物（v1.3.18.9）。
+GameStringLookup(pid,key,mapKey:="ItemStringMapOffset") {
+    global STDMAP_NODE_ISNIL,STDMAP_STR_KEY,STDMAP_STR_VALUE,STDMAP_MAX_DEPTH
+    if !GameOffsetsReady(pid) || !GameOffset("StringTableInstanceRva")
+        return ""
+    if mapKey!="ItemStringMapOffset" && !GameOffset(mapKey)
+        return ""
+    hProc:=GameProcHandle(pid)
+    base:=hProc ? GetGameModuleBase(pid,hProc) : 0
+    if !base
+        return ""
+    mapObj:=base+GameOffset("StringTableInstanceRva")+GameOffset(mapKey)
+    head:=GameReadNum(hProc,mapObj,"Ptr")
+    if !head
+        return ""
+    node:=GameReadNum(hProc,head+8,"Ptr")
+    depth:=0
+    while node && node!=head && depth<STDMAP_MAX_DEPTH {
+        nb:=GameReadBuf(hProc,node,0x20)
+        if !nb || NumGet(nb,STDMAP_NODE_ISNIL,"UChar")
+            return ""
+        nodeKey:=ReadStdString(hProc,node+STDMAP_STR_KEY,"CP0")
+        if nodeKey=""
+            return ""
+        cmp:=StrCompare(key,nodeKey,true)
+        if cmp=0
+            return Trim(ReadStdString(hProc,node+STDMAP_STR_VALUE,"CP950"))
+        node:=cmp<0 ? NumGet(nb,0,"Ptr") : NumGet(nb,0x10,"Ptr")
+        depth+=1
+    }
+    return ""
+}
+
+ReadGameItemName(pid,mid,sid) {
+    node:=GameItemNode(pid,mid "-" sid)
+    if !node
+        return ""
+    return Trim(ReadStdString(GameProcHandle(pid),node+GameOffset("ItemNodeItemOffset")+GameOffset("ItemNameOffset")))
+}
+
+; GLItemMan.m_ppItem[主ID][子ID] → CItemNode 位址；不存在回傳 0。
+GameItemNode(pid,key) {
+    parts:=StrSplit(key,"-")
+    if parts.Length!=2
+        return 0
+    mid:=Integer(parts[1]),sid:=Integer(parts[2])
+    limit:=GameOffset("ItemIdLimit")
+    if !GameOffsetsReady(pid) || mid>=limit || sid>=limit
+        return 0
+    hProc:=GameProcHandle(pid)
+    base:=hProc ? GetGameModuleBase(pid,hProc) : 0
+    if !base
+        return 0
+    pp:=GameReadNum(hProc,base+GameOffset("ItemManInstanceRva")+GameOffset("ItemManPpItemOffset"),"Ptr")
+    row:=pp ? GameReadNum(hProc,pp+mid*8,"Ptr") : ""
+    node:=row ? GameReadNum(hProc,row+sid*8,"Ptr") : ""
+    return node ? node : 0
+}
+
+; IniWrite 只有在檔案本身是 UTF-16 時才能正確寫入中文角色名稱 / 道具名稱。
+EnsureUnicodeIni(path) {
+    if FileExist(path)
+        return
+    SplitPath path,,&dir
+    if dir!="" && !DirExist(dir)
+        DirCreate dir
+    FileOpen(path,"w","UTF-16").Close()
+}
