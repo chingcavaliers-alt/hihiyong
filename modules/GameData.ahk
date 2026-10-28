@@ -11,7 +11,7 @@ global STATS_DIR := A_ScriptDir "\Stats"
 global ITEM_NAMES_INI := STATS_DIR "\ItemNames.ini"
 global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
 ; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
-global GAME_OFFSETS_TOOL_VERSION := 13
+global GAME_OFFSETS_TOOL_VERSION := 20
 global gameMapInfoCache := Map()      ; "主ID-子ID" → {name, peace}（地圖清單在遊戲執行期間不變）
 global gameOffsets := Map()
 global gameBuildByPid := Map()        ; pid → game.exe 版本（每個 PID 只讀一次 PE header）
@@ -413,6 +413,263 @@ ReadGameEquipment(pid) {
     return slots
 }
 
+; 角色身上的效果清單（右下角狀態圖示的資料來源）：[{id: "主-子", age: 數值}…]，空的格子不放入。
+; 沒有這組欄位（舊的位置檔 / 解析失敗）或讀不到回傳 ""。age 是遊戲裡的 fAGE（剩餘還是已過時間要實測）。
+ReadGameSkillFacts(pid) {
+    if !GameOffset("SkillFactOffset") || !GameOffset("SkillFactCount") || !GameOffset("SkillFactSize")
+        return ""
+    charBase := GameCharBase(pid)
+    if !charBase
+        return ""
+    cnt := GameOffset("SkillFactCount"), sz := GameOffset("SkillFactSize")
+    buf := GameReadBuf(GameProcHandle(pid), charBase + GameOffset("SkillFactOffset"), cnt * sz)
+    if !buf
+        return ""
+    out := []
+    Loop cnt {
+        at := (A_Index - 1) * sz
+        mid := NumGet(buf, at + GameOffset("SkillFactIdOffset"), "UShort"), sid := NumGet(buf, at + GameOffset("SkillFactIdOffset") + 2, "UShort")
+        if mid = 0xFFFF && sid = 0xFFFF
+            continue
+        age := NumGet(buf, at + GameOffset("SkillFactAgeOffset"), "Float")
+        if !IsNumber(age) || age != age || age < 0 || age > 1000000
+            continue
+        out.Push({id: mid "-" sid, age: age})
+    }
+    ; 問號道具（命運箱子）效果：emType 不是 0 = 作用中，編號記成 "Q<emType>"，age = fTime
+    if GameOffset("QItemFactOffset") {
+        qb := GameReadBuf(GameProcHandle(pid), charBase + GameOffset("QItemFactOffset"), 12)
+        if qb {
+            qt := NumGet(qb, 0, "Int"), qf := NumGet(qb, GameOffset("QItemFactTimeOffset"), "Float")
+            if qt > 0 && qt < 1000 && qf = qf && qf >= 0 && qf <= 1000000
+                out.Push({id: "Q" qt, age: qf})
+        }
+    }
+    return out
+}
+
+; 背包視窗的分頁狀態（H-024）：{open: 視窗開著, page: 目前頁 1～5（0 = 讀不到 / 不確定）, count: 頁數, rows: 可用列數（0 = 讀不到）, btns: [{l,r,t,b}…]（每頁的圓形頁籤，遊戲畫面座標）}。
+; 背包是 6 欄 × 50 列，視窗每次顯示 10 列 = 一頁；「目前頁」= 哪一個「選取中」圓點可見。
+; 沒有這組位置資料（舊的位置檔 / 解析失敗）或讀不到回傳 ""。
+ReadGameInvUi(pid) {
+    global gameOffsets
+    if !GameOffsetsReady(pid) || !GameOffset("InnerInterfaceRva") || !GameOffset("InnerInvWindowOffset") || !GameOffset("InvPageButtonOffset") || !GameOffset("InvPageButtonSetOffset")
+        return ""
+    h:=GameProcHandle(pid),base:=h ? GetGameModuleBase(pid,h) : 0
+    if !base
+        return ""
+    inner:=base+GameOffset("InnerInterfaceRva")
+    vf:=GameReadNum(h,inner,"Ptr"),vfOk:=false
+    if vf=""
+        return ""
+    for s in StrSplit(gameOffsets.Get("InnerInterfaceVftableRvas",""),"|")
+        if s!="" && Integer(s)=vf-base
+            vfOk:=true
+    if !vfOk
+        return ""
+    iw:=GameReadNum(h,inner+GameOffset("InnerInvWindowOffset"),"Ptr")
+    if iw="" || !iw
+        return ""
+    open:=GameReadNum(h,iw+GameOffset("UiVisibleOffset"),"UInt")=1
+    pg:=GameReadNum(h,iw+GameOffset("InvWindowPageOffset"),"Ptr")
+    cnt:=GameOffset("InvPageButtonCount")
+    if pg="" || !pg || cnt<1 || cnt>8
+        return ""
+    res:={open:open,page:0,count:cnt,rows:0,btns:[]}
+    ; 可用的列數（背包最下面幾列是打叉的、不能放東西：實機 46 列 = 第 5 頁只有前 6 列可用）；讀不到 = 0
+    if GameOffset("InvPageUsableRowsOffset") {
+        ur:=GameReadNum(h,pg+GameOffset("InvPageUsableRowsOffset"),"UInt")
+        if ur!="" && ur>=1 && ur<=cnt*10
+            res.rows:=ur
+    }
+    selected:=0
+    Loop cnt {
+        i:=A_Index-1
+        bs:=GameReadNum(h,pg+GameOffset("InvPageButtonSetOffset")+i*8,"Ptr")
+        b:=GameReadNum(h,pg+GameOffset("InvPageButtonOffset")+i*8,"Ptr")
+        if bs="" || b="" || !bs || !b
+            return ""
+        sv:=GameReadNum(h,bs+GameOffset("UiVisibleOffset"),"UInt")
+        if sv=""
+            return ""
+        if sv=1
+            selected:=selected ? -1 : A_Index   ; 兩個以上同時選取 = 資料不可信
+        rb:=GameReadBuf(h,b+GameOffset("UiRectOffset"),16)
+        r:=0
+        if rb {
+            l:=NumGet(rb,0,"Float"),rt:=NumGet(rb,4,"Float"),t:=NumGet(rb,8,"Float"),bt:=NumGet(rb,12,"Float")
+            ok:=true
+            for v in [l,rt,t,bt]
+                if !IsNumber(v) || v!=v || Abs(v)>5000
+                    ok:=false
+            ; 遊戲畫面是 1024x768：頁籤一定在畫面裡（位置偏移錯了讀到的垃圾值不能拿去點）
+            if ok && rt>l && bt>t && l>=0 && rt<=1100 && t>=0 && bt<=800
+                r:={l:l,r:rt,t:t,b:bt}
+        }
+        res.btns.Push(r)
+    }
+    res.page:=selected>0 ? selected : 0
+    return res
+}
+
+; 道具快捷欄（畫面下方 6 格）：[{act, key: "主-子" 或 ""（空格）}…]；沒有這組位置資料 / 讀不到回傳 ""。
+; act = 1 才是道具；其他（0 = 空）不是。
+ReadGameActionQuick(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("ActionQuickOffset") || !GameOffset("ActionQuickSize") || !GameOffset("ActionSlotIdOffset")
+        return ""
+    cb:=GameCharBase(pid)
+    cnt:=GameOffset("ActionQuickCount"),sz:=GameOffset("ActionQuickSize")
+    if !cb || cnt<1 || cnt>12 || sz<8 || sz>64
+        return ""
+    h:=GameProcHandle(pid)
+    buf:=GameReadBuf(h,cb+GameOffset("ActionQuickOffset"),cnt*sz)
+    if !buf
+        return ""
+    out:=[]
+    Loop cnt {
+        at:=(A_Index-1)*sz
+        act:=NumGet(buf,at+GameOffset("ActionSlotActOffset"),"UShort")
+        mid:=NumGet(buf,at+GameOffset("ActionSlotIdOffset"),"UShort"),sid:=NumGet(buf,at+GameOffset("ActionSlotIdOffset")+2,"UShort")
+        out.Push({act:act,key:(act=1 && !(mid=0xFFFF && sid=0xFFFF)) ? mid "-" sid : ""})
+    }
+    return out
+}
+
+; 道具快捷欄各格「現在設定的鍵」（遊戲裡「快捷鍵設定」可以改成別的鍵，所以不能假設是 Q W E A S D）。
+; 回傳 ["q","w","e","a","s","d"]（認不得的掃描碼 = ""）；沒有這組位置資料 / 讀不到回傳 ""。
+ReadGameQuickKeys(pid) {
+    static names:=Map(2,"1",3,"2",4,"3",5,"4",6,"5",7,"6",8,"7",9,"8",10,"9",11,"0",
+        16,"q",17,"w",18,"e",19,"r",20,"t",21,"y",22,"u",23,"i",24,"o",25,"p",
+        30,"a",31,"s",32,"d",33,"f",34,"g",35,"h",36,"j",37,"k",38,"l",
+        44,"z",45,"x",46,"c",47,"v",48,"b",49,"n",50,"m",
+        59,"F1",60,"F2",61,"F3",62,"F4",63,"F5",64,"F6",65,"F7",66,"F8",67,"F9",68,"F10",87,"F11",88,"F12")
+    if !GameOffsetsReady(pid) || !GameOffset("QuickKeysRva")
+        return ""
+    cnt:=GameOffset("QuickKeysCount")
+    h:=GameProcHandle(pid),base:=h ? GetGameModuleBase(pid,h) : 0
+    if !base || cnt<1 || cnt>12
+        return ""
+    buf:=GameReadBuf(h,base+GameOffset("QuickKeysRva"),cnt*4)
+    if !buf
+        return ""
+    out:=[]
+    Loop cnt
+        out.Push(names.Get(NumGet(buf,(A_Index-1)*4,"Int"),""))
+    return out
+}
+
+; 寵物現在是否在外面：1 = 在外面，0 = 不在，讀不到（舊位置檔 / 讀取失敗）回傳 -1。
+ReadGamePetOut(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("PetValidOffset")
+        return -1
+    inst:=GameGaeaBase(pid)
+    v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("PetValidOffset"),"UChar") : ""
+    return v="" ? -1 : (v ? 1 : 0)
+}
+; 登入 / 選伺服器 / 選角畫面的控制項（COuterInterface 各頁）：每個控制項的名稱、位置（遊戲畫面座標，1024x768）與是否顯示。
+; 回傳 {pages: Map(頁名 → {ptr,shown,l,r,t,b}), ctrls: [{page,depth,name,shown,l,r,t,b}]}；
+; 沒有這組位置資料 / 物件還沒建立 / 已進入遊戲（頁面被遊戲釋放）時 pages 為空；讀不到回傳 ""。
+; shown = 這個控制項自己和上面每一層都是顯示狀態（實際看得到）。
+ReadGameLoginUi(pid, depth:=2) {
+    static pageKeys:=["Server","Login","Char","CharLeft","SecPass","Message","Modal","Wait"]
+    if !GameOffsetsReady(pid) || !GameOffset("OuterInstanceRva") || !GameOffset("UiChildListOffset")
+        return ""
+    h:=GameProcHandle(pid),base:=h ? GetGameModuleBase(pid,h) : 0
+    if !base
+        return ""
+    inst:=base+GameOffset("OuterInstanceRva")
+    vf:=GameReadNum(h,inst,"Ptr")
+    if vf=""
+        return ""
+    ok:=false
+    for s in StrSplit(gameOffsets.Get("OuterVftableRvas",""),"|")
+        if s!="" && Integer(s)=vf-base
+            ok:=true
+    if !ok
+        return ""
+    res:={pages:Map(),ctrls:[]}
+    for key in pageKeys {
+        po:=GameOffset("Outer" key "PageOffset")
+        if !po
+            continue
+        p:=GameReadNum(h,inst+po,"Ptr")
+        if p="" || !p
+            continue
+        r:=GameUiRect(h,p)
+        if !r
+            continue
+        shown:=GameReadNum(h,p+GameOffset("UiVisibleOffset"),"UChar")
+        res.pages[key]:={ptr:p,shown:shown!="" && shown!=0,l:r.l,r:r.r,t:r.t,b:r.b}
+        GameUiWalk(h,p,key,0,depth,res.pages[key].shown,res.ctrls)
+    }
+    return res
+}
+
+GameUiRect(h, p) {
+    b:=GameReadBuf(h,p+GameOffset("UiRectOffset"),16)
+    if !b
+        return 0
+    l:=NumGet(b,0,"Float"),r:=NumGet(b,4,"Float"),t:=NumGet(b,8,"Float"),bt:=NumGet(b,12,"Float")
+    for v in [l,r,t,bt]
+        if !IsNumber(v) || v!=v || Abs(v)>5000
+            return 0
+    return r>=l && bt>=t ? {l:l,r:r,t:t,b:bt} : 0
+}
+
+GameUiWalk(h, p, page, d, maxDepth, parentShown, out) {
+    if d>=maxDepth
+        return
+    head:=GameReadNum(h,p+GameOffset("UiChildListOffset"),"Ptr"),cnt:=GameReadNum(h,p+GameOffset("UiChildListOffset")+8,"UInt64")
+    if !head || cnt="" || cnt>300
+        return
+    node:=GameReadNum(h,head,"Ptr")
+    Loop cnt {
+        if !node || node=head
+            break
+        c:=GameReadNum(h,node+16,"Ptr")
+        if c {
+            r:=GameUiRect(h,c)
+            sv:=GameReadNum(h,c+GameOffset("UiVisibleOffset"),"UChar")
+            shown:=parentShown && sv!="" && sv!=0
+            if r {
+                nm:=""
+                try nm:=ReadStdString(h,c+GameOffset("UiNameOffset"),"CP950")
+                out.Push({page:page,depth:d+1,name:nm,shown:shown,l:r.l,r:r.r,t:r.t,b:r.b,ptr:c})
+            }
+            GameUiWalk(h,c,page,d+1,maxDepth,shown,out)
+        }
+        node:=GameReadNum(h,node,"Ptr")
+    }
+}
+; 選角畫面的角色清單（DxGlobalStage.m_LobyStage）：{inLoby, count, selected, chars:[{id,name,level}]}。
+; inLoby = 目前的遊戲階段就是大廳（登入 / 選角）；selected = 目前選到的格（從 0 開始，沒選 / 不明為 -1）。
+; 沒有這組位置資料 / 讀不到回傳 ""。
+ReadGameLobyChars(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("GlobalStageRva") || !GameOffset("LobyCharInfoOffset")
+        return ""
+    h:=GameProcHandle(pid),base:=h ? GetGameModuleBase(pid,h) : 0
+    if !base
+        return ""
+    gs:=base+GameOffset("GlobalStageRva")
+    active:=GameReadNum(h,gs+GameOffset("GlobalStageActiveOffset"),"Ptr")
+    loby:=gs+GameOffset("GlobalStageLobyOffset")
+    if active=""
+        return ""
+    n:=GameReadNum(h,loby+GameOffset("LobyCharCountOffset"),"Int")
+    sel:=GameReadNum(h,loby+GameOffset("LobyCharSelectOffset"),"UInt")
+    if n="" || n<0 || n>16
+        return ""
+    res:={inLoby:active=loby,count:n,selected:(sel!="" && sel<n ? sel : -1),chars:[]}
+    sz:=GameOffset("LobyCharInfoSize")
+    Loop n {
+        at:=loby+GameOffset("LobyCharInfoOffset")+(A_Index-1)*sz
+        nb:=GameReadBuf(h,at+GameOffset("LobyCharNameOffset"),33)
+        if !nb
+            return ""
+        res.chars.Push({id:GameReadNum(h,at+GameOffset("LobyCharIdOffset"),"UInt"),name:StrGet(nb,"CP950"),level:GameReadNum(h,at+GameOffset("LobyCharLevelOffset"),"UShort")})
+    }
+    return res
+}
 ReadGameCharClass(pid) {
     charBase:=GameCharBase(pid)
     v:=charBase ? GameReadNum(GameProcHandle(pid),charBase+GameOffset("CharClassOffset"),"UInt") : ""

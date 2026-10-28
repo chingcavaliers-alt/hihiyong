@@ -108,7 +108,7 @@ body{margin:0;font-family:var(--font);font-size:14px;line-height:1.5;background:
 .brand small{display:block;font-weight:400;color:var(--side-muted);font-family:var(--font);font-size:12px;letter-spacing:0}
 .logo{width:36px;height:36px;flex:none;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.35))}
 .nav{display:flex;flex-direction:column;gap:2px}
-.nav-group{font-size:11px;color:var(--side-muted);letter-spacing:.8px;padding:16px 12px 6px}
+#navBottom{padding-top:6px;padding-bottom:10px}.nav-group{font-size:11px;color:var(--side-muted);letter-spacing:.8px;padding:16px 12px 6px}
 .nav button{border:0;background:transparent;color:var(--side-text);text-align:left;padding:9px 12px;border-radius:8px;font:inherit;font-size:14px;cursor:pointer;display:flex;gap:10px;align-items:center;transition:background .12s,color .12s}
 .ni{display:inline-flex;width:18px;height:18px;flex:none}
 .emo{font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif;font-style:normal;line-height:1}
@@ -134,6 +134,7 @@ body{margin:0;font-family:var(--font);font-size:14px;line-height:1.5;background:
 .subtabs button:hover{color:var(--text)}
 .subtabs button.active{color:var(--accent);border-bottom-color:var(--accent)}
 .subpage{display:none}.subpage.active{display:block}
+.dev-part{display:none}.dev-part.active{display:block}.dev-part>.card+.card,.dev-part>.card+.table-card,.dev-part>.table-card+.card{margin-top:14px}.dev-tabs .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font:inherit;cursor:pointer;color:var(--text-2)}.dev-tabs .chip.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .subpage>.card+.card,.subpage>.card+.table-card,.subpage>.table-card+.card{margin-top:14px}
 /* 區塊說明預設收起，按標題旁的 ⓘ 才顯示 */
 .info-btn{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;width:20px;height:20px;font:700 12px/1 var(--font);cursor:pointer;padding:0;flex:none}
@@ -284,13 +285,26 @@ tbody tr:hover td{background:var(--surface-2)}
 .rec-col b{display:block;margin-top:4px;color:var(--text)}.rec-col small{color:var(--muted)}
 .hour-chart{position:relative}.hour-chart svg{width:100%;height:auto;display:block;overflow:visible}
 .hour-chart .bar{fill:var(--accent)}.hour-chart .bar.now{fill:var(--accent-ink)}
+.hour-chart .bar.out{opacity:.22}.hour-chart .band{fill:var(--accent);opacity:.09}
 .hour-chart .grid{stroke:var(--line);stroke-width:1}.hour-chart .axis{fill:var(--muted);font-size:10px}
 .hour-chart .hit{fill:transparent;cursor:default}.hour-chart .hit:hover+.hl{opacity:1}
 .hour-tip{position:absolute;pointer-events:none;background:#151922;color:#fff;font-size:12px;padding:5px 8px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-110%);opacity:0;transition:opacity .08s}
 .hour-tip.show{opacity:1}
 .select-inline{margin-left:auto;font-size:12px;color:var(--muted);font-weight:400;display:flex;align-items:center;gap:6px}.select-inline select{padding:4px 8px;font-size:13px}
 .inv-card details{margin-top:6px}
-.kill-map{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin:6px 0 2px}
+.inv-card .hp-head .hp-name{margin-right:auto;text-align:left}
+.drag-h{cursor:grab;color:var(--muted);font-size:18px;line-height:1;padding:0 6px 0 0;user-select:none}.drag-h:active{cursor:grabbing}
+.inv-card.dragging{opacity:.45}.inv-card.drop-target{outline:2px dashed var(--accent,#4f6cf0);outline-offset:-2px}
+.daily-cfg-opts{position:relative}.dd{position:relative;display:inline-block}.dd-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:210px;padding:7px 12px;border:1px solid var(--line,#d6dae3);border-radius:8px;background:var(--card,#fff);color:inherit;font:inherit;cursor:pointer;text-align:left}.dd-btn:hover{border-color:var(--accent,#4f6cf0)}.dd-caret{color:var(--muted)}
+.dd-list{position:absolute;z-index:50;top:calc(100% + 4px);left:0;min-width:250px;background:var(--card,#fff);border:1px solid var(--line,#d6dae3);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:6px}.dd-list[hidden]{display:none}
+.dd-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;user-select:none}.dd-item:hover{background:var(--hover,#f1f3f9)}.dd-item.on{font-weight:600}.dd-check{display:inline-block;width:18px;color:var(--ok,#1a8f4a);font-weight:700;text-align:center}
+.dd-foot{border-top:1px solid var(--line-2,#eceef4);margin-top:4px;padding:8px 10px 4px;font-size:12px;color:var(--muted)}
+.card-toggle{margin-left:auto;border:1px solid var(--line,#d6dae3);background:var(--card,#fff);color:var(--muted);border-radius:8px;padding:3px 10px;font:inherit;font-size:12px;cursor:pointer}.card-toggle::before{content:'▾ 收合'}.card.collapsed .card-toggle::before{content:'▸ 展開'}.card.collapsed>:not(.section-title){display:none}
+.kill-map{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin:6px 0 2px;cursor:pointer}
+.kill-sec>summary{cursor:pointer;list-style:none;white-space:nowrap}.kill-sec>summary::-webkit-details-marker{display:none}.kill-sec>summary::before{content:'▾';color:var(--muted)}.kill-sec:not([open])>summary::before{content:'▸'}
+.kill-map-d>summary{list-style:none}.kill-map-d>summary::-webkit-details-marker{display:none}.kill-map-d>summary::before{content:'▸ ';color:var(--muted)}.kill-map-d[open]>summary::before{content:'▾ '}
+.kill-map-d>summary.kill-map{justify-content:flex-start;gap:6px}.kill-map-d>summary.kill-map span{margin-left:auto}
+.kill-map-d .item-list{max-height:260px;overflow:auto}
 .kill-map span{color:var(--muted);font-weight:normal}
 .inv-card details>summary{list-style:none;font-size:13px;padding:4px 0}
 .inv-card details>summary::-webkit-details-marker{display:none}
@@ -322,7 +336,7 @@ tbody tr:hover td{background:var(--surface-2)}
  .nav-group{font-size:0;padding:0;margin:10px 10px 6px;border-top:1px solid var(--side-2)}
  .nav button{justify-content:center;font-size:0;padding:10px 0;gap:0}
  .nav button .ni{width:auto;height:auto}.nav button .ni .emo{font-size:18px}
- .foot{display:none}
+ .foot{display:none}#navBottom{margin-top:auto}
  .sub{display:none}
 }
 @media(max-width:820px){
@@ -336,13 +350,14 @@ tbody tr:hover td{background:var(--surface-2)}
  .role-stats{gap:6px}
 }
 /* v1.3.24.0 每日道具：每個角色要換哪些、回城或原地換 */
-.daily-cfg-row{display:grid;grid-template-columns:130px 1fr 280px;gap:10px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.daily-cfg-row{display:grid;grid-template-columns:130px minmax(0,1fr) 420px;gap:10px 16px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
 .daily-cfg-row:first-child{border-top:0}
 .daily-cfg-opts{display:flex;flex-wrap:wrap;gap:6px 14px}
 .daily-cfg-opts label{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .daily-cfg-side{display:flex;gap:8px;align-items:center}
-.daily-cfg-side select{flex:0 0 auto}.daily-cfg-side input{flex:1;min-width:0}
+.daily-cfg-side select{flex:0 0 auto}.daily-cfg-side input{flex:1;min-width:0}.daily-cfg-side select.wpn{flex:1;min-width:0;max-width:100%;text-overflow:ellipsis}
 .daily-cfg-off{opacity:.55}
+.lc-row{display:grid;grid-template-columns:130px 280px 1fr;gap:10px 16px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.lc-row:first-child{border-top:0}.lc-row select{width:100%}@media (max-width:1000px){.lc-row{grid-template-columns:1fr}}
 /* H-015 掉落率長條（長度用開根號，小機率也看得到） */
 .drop-barbox{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}.drop-bar{height:8px;background:var(--accent);border-radius:4px}
 @media (max-width:1000px){.daily-cfg-row{grid-template-columns:1fr}}
@@ -351,18 +366,17 @@ tbody tr:hover td{background:var(--surface-2)}
 <body><div class="app">
 <aside class="side"><div class="brand"><img class="logo" id="appLogo" alt="" src="../HiHiyong.ico" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='../HiHiyong_default.ico';}"><div>HIHIYONG<small>多帳號管理器</small></div></div>
 <nav class="nav" id="nav">
-<div class="nav-group">日常</div>
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
-<div class="nav-group">工具與設定</div>
-<button data-page="tools"><span class="ni" data-icon="logs"></span>工具</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav>
-<div class="foot">v1.3.24.0 · Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div></aside>
-<main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
+<button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
+<div class="foot">v1.3.39.0 · Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
+<main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
 <section class="page active" id="home">
 <div class="home-hero">
  <div class="hero-main">
   <div class="hero-line"><span id="healthBadge" class="status-pill">● 檢查中</span><h2 id="homeSummary">讀取中…</h2></div>
-  <div class="hero-sub"><span>🌐 <span id="homeNetworkStatus">尚未檢查</span></span><span id="homeAttention"></span></div>
+  <div class="hero-sub"><span id="homeAttention"></span></div>
  </div>
  <div class="hero-actions">
   <button class="btn primary" onclick="send('batchStart');showToast('▶ 已送出啟動勾選帳號')">▶ 啟動勾選帳號</button>
@@ -398,8 +412,15 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card" style="margin-top:14px">
  <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>每個角色要換哪些道具</div>
  <div class="hint">勾選要自動更換的項目，沒勾的禮盒不打開、裝備欄不動，到期提醒也只看有勾的項目；全部不勾 = 這個角色不自動更換（若上次換到一半中斷，仍會先穿回脫下的裝備、回怪區開 F6）。換完一律 W 前點到怪區並開啟 F6，請確認每個角色都設好 W 前點。</div>
- <div class="hint" style="margin-top:6px"><b>🏙️ 回城換</b>：Q 回城換完再 W 回怪區（最穩，到期的舊道具過圖就會消失）。<b>📍 原地換</b>：不回城，原地關掉自動攻擊、換完再恢復；換造型時會先脫下裝備，<b>怪物多的地方可能被打</b>，建議只在安全的地方使用。</div>
+ <div class="hint" style="margin-top:6px"><b>🏙️ 回城換</b>：Q 回城換完再 W 回怪區（最穩，到期的舊道具過圖就會消失）。<b>🧭 自動</b>：看道具快捷欄，起點卡和前點卡都在就回城換，缺一張就原地換。<b>📍 原地換</b>：不回城，原地關掉自動攻擊、換完再恢復；換造型時會先脫下裝備，<b>怪物多的地方可能被打</b>，建議只在安全的地方使用。</div>
  <div id="dailyCfgRows" style="margin-top:8px"><div class="hint">讀取中…</div></div>
+ <div class="daily-cardkeys" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line-2,#eceef4)"><b>🃏 傳送卡按鍵（備用設定）</b>
+  <div class="hint" style="margin-top:4px">平常程式會從<b>道具快捷欄（畫面下方 6 格）</b>自動找出起點卡、前點卡放在哪一格，再按那一格的鍵，所以每個角色放的位置不同也沒關係。每一格的鍵也直接讀遊戲的「快捷鍵設定」（你改成別的鍵也會跟著變）。<b>只有讀不到遊戲資料時</b>才會用下面手動填的鍵（快捷欄各格的鍵由左到右填，遊戲預設是 Q W E A S D）。</div>
+  <div class="inv-toolbar" style="margin-top:8px">
+   <label>起點卡鍵 <input id="dcStart" type="text" maxlength="3" style="width:56px" onchange="saveDailyCardKeys()"></label>
+   <label>前點卡鍵 <input id="dcPrev" type="text" maxlength="3" style="width:56px" onchange="saveDailyCardKeys()"></label>
+   <label title="平常直接讀遊戲裡的快捷鍵設定；只有讀不到時才用這裡的鍵">快捷欄各格的鍵（備用） <input id="dcQuick" type="text" maxlength="30" style="width:170px" placeholder="例如 q,w,e,a,s,d" onchange="saveDailyCardKeys()"></label>
+  </div></div>
 </div>
 <div class="card" style="margin-top:14px">
  <div class="section-title"><span class="ni"><span class="emo">🎬</span></span>示範錄製 <span class="pill" id="recBadge">未錄製</span></div>
@@ -424,15 +445,22 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="section-title"><span class="ni"><span class="emo">📅</span></span>每日背包統計 </div>
  <div class="inv-toolbar">
   <label>日期 <select id="invStatsDay" onchange="requestInvStats(this.value)"></select></label>
+  <label title="只統計這段時間的收益（整點；例如 10:00～13:00 = 10、11、12 點）">時段 <select id="invFrom" onchange="invRangeChanged()"></select> ～ <select id="invTo" onchange="invRangeChanged()"></select></label>
+  <button class="btn soft" onclick="invRangeAll()" title="統計整天">整天</button>
   <button class="btn soft" onclick="requestInvStats()">重新整理</button>
-  <button class="btn soft" onclick="send('invstatsexport',{value:invStatsSelected||''})">匯出 CSV</button>
   <span class="account-sub" id="invStatsHint">讀取中…</span>
+ </div>
+ <div class="inv-toolbar" style="margin-top:8px">
+  <button class="btn soft" onclick="invExport('detail')" title="目前日期與時段的逐小時明細。用 Excel 開啟後可依日期、時段、角色、道具篩選">📄 匯出明細 CSV</button>
+  <button class="btn soft" onclick="invExport('all')" title="所有日期的逐小時明細（一個檔案）">📄 全部日期明細</button>
+  <button class="btn soft" onclick="invExport('summary')" title="每天每個角色一列：金幣、拾取、擊殺">📊 每日摘要</button>
  </div>
 </div>
 <div class="grid4" id="invStatsTotals" style="margin-top:14px"></div>
-<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⏱️</span></span>每小時收益<label class="select-inline">角色 <select id="hourRole" onchange="renderHourly()"></select></label></div><div class="hour-grid"><div><div class="chart-title">每小時金幣增加 <span class="muted" id="hourMoneySum"></span></div><div class="hour-chart" id="hourMoneyChart"></div></div><div><div class="chart-title">每小時打怪拾取（個） <span class="muted" id="hourItemsSum"></span></div><div class="hour-chart" id="hourItemsChart"></div></div></div></div>
-<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📦</span></span>全部角色合計｜打怪拾取 <span class="pill" id="invStatsTotalPill">—</span></div><div id="invStatsTotalItems"><div class="hint">等待資料…</div></div></div>
-<div id="invStatsRoles" class="hp-grid" style="margin-top:14px"></div>
+<div class="card" id="cardHourly" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⏱️</span></span>每小時收益<label class="select-inline">角色 <select id="hourRole" onchange="renderHourly()"></select></label><button type="button" class="card-toggle" onclick="toggleCard('cardHourly')" title="收合 / 展開這一區"></button></div><div class="hour-grid"><div><div class="chart-title">每小時金幣增加 <span class="muted" id="hourMoneySum"></span></div><div class="hour-chart" id="hourMoneyChart"></div></div><div><div class="chart-title">每小時打怪拾取（個） <span class="muted" id="hourItemsSum"></span></div><div class="hour-chart" id="hourItemsChart"></div></div></div></div>
+<div class="card" id="cardTotals" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📦</span></span>全部角色合計｜打怪拾取 <span class="pill" id="invStatsTotalPill">—</span><button type="button" class="card-toggle" onclick="toggleCard('cardTotals')" title="收合 / 展開這一區"></button></div><div id="invStatsTotalItems"><div class="hint">等待資料…</div></div></div>
+<div class="inv-toolbar" id="invRolesBar" style="margin-top:14px"><b>👥 各角色統計</b><span class="account-sub">拖拉卡片左上的 ⠿ 可以換順序</span><span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap"><button class="btn soft" onclick="killAll(true)" title="展開所有角色的擊殺地圖明細">⚔️ 全部展開</button><button class="btn soft" onclick="killAll(false)" title="收合所有角色的擊殺地圖明細">⚔️ 全部收合</button><button class="btn soft" onclick="resetRoleOrder()" title="角色卡片順序改回預設">↺ 還原角色順序</button></span></div>
+<div id="invStatsRoles" class="hp-grid" style="margin-top:10px"></div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>統計方式：</b>每 5 秒讀取一次各角色的背包、銀行與身上裝備（合併計算），和上一次比較。道具增加計入「打怪拾取」，減少計入「減少」（使用、販賣、丟棄）。</div><div class="hint"><b>角色間轉移：</b>一個角色少了某道具（或金幣），2 分鐘內另一個角色剛好多了一樣的數量，就當成自己角色之間交易或丟給對方，兩邊都不算拾取 / 減少，合計不會重複計算；記在角色卡的「🔁 角色間轉移」。</div><div class="hint"><b>不列入：</b>存取銀行、穿脫裝備、打開禮盒變出的道具、跟 NPC 購買、每日道具（1D）與每日分享禮包。角色重新登入或銀行剛載入時只重新建立基準。</div><div class="tech-note">按「匯出 CSV」可以用 Excel 開啟每天的紀錄。</div></div></details>
 </div>
 <div class="subpage" id="dropRates">
@@ -453,8 +481,73 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="switcher" class="active">🔄 視窗切換</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="inventory">🧹 背包清理</button><button data-sub="mbox">🎁 M 箱</button></div>
-<div class="subpage" id="switcher">
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subpage" id="mbox">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
+ <div class="hint">勾選的角色會在效果快結束時自動開下一個命運箱子：程式把那個角色的視窗切到前面、按開啟鍵，確認命運箱子數量少 1 之後，馬上切回原本在前面的視窗。每個角色各自計時，沒勾的角色不會被切換。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="mboxEnabled" onchange="saveMBoxCfg()"> 啟用命運箱子自動開啟</label>
+  <label>每隔 <input id="mboxInterval" type="number" min="30" max="3600" value="180" style="width:80px" onchange="saveMBoxCfg()"> 秒開一次（效果時間）</label>
+ </div>
+ <div class="account-sub" id="mboxBlocker" style="margin-top:8px"></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👥</span></span>要開命運箱子的角色</div>
+ <div class="table-wrap"><table><thead><tr><th>開</th><th>角色</th><th>開啟鍵</th><th>下次</th><th>背包命運箱子</th><th>狀態</th></tr></thead><tbody id="mboxRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的命運箱子數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。命運箱子快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「🔄 視窗切換」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
+</div>
+<div class="subpage" id="skillcombo">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">⚡</span></span>技能組合快速施法 <span class="pill" id="scPill">—</span></div>
+ <div class="hint">按一個鍵，用最快速度連續送出幾個技能鍵。例如設「觸發鍵 1、技能鍵 1,2,3」：你按 1，程式就把 1、2、3 一口氣送給遊戲。<b>只在遊戲視窗在最前面、而且沒有其他自動操作在用遊戲時才會攔截</b>；其他時候按鍵照常交給遊戲。F7 / F10 是停止鍵，不能拿來用。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="scEnabled" onchange="saveSCCfg()"> 啟用技能組合</label>
+  <label title="打字聊天時按一下暫停，再按一下恢復（不填就沒有暫停鍵）">暫停鍵 <input id="scPauseKey" type="text" maxlength="12" placeholder="例如 Pause" style="width:110px" onchange="saveSCCfg()"></label>
+  <span class="account-sub" id="scState"></span>
+ </div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎛️</span></span>組合清單</div>
+ <div class="table-wrap"><table><thead><tr><th>開</th><th>名稱</th><th>觸發鍵</th><th>送出的技能鍵（逗號分隔，依序）</th><th>送法</th><th title="每個鍵按住幾毫秒（最少 30；太短遊戲會漏掉鍵）">按住 ms</th><th title="依序送時，兩個鍵之間隔幾毫秒">間隔 ms</th><th title="按住觸發鍵就一直重複">連發</th><th></th></tr></thead><tbody id="scRows"><tr><td colspan="9" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="inv-toolbar" style="margin-top:10px"><button class="btn soft" onclick="scAdd()">＋ 新增組合</button><span class="account-sub">最多 12 組。改完會自動儲存。</span></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
+</div><div class="subpage" id="party">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🤝</span></span>自動組隊 <span class="pill" id="partyPill">—</span></div>
+ <div class="hint">全部角色登入完成後，由你指定的「隊長」打開好友名單，把設定好的隊員一個一個邀進隊伍；隊員那邊程式會自動按 Enter 加入。每一步都先確認畫面和遊戲資料對得上才繼續，對不上就停手。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="partyEnabled" onchange="savePartyCfg()"> 啟用自動組隊</label>
+  <label>全部登入完成後再等 <input id="partySettle" type="number" min="0" max="600" value="30" style="width:80px" onchange="savePartyCfg()"> 秒才開始</label>
+ </div>
+ <div class="account-sub" id="partyBlocker" style="margin-top:8px"></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👑</span></span>隊長與隊員</div>
+ <div class="table-wrap"><table><thead><tr><th>隊長</th><th>角色</th><th>要邀請的隊員</th><th>狀態</th><th></th></tr></thead><tbody id="partyRows"><tr><td colspan="5" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>怎麼設定：</b>先勾「隊長」，再勾這位隊長要帶的隊員。隊員必須已經是隊長的遊戲好友（程式不會幫你加好友）。每位隊長各自設定，同一個角色可以同時是別人的隊員。</div><div class="hint"><b>什麼時候組隊：</b>重新登入、載入全部做完，再等上面設定的秒數，才由隊長開始邀請；之後隊員掉線重登回來，會自動補邀。也可以按「立即組隊」馬上做一次。</div><div class="hint"><b>會跳過並通知：</b>隊員已經在別人的隊伍裡（不會叫對方退隊）、離線、不在好友名單、還沒登入完成；同一件事只通知一次。邀請失敗會每分鐘重試，連續 3 次失敗會通知你並休息 10 分鐘。</div><div class="hint"><b>不打擾你：</b>遊戲不接受背景按鍵與滑鼠，所以需要把視窗切到前面操作，做完切回原本的視窗與滑鼠位置；你正在用鍵盤滑鼠時（停 5 秒後才開始）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 示範錄製 / 輪流切換視窗執行中、按下緊急停止時都不會動作，進行到一半遇到也會停手。</div></div></details>
+</div>
+<div class="subpage" id="layout">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🗂️</span></span>遊戲視窗配置</div>
+ <div class="hint">每個角色的視窗位置與大小都會保存。開始監控或重新登入成功後，會依照已記錄的位置自動還原。</div>
+ <div class="actions" style="margin-top:14px">
+  <label class="toggle"><input id="layoutAuto" type="checkbox" onchange="setLayoutAuto(this.checked)"> 啟動監控時自動還原</label>
+  <button class="btn soft" onclick="send('layoutSave')">📍 記錄目前全部位置</button>
+  <button class="btn primary" onclick="send('layoutRestore')">↺ 立即全部還原</button>
+ </div>
+ <div class="status-pill" id="layoutStatus" style="margin-top:12px">待命</div>
+ <div class="hint" style="margin-top:10px">如果記錄的位置在目前沒接上的螢幕，該視窗會先略過，不會被搬到看不到的地方。</div>
+</div>
+<div class="card table-card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
+</div>
+</div>
+<div class="subpage" id="devzone">
+<div class="card" style="margin-bottom:14px"><div class="section-title"><span class="ni"><span class="emo">🚧</span></span>開發中</div><div class="hint">這裡的功能還在調整，可能不夠穩定；要用的話建議先在單一角色上試用。</div>
+<div class="chips dev-tabs" style="margin-top:10px"><button class="chip active" data-dev="switcher" onclick="devShow('switcher')">🔄 視窗切換</button><button class="chip" data-dev="inventory" onclick="devShow('inventory')">🧹 背包清理</button></div></div>
+<div class="dev-part active" id="switcher">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🔄</span></span>遊戲視窗自動切換</div>
  <div class="hint">依設定順序輪流顯示各角色遊戲視窗。每個角色可設定停留時間與切換後自動按鍵；自動登入或恢復期間會暫停切換，避免互相干擾。</div>
@@ -488,39 +581,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>切換清單</div><div class="table-wrap"><table><thead><tr><th>帳號</th><th>遊戲視窗</th><th>加入切換</th><th>停留</th><th>切換後按鍵</th></tr></thead><tbody id="switchRows"></tbody></table></div></div>
 </div>
-<div class="subpage" id="mbox">
-<div class="card">
- <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>M 箱自動開啟 <span class="pill" id="mboxPill">—</span></div>
- <div class="hint">勾選的角色會在效果快結束時自動開下一個 M 箱：程式把那個角色的視窗切到前面、按開啟鍵，確認 M 箱數量少 1 之後，馬上切回原本在前面的視窗。每個角色各自計時，沒勾的角色不會被切換。</div>
- <div class="inv-toolbar" style="margin-top:12px">
-  <label class="toggle"><input type="checkbox" id="mboxEnabled" onchange="saveMBoxCfg()"> 啟用 M 箱自動開啟</label>
-  <label>每隔 <input id="mboxInterval" type="number" min="30" max="3600" value="180" style="width:80px" onchange="saveMBoxCfg()"> 秒開一次（效果時間）</label>
- </div>
- <div class="account-sub" id="mboxBlocker" style="margin-top:8px"></div>
-</div>
-<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👥</span></span>要開 M 箱的角色</div>
- <div class="table-wrap"><table><thead><tr><th>開</th><th>角色</th><th>開啟鍵</th><th>下次</th><th>背包 M 箱</th><th>狀態</th></tr></thead><tbody id="mboxRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
-</div>
-<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的 M 箱數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。M 箱快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「🔄 視窗切換」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
-</div>
-<div class="subpage" id="layout">
-<div class="card">
- <div class="section-title"><span class="ni"><span class="emo">🗂️</span></span>遊戲視窗配置</div>
- <div class="hint">每個角色的視窗位置與大小都會保存。開始監控或重新登入成功後，會依照已記錄的位置自動還原。</div>
- <div class="actions" style="margin-top:14px">
-  <label class="toggle"><input id="layoutAuto" type="checkbox" onchange="setLayoutAuto(this.checked)"> 啟動監控時自動還原</label>
-  <button class="btn soft" onclick="send('layoutSave')">📍 記錄目前全部位置</button>
-  <button class="btn primary" onclick="send('layoutRestore')">↺ 立即全部還原</button>
- </div>
- <div class="status-pill" id="layoutStatus" style="margin-top:12px">待命</div>
- <div class="hint" style="margin-top:10px">如果記錄的位置在目前沒接上的螢幕，該視窗會先略過，不會被搬到看不到的地方。</div>
-</div>
-<div class="card table-card" style="margin-top:14px">
- <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
- <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
-</div>
-</div>
-<div class="subpage" id="inventory">
+<div class="dev-part" id="inventory">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🧹</span></span>① 選擇要清理的角色</div>
  <div class="hint">背包清理有自己的清單。可以從已連接的帳號加入，也可以直接選開著的遊戲視窗；不確定是哪個角色時，先按「顯示視窗」確認。</div>
@@ -568,6 +629,7 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="status-pill" id="invStatus" style="margin-top:10px">待命</div>
 </div>
 </div>
+</div>
 </section>
 <section class="page" id="setup">
 <div class="subtabs"><button data-sub="accounts" class="active">🔑 帳號</button><button data-sub="monitor">🚨 監控</button><button data-sub="settings">🚀 啟動與登入</button><button data-sub="notifyTab">💬 通知與報表</button><button data-sub="logs">🧰 其他</button></div>
@@ -575,7 +637,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔑</span></span>帳號管理</div><div class="hint">新增的帳號預設不監控；填好帳號密碼並連接遊戲視窗後，再到首頁開啟監控。</div>
 <div class="actions" style="margin-top:14px"><button class="btn soft" onclick="send('accountAdd')">＋ 新增帳號</button><button class="btn blue" onclick="saveAcct()">儲存帳號</button><button class="btn danger" onclick="if(confirm('確定刪除目前選取的帳號？遊戲本身不會被關閉。'))send('accountDelete')">刪除帳號</button></div>
 <div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"></div></div>
-<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
+<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔗</span></span>遊戲視窗綁定</div><div class="hint">把帳號和開著的遊戲視窗配對。一般按「自動連接」即可（會依遊戲中的角色名稱配對）；配錯時再手動選擇。</div><div class="formgrid" style="margin-top:16px"><div class="field"><label>目前帳號</label><select id="profileSelectMirror" disabled><option>請在上方選擇帳號</option></select></div><div class="field"><label>遊戲視窗</label><select id="gameSelect" onchange="send('gameSelect',{value:Number(this.value)})"></select></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="send('autoBind')">自動連接遊戲視窗</button><button class="btn soft" onclick="send('refreshGames')">重新整理清單</button><button class="btn soft" onclick="send('bindSelected')">連接選定視窗</button><button class="btn danger" onclick="send('unbindSelected')">解除連接</button><button class="btn soft" onclick="send('showWindow')">顯示遊戲視窗</button><button class="btn soft" onclick="send('recordPosition')">記錄視窗位置</button></div></div></div>
 <div class="subpage" id="monitor">
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">👻</span></span>假在線判定</div>
@@ -588,17 +650,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="field"><label>提醒後再等多久才確認（秒）</label><input id="softConfirm" type="number" min="5" value="30"></div>
 </div><input id="softAuto" type="checkbox" style="display:none"><div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveMonitor()">儲存監控設定</button></div>
 <div class="hint" style="margin-top:10px">「多視窗輔助判定」：好幾個角色同時 60 秒完全沒變化，通常是伺服器卡住，會直接確認為假在線。每個角色要不要自動重新登入，看它自己的「自動恢復」開關。</div></div>
-<div class="card" style="margin-top:14px">
- <div class="section-title"><span class="ni" data-icon="wifi"></span>網路狀態</div>
- <div class="hint">顯示遊戲連線與電腦網路是否正常，方便出問題時對照；不會觸發任何自動操作。</div>
- <div class="formgrid" style="margin-top:12px">
-  <div class="field"><label>網路狀態檢查</label><select id="netEnabled" onchange="networkWatchDirty=true"><option value="1">啟用</option><option value="0">停用</option></select></div>
-  <div class="field"><label>檢查間隔（秒）</label><input id="netInterval" type="number" min="3" max="60" value="5"></div>
- </div>
- <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveNetworkWatch()">儲存</button><button class="btn soft" onclick="location.href='hihiyong://networkwatchtest/'">立即檢查</button></div>
- <div class="table-wrap" style="margin-top:12px"><table><thead><tr><th>遊戲連線</th><th>電腦網路</th><th>最後檢查</th><th>最近一次異常</th></tr></thead><tbody><tr><td id="netTcpStatus">-</td><td id="netInternetStatus">-</td><td id="netLastCheck">-</td><td id="netLastAnomaly">-</td></tr></tbody></table></div>
- <details style="margin-top:12px"><summary>進階設定</summary><div class="formgrid" style="margin-top:10px"><div class="field"><label>路由器位址</label><input id="netGateway" placeholder="留空自動偵測"></div><div class="field"><label>外部網路測試位址</label><input id="netInternet" placeholder="1.1.1.1"></div></div><div class="hint" style="margin-top:8px">路由器：<span id="netGwStatus">-</span>｜遊戲伺服器：<span id="netRemote">-</span></div></details>
-</div><details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint">角色血量會在背景持續偵測，用來判斷死亡、復活與假在線。遊戲視窗被遮住不影響角色血量監控；只有血量無法讀取時才使用畫面辨識作備援。</div></div></details></div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint">角色血量會在背景持續偵測，用來判斷死亡、復活與假在線。遊戲視窗被遮住不影響角色血量監控；只有血量無法讀取時才使用畫面辨識作備援。</div></div></details></div>
 <div class="subpage" id="settings">
 <div class="card" id="setupWizard">
  <div class="section-title"><span class="ni"><span class="emo">✅</span></span>設定檢查</div>
@@ -627,6 +679,9 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="actions" style="margin-top:10px"><button class="btn soft" onclick="send('launcherBrowse')">選擇啟動程式</button><button class="btn blue" onclick="send('postKeys',{value:document.getElementById('webPostKeys').value});setDirty(false);showToast('✓ 啟動設定已儲存')">儲存啟動設定</button></div>
 </div></div>
 <div id="settingsCoords">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🧑‍🤝‍🧑</span></span>登入後選擇角色 <span class="pill" id="lcPill">—</span></div>
+<div class="hint">一個遊戲帳號底下有多隻角色時，選這個帳號重新登入後要進哪一隻：可以選<b>順序</b>（第 1～4 隻，照選角畫面由左到右）或<b>角色名稱</b>。選項是從遊戲的選角清單讀出來的：<b>帳號的遊戲開著時才讀得到</b>，讀過一次後會記住。登入畫面的所有位置都是直接讀遊戲，不需要先記點。</div>
+<div id="lcRows" style="margin-top:8px"></div></div>
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>自動登入點擊位置</div><div id="coordSummary" class="status-pill">讀取中…</div><div id="coordPoints" class="hint" style="margin-top:10px;line-height:1.8"></div>
  <div class="actions" style="margin-top:12px"><button class="btn soft" onclick="send('coordStart')">重新設定 8 個位置</button><button class="btn soft" onclick="send('coordRecord')">記錄目前位置</button><button class="btn soft" onclick="send('coordTest')">測試</button><button class="btn danger" onclick="if(confirm('確定清除全部登入位置？清除後自動登入無法使用，需要重新設定。'))send('coordClear')">清除</button></div>
 </div></div>
@@ -636,7 +691,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </details></div></div>
 </div>
 <div class="subpage" id="notifyTab"><div id="settingsNotify">
-<div class="card"><div class="section-title"><span class="ni"><span class="emo">💬</span></span>Discord 通知</div><div class="formgrid" style="margin-top:12px"><div class="field"><label>斷線 / 自動重新登入通知</label><label class="toggle"><input id="recDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>這台電腦的名稱（顯示在通知裡）</label><input id="discordPc"></div><div class="field"><label>斷線通知網址（Discord Webhook）</label><input id="recWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div><div class="field"><label>死亡 / 復活通知</label><label class="toggle"><input id="deathDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>死亡通知網址（Discord Webhook）</label><input id="deathWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div></div>
+<div class="card"><div class="section-title"><span class="ni"><span class="emo">💬</span></span>Discord 通知</div><div class="formgrid" style="margin-top:12px"><div class="field"><label>斷線 / 自動重新登入通知</label><label class="toggle"><input id="recDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>這台電腦的名稱（顯示在通知裡）</label><input id="discordPc"></div><div class="field"><label>斷線通知網址（Discord Webhook）</label><input id="recWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div><div class="field"><label>死亡 / 復活通知</label><label class="toggle"><input id="deathDiscordOn" type="checkbox"> 啟用</label></div><div class="field"><label>死亡通知網址（Discord Webhook）</label><input id="deathWebhook" type="password" placeholder="貼上 Discord Webhook 網址"></div><div class="field" style="grid-column:1/-1"><label>🔔 死亡警報音（電腦喇叭）</label><div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><label class="toggle"><input id="alarmOn" type="checkbox" onchange="sendAlarmGlobal()"> 啟用總開關</label><span>響 <input id="alarmSec" type="number" min="5" max="300" style="width:80px;display:inline-block" onchange="sendAlarmGlobal()"> 秒</span><button class="btn soft" onclick="send('alarmTest')">測試</button><button class="btn soft" onclick="send('alarmStop')">停止</button></div><div class="hint" style="margin-top:6px">角色死亡超過 30 秒沒復活時才會響。總開關關掉＝所有角色都不響；要只關某個角色，到「設定 → 帳號」取消那個角色的 🔔 死亡警報音。</div></div></div>
  <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="saveNotify()">儲存 Discord 設定</button><button class="btn soft" onclick="send('recoveryTest')">發送測試：斷線通知</button><button class="btn soft" onclick="send('deathTest')">發送測試：死亡通知</button></div><div class="hint" style="margin-top:8px">網址儲存後會加密保存；欄位留空代表沿用原本的網址。</div>
 </div>
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📨</span></span>報表與截圖（發到斷線通知的 Discord）</div>
@@ -652,6 +707,11 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="subpage" id="logs"><div class="card"><div class="section-title"><span class="ni"><span class="emo">🧰</span></span>記錄與工具</div><div class="actions"><button class="btn soft" onclick="send('openLog')">開啟執行紀錄</button><button class="btn soft" onclick="send('equipdump');showToast('📄 正在匯出角色資料')">匯出角色裝備 / 背包 / 銀行</button></div><div class="hint" style="margin-top:8px">遇到問題時，把執行紀錄或匯出的角色資料提供給協助你的人即可。匯出只讀取資料，不會操作遊戲。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🎨</span></span>介面風格</div><div class="hint">只改變管理程式的配色與字體，不影響任何功能。選了馬上套用。</div>
  <div class="theme-list" id="themeList"></div></div>
+<div class="card" id="licenseCard"><div class="section-title"><span class="ni"><span class="emo">🔑</span></span>使用授權 <span class="pill" id="licensePill">讀取中…</span></div>
+ <div class="hint" id="licenseHint">這份程式需要作者授權才能使用。</div>
+ <div class="formgrid" style="margin-top:12px"><div><label>👤 使用者</label><div id="licUser">—</div></div><div><label>📅 有效到</label><div id="licExpire">—</div></div><div><label>🎮 帳號限制</label><div id="licMode">—</div></div><div><label>🖥️ 這台電腦的識別碼</label><div id="licMachine" style="font-family:Consolas,monospace">—</div></div></div>
+ <div class="hint" id="licBlocked" style="display:none;margin-top:10px"></div>
+ <div class="actions"><button class="btn soft" onclick="send('licensecopy');showToast('已複製名稱和識別碼')">📋 複製名稱和識別碼</button><button class="btn soft" onclick="send('licenseinstall')">📂 更換授權檔…</button></div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🖥️</span></span>桌面捷徑</div><div class="hint">從發佈包第一次啟動時，桌面會自動出現「HiHiyong帳號管理」捷徑，之後從桌面開就好；資料夾搬到別的地方，從新位置啟動一次捷徑就會跟著更新。圖示可以換成自己的圖片（png、jpg、bmp 或 ico），會自動縮成正方形。</div>
  <div class="actions"><button class="btn soft" onclick="send('shortcuticon');showToast('請選擇要當圖示的圖片')">🖼️ 更換桌面圖示…</button><button class="btn soft" onclick="send('shortcuticonreset')">↺ 還原預設圖示</button><button class="btn soft" onclick="send('shortcutcreate')">重新建立桌面捷徑</button></div></div></div>
 </section>
@@ -666,9 +726,8 @@ const ICONS={
 function icon(name){return `<span class="emo" aria-hidden="true">${ICONS[name]||''}</span>`;}
 function applyIcons(root=document){root.querySelectorAll('[data-icon]').forEach(e=>{if(!e.dataset.iconDone){e.innerHTML=icon(e.dataset.icon);e.dataset.iconDone='1';}});}
 applyIcons();
-let networkWatchDirty=false;
 
-const titles={home:'首頁',roles:'角色',invstats:'收益統計',tools:'工具',setup:'設定'};
+const titles={home:'首頁',roles:'角色',invstats:'收益統計',tools:'功能',setup:'設定'};
 
 
 function normalizePrimaryMonitorControls(){
@@ -730,7 +789,7 @@ const pageDescriptions={
  daily:'一日道具到期提醒、自動更換與示範錄製',
  logs:'執行紀錄與診斷工具',
  roles:'每個角色的血量、地圖、死亡、擊殺、每日道具與重新登入',
- tools:'視窗切換、視窗位置與背包清理',
+ tools:'命運箱子、自動組隊、技能組合、視窗位置，以及開發中的功能',
  setup:'帳號、監控、自動登入與通知（設定好之後很少需要再動）'
 };
 pageDescriptions.home='角色狀態總覽';
@@ -784,7 +843,7 @@ cleanupLegacyWebUI();
     // v1.3.18.5：不再改寫監控頁標題（原本的空白標題卡已移除）
   }
 })();
-document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');document.getElementById('pageTitle').textContent=titles[b.dataset.page];const ps=document.getElementById('pageSub');if(ps)ps.textContent=pageDescriptions[b.dataset.page]||'';document.querySelector('.main').scrollTop=0;const st=document.querySelector(`#${b.dataset.page} .subtabs button.active`);if(st)onSubShown(st.dataset.sub)});
+document.querySelectorAll('#nav button,#navBottom button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#nav button,#navBottom button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.page).classList.add('active');document.getElementById('pageTitle').textContent=titles[b.dataset.page];const ps=document.getElementById('pageSub');if(ps)ps.textContent=pageDescriptions[b.dataset.page]||'';document.querySelector('.main').scrollTop=0;const st=document.querySelector(`#${b.dataset.page} .subtabs button.active`);if(st)onSubShown(st.dataset.sub)});
 // v1.3.22.0 介面風格：存在主程式設定檔；本機也記一份，開啟時先套用避免閃一下預設色
 const THEMES=[
  ['','石墨（預設）','簡潔專業的淺色',['#121419','#f4f5f7','#3b5bdb','#ffffff']],
@@ -800,7 +859,7 @@ function renderThemeList(){const el=document.getElementById('themeList');if(!el)
 try{const t=localStorage.getItem('hhTheme');if(t)document.documentElement.dataset.theme=t;}catch(e){}
 renderThemeList();
 // v1.3.22.0 側邊欄只剩圖示時，滑鼠移上去顯示名稱
-document.querySelectorAll('#nav button').forEach(b=>{b.title=(b.textContent||'').trim();});
+document.querySelectorAll('#nav button,#navBottom button').forEach(b=>{b.title=(b.textContent||'').trim();});
 // 換了桌面圖示後由主程式呼叫：左上角圖示跟著換
 function refreshLogo(){const l=document.getElementById('appLogo');if(!l)return;l.dataset.fb='';l.src='../HiHiyong.ico?t='+Date.now();}
 // v1.3.22.0 頁內分頁
@@ -815,8 +874,11 @@ function onSubShown(sub){
  if(sub==='recovery')send('recstats');
  if(sub==='dropRates')send('dropindex');
  if(sub==='mbox')send('mboxstate');
+ if(sub==='party')send('partystate');
+ if(sub==='skillcombo')send('skillcombostate');
+ if(sub==='settings')send('loginchars');
  if(sub==='invMain')requestInvStats();
- if(sub==='roleCards'&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats('');
+ if(sub==='roleCards'&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats('',true);
 }
 document.querySelectorAll('.subtabs').forEach(t=>{
  const page=t.closest('.page').id;
@@ -863,6 +925,7 @@ function setLayoutAuto(on){
  showToast(on?'✓ 已開啟監控啟動自動還原':'已關閉監控啟動自動還原');
 }
 
+function sendAlarmGlobal(){ const on=document.getElementById('alarmOn')?.checked?1:0; const sec=Math.max(5,Math.min(300,Number(document.getElementById('alarmSec')?.value||30))); location.href='hihiyong://alarmglobal/'+on+'~'+sec; }
 function toggleAcctPassword(){
  const e=document.getElementById('acctPassword'); if(!e)return;
  e.type=e.type==='password'?'text':'password';
@@ -893,12 +956,6 @@ function setInventoryBindingCheck(idx,on){
  location.href='hihiyong://invbindcheck/'+idx+'~'+(on?1:0);
 }
 
-function saveNetworkWatch(){
- const en=document.getElementById('netEnabled')?.value||'0',gw=(document.getElementById('netGateway')?.value||'').trim(),inet=(document.getElementById('netInternet')?.value||'1.1.1.1').trim(),sec=document.getElementById('netInterval')?.value||'1';
- networkWatchDirty=true;
- location.href='hihiyong://networkwatchsave/'+[en,gw,inet,sec].map(encodeURIComponent).join('~');
- setTimeout(()=>{networkWatchDirty=false;},1500);
-}
 function saveInvStartHotkey(){
  const v=(document.getElementById('invStartHotkey')?.value||'').trim();
  if(!v){showToast('請輸入啟動快捷鍵');return;}
@@ -990,28 +1047,12 @@ if(ips){const old=Number(ips.value||0);ips.innerHTML='<option value="0">請選�
 [['invStartPage',s.inventoryStartPage],['invStartRow',s.inventoryStartRow],['invEndPage',s.inventoryEndPage],['invEndRow',s.inventoryEndRow]].forEach(([id,v])=>{const e=document.getElementById(id);if(e&&document.activeElement!==e)e.value=v||1;});
 const isp=document.getElementById('invSpeed');if(isp&&document.activeElement!==isp)isp.value=s.inventorySpeed||'STABLE';
 const ih=document.getElementById('invSetupHint');if(ih)ih.textContent=s.inventorySetupMode?`記錄中：第 ${s.inventorySetupStep}/9 個位置｜回到遊戲按 ${s.inventorySetupHotkey||'F6'} 記錄滑鼠所在位置`:(s.inventoryConfigured?'✓ 位置已設定':'尚未記錄位置');
-const ne=document.getElementById('netEnabled');if(ne&&!networkWatchDirty&&document.activeElement!==ne)ne.value=s.networkWatchEnabled?'1':'0';
-const ng=document.getElementById('netGateway');if(ng&&document.activeElement!==ng)ng.value=s.networkGateway||'';
-const ni=document.getElementById('netInternet');if(ni&&document.activeElement!==ni)ni.value=s.networkInternetTarget||'1.1.1.1';
-const ns=document.getElementById('netInterval');if(ns&&document.activeElement!==ns)ns.value=s.networkIntervalSec||1;
-[['netGwStatus',netText(s.networkLastGateway)],['netInternetStatus',netText(s.networkLastInternet)],['netTcpStatus',netText(s.networkLastGameTcp)],['netRemote',s.networkLastGameRemote],['netLastCheck',s.networkLastCheck],['netLastAnomaly',s.networkLastAnomaly==='-'?'沒有':s.networkLastAnomaly]].forEach(x=>{const e=document.getElementById(x[0]);if(e)e.textContent=x[1]??'-';});
-const hns=document.getElementById('homeNetworkStatus');
-if(hns){
- if(!s.networkWatchEnabled)hns.textContent='⚪ 未啟用';
- else if(s.networkOutageActive)hns.textContent='🔴 網路異常';
- else if(!s.networkLastCheck||s.networkLastCheck==='-')hns.textContent='🟡 等待檢查';
- else if(s.networkLastGameTcp==='ESTABLISHED')hns.textContent='🟢 遊戲連線正常';
- else hns.textContent='🟢 網路正常';
-}
-const hnc=document.getElementById('homeNetworkCheck');if(hnc)hnc.textContent=`最後檢查 ${s.networkLastCheck||'—'}`;
 const isth=document.getElementById('invStartHotkey');if(isth&&document.activeElement!==isth)isth.value=s.inventoryStartHotkey||'F3';
 const iph=document.getElementById('invPauseHotkey');if(iph&&document.activeElement!==iph)iph.value=s.inventoryPauseHotkey||'F8';
 const ish=document.getElementById('invStopHotkey');if(ish&&document.activeElement!==ish)ish.value=s.inventoryStopHotkey||'F9';
 const ist=document.getElementById('invStatus');if(ist)ist.textContent=`${s.inventoryStatus||'待命'}${s.inventoryTotal?`｜進度 ${s.inventoryProcessed||0} / ${s.inventoryTotal}`:''}`;
 
 }
-// 網路檢查結果（主程式回傳的英文代碼）轉成白話
-function netText(v){v=String(v??'');if(v==='ESTABLISHED')return '🟢 已連線';if(v==='OK')return '🟢 正常';if(v.startsWith('Ping TIMEOUT'))return '🟡 測試無回應（電腦網路仍連線中）';if(v.startsWith('TIMEOUT（'))return '🟡 無回應（不影響遊戲）';if(v==='TIMEOUT')return '🔴 沒有網路';if(v==='無在線 game.exe')return '⚪ 沒有開著的遊戲';if(v==='無 ESTABLISHED TCP')return '🔴 遊戲沒有連線';if(v==='TCP 查詢失敗')return '⚪ 無法檢查';if(v==='未檢查'||v==='')return '尚未檢查';return v;}
 function setState(s){
 renderSwitchPage(s);
 [['monitored',(s.monitoring||0)+' / '+(s.total||0)],['abnormal',s.abnormal||0],['queue',s.queue||0]].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v;});
@@ -1041,7 +1082,7 @@ if(selected){
  }
  if(ap)ap.placeholder=selected.hasPassword?'已載入已儲存密碼':'請輸入密碼';
  if(!window.accountFormDirty){
-   ['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{const e=document.getElementById('acct'+k);if(e)e.checked=({Enabled:selected.enabled,Launch:selected.launch,Death:selected.deathDetect,Notify:selected.deathNotify,Soft:selected.soft})[k]||false;}); const as=document.getElementById('acctSoftAuto');if(as)as.checked=!!selected.softAutoRecover; const af=document.getElementById('acctFirst');if(af)af.checked=!!selected.recoveryFirst;
+   ['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{const e=document.getElementById('acct'+k);if(e)e.checked=({Enabled:selected.enabled,Launch:selected.launch,Death:selected.deathDetect,Notify:selected.deathNotify,Soft:selected.soft})[k]||false;}); const as=document.getElementById('acctSoftAuto');if(as)as.checked=!!selected.softAutoRecover; const af=document.getElementById('acctFirst');if(af)af.checked=!!selected.recoveryFirst; const aal=document.getElementById('acctAlarm');if(aal)aal.checked=selected.deathAlarm!==false;
  }
 } else {
  window.accountFormProfile=0;
@@ -1050,6 +1091,7 @@ const rdo=document.getElementById('recDiscordOn'); if(rdo && !isEditing('recDisc
 const dpc=document.getElementById('discordPc'); if(dpc && !isEditing('discordPc'))dpc.value=s.discordPc||'';
 const rw=document.getElementById('recWebhook'); if(rw)rw.placeholder=s.discordHasWebhook?'已儲存（留空沿用）':'貼上 Discord Webhook 網址';
 const ddo=document.getElementById('deathDiscordOn'); if(ddo && !isEditing('deathDiscordOn'))ddo.checked=!!s.deathDiscordEnabled;
+const alo=document.getElementById('alarmOn'); if(alo && !isEditing('alarmOn'))alo.checked=!!s.alarmEnabled; const als=document.getElementById('alarmSec'); if(als && !isEditing('alarmSec'))als.value=s.alarmSeconds||30;
 const dw=document.getElementById('deathWebhook'); if(dw)dw.placeholder=s.deathDiscordHasWebhook?'已儲存（留空沿用）':'貼上 Discord Webhook 網址';
 const so=document.getElementById('softOn'); if(so && !isEditing('softOn'))so.checked=!!s.softEnabled;
 const si=document.getElementById('softIdle'); if(si && !isEditing('softIdle'))si.value=s.softIdle??90;
@@ -1064,7 +1106,7 @@ const pk=document.getElementById('webPostKeys'); if(pk && !isEditing('webPostKey
 const rt=document.getElementById('repTime'); if(rt && !isEditing('repTime'))rt.value=s.reportDailyTime??'08:00';
 const rs=document.getElementById('repShot'); if(rs && !isEditing('repShot'))rs.value=String(s.reportSnapshotMin??60);
 const re=document.getElementById('repErr'); if(re && !isEditing('repErr'))re.checked=s.reportErrorShots!==false;
-const cs=document.getElementById('coordSummary'); if(cs)cs.textContent=s.coordSetup?`設定中：第 ${s.coordIndex||1}/8 個位置${s.coordTargetValid?'':'｜⚠ 原本的遊戲視窗已關閉'}`:(s.coordConfigured?'✓ 8 個位置都已設定，自動登入可以使用':'⚠ 還沒設定完成，自動登入無法使用');
+const cs=document.getElementById('coordSummary'); if(cs)cs.textContent=s.coordSetup?`設定中：第 ${s.coordIndex||1}/8 個位置${s.coordTargetValid?'':'｜⚠ 原本的遊戲視窗已關閉'}`:(s.loginMemory?'✓ 直接讀遊戲畫面登入，不需要記位置（8 個預設點只在讀不到時備用）':s.coordConfigured?'✓ 8 個位置都已設定，自動登入可以使用':'⚠ 還沒設定完成，自動登入無法使用');
 
 
 const sd=document.getElementById('serverDisconnectState'); if(sd)sd.textContent=`伺服器斷線偵測：開啟｜最近一次：${s.serverDisconnectLast||'沒有發生過'}`;
@@ -1167,21 +1209,19 @@ function renderAccounts(a){
  el.innerHTML=a.map(x=>{const f=friendlyState(x);return `<tr><td><input type="checkbox" ${x.launch?'checked':''} onchange="send('launchcheck',{value:'${x.index}~'+(this.checked?1:0)})" title="套用於批次啟動帳號"></td><td><div class="account-name">${f[0]} ${esc(x.name)}</div></td><td class="${f[2]}">${esc(f[1])}${x.autoAttack===0?'<div class="account-sub warn">💤 自動攻擊關閉</div>':''}${!x.hwnd&&x.enabled?'<div class="account-sub warn" title="到「設定 → 帳號」按「自動連接遊戲視窗」">⚠ 沒有連接遊戲視窗</div>':''}</td><td data-hp-index="${x.index}" class="${x.memHpReadOk?'ok':'muted'}">${homeHpText(x)}</td><td>${esc(x.location||'-')}</td><td><label class="monitor-switch"><input type="checkbox" ${x.enabled?'checked':''} onchange="send('monitorcheck',{value:'${x.index}~'+(this.checked?1:0)});showToast('${esc(x.name)} 監控 '+(this.checked?'ON':'OFF'))">${x.enabled?'ON':'OFF'}</label></td></tr>`}).join('');
 }
 // v1.3.22.0 首頁「目前啟動的功能」：每個功能一個標籤，點了跳到設定
-function goTo(page,sub){document.querySelector(`#nav [data-page="${page}"]`)?.click();if(sub)showSub(page,sub);}
+function devShow(id){document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
+function goTo(page,sub){document.querySelector(`.side [data-page="${page}"]`)?.click();if(page==='tools'&&(sub==='switcher'||sub==='inventory')){showSub('tools','devzone');devShow(sub);return;}if(sub)showSub(page,sub);}
 function renderFeatures(s){
  const el=document.getElementById('featList'); if(!el)return;
  const a=s.accounts||[], en=a.filter(x=>x.enabled), auto=en.filter(x=>x.softAutoRecover).length;
  const inv=String(s.inventoryStatus||'待命'), invBusy=!/待命|完成|終止|停止/.test(inv);
  const shot=Number(s.reportSnapshotMin||0), rep=String(s.reportDailyTime||'').trim();
- const daily=dailyCache?(dailyCache.autorun?'on':'off'):'unk';
+ const daily=dailyCache?((dailyCache.autorun||dailyCache.popupTimeout>0)?'on':'off'):'unk';
  const items=[
   ['🛡️','監控 / 自動重新登入',s.running?'on':'off',s.running?`${en.length} 個角色`:'已停止','home'],
   ['👻','假在線偵測',s.softEnabled?'on':'off',s.softEnabled?`自動恢復 ${auto}/${en.length}`:'','setup','monitor'],
-  ['🔄','視窗自動切換',s.autoSwitchRunning?'on':'off',s.autoSwitchRunning?(s.autoSwitchCurrentName||''):'','tools','switcher'],
   ['🗂️','監控時還原視窗位置',s.layoutAutoRestore?'on':'off','','tools','layout'],
-  ['🧹','背包清理',invBusy?'busy':'off',invBusy?inv:'','tools','inventory'],
   ['🎁','每日道具無人自動更換',daily==='unk'?'off':daily,daily==='unk'?'讀取中':'','roles','daily'],
-  ['🌐','網路檢查',s.networkWatchEnabled?'on':'off','','setup','monitor'],
   ['💬','斷線通知',s.discordEnabled?'on':'off','','setup','notifyTab'],
   ['💀','死亡通知',s.deathDiscordEnabled?'on':'off','','setup','notifyTab'],
   ['📊','每日報表',rep?'on':'off',rep?`每天 ${rep}`:'','setup','notifyTab'],
@@ -1282,6 +1322,7 @@ function saveAcct(){
  if(el)el.addEventListener('change',()=>location.href='hihiyong://accounttoggle/'+k.toLowerCase()+'~'+(el.checked?1:0));
 });
 
+const acctAlarm=document.getElementById('acctAlarm'); if(acctAlarm)acctAlarm.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://deathalarm/'+idx+'~'+(acctAlarm.checked?1:0);});
 const acctFirst=document.getElementById('acctFirst'); if(acctFirst)acctFirst.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://recoveryfirst/'+idx+'~'+(acctFirst.checked?1:0);});
 const acctSoftAuto=document.getElementById('acctSoftAuto'); if(acctSoftAuto)acctSoftAuto.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://softautorecover/'+idx+'~'+(acctSoftAuto.checked?1:0);});
 
@@ -1301,22 +1342,26 @@ function renderHourly(){
  const sum=k=>Array.from({length:24},(_,h)=>chosen.reduce((s,r)=>s+Number((r[k]||[])[h]||0),0));
  const money=sum('hourMoney'), items=sum('hourItems');
  const nowH=d.day===d.today?new Date().getHours():-1;
- drawHourChart('hourMoneyChart',money,v=>fmtMoney(v),nowH);
- drawHourChart('hourItemsChart',items,v=>Number(v).toLocaleString()+' 個',nowH);
- const ms=document.getElementById('hourMoneySum');if(ms)ms.textContent='合計 '+fmtMoney(money.reduce((a,b)=>a+b,0));
- const is=document.getElementById('hourItemsSum');if(is)is.textContent='合計 '+items.reduce((a,b)=>a+b,0).toLocaleString()+' 個';
+ // H-026：選了統計時段，圖上時段外的柱子變淡、時段內有底色，合計也只算時段內
+ const rg=d.range&&d.range.partial?d.range:null, inR=(v,h)=>(!rg||(h>=rg.from&&h<rg.to))?Number(v):0;
+ drawHourChart('hourMoneyChart',money,v=>fmtMoney(v),nowH,rg);
+ drawHourChart('hourItemsChart',items,v=>Number(v).toLocaleString()+' 個',nowH,rg);
+ const hh3=n=>String(n).padStart(2,'0')+':00', lab=rg?'（'+hh3(rg.from)+'～'+hh3(rg.to)+'）':'';
+ const ms=document.getElementById('hourMoneySum');if(ms)ms.textContent='合計'+lab+' '+fmtMoney(money.reduce((a,b,h)=>a+inR(b,h),0));
+ const is=document.getElementById('hourItemsSum');if(is)is.textContent='合計'+lab+' '+items.reduce((a,b,h)=>a+inR(b,h),0).toLocaleString()+' 個';
 }
 // 單一數列長條圖：24 小時，柱頂 4px 圓角、柱間 2px 間隔，滑鼠移上顯示數值（不畫每根柱子的數字）
-function drawHourChart(id,vals,fmt,nowH){
+function drawHourChart(id,vals,fmt,nowH,rg){
  const el=document.getElementById(id); if(!el)return;
  const W=600,H=170,L=34,R=4,T=10,B=20,cw=(W-L-R)/24,max=Math.max(...vals,0);
  const top=max>0?niceMax(max):1, y=v=>T+(H-T-B)*(1-v/top);
  let g='';
+ if(rg)g+=`<rect class="band" x="${L+cw*rg.from}" y="${T}" width="${cw*(rg.to-rg.from)}" height="${H-T-B}"/>`;
  [0,.5,1].forEach(f=>{const v=top*f,yy=y(v);g+=`<line class="grid" x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}"/><text class="axis" x="${L-4}" y="${yy+3}" text-anchor="end">${f?esc(fmt(v).replace(' 個','')):'0'}</text>`;});
  for(let h=0;h<24;h+=3)g+=`<text class="axis" x="${L+cw*h+cw/2}" y="${H-5}" text-anchor="middle">${h}</text>`;
  vals.forEach((v,h)=>{
   const x=L+cw*h+1,w=cw-2,yy=y(v),hh=H-B-yy,r=Math.min(4,w/2,hh);
-  if(v>0)g+=hh>r?`<path class="bar${h===nowH?' now':''}" d="M${x},${H-B} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+w-r} Q${x+w},${yy} ${x+w},${yy+r} V${H-B} Z"/>`:`<rect class="bar" x="${x}" y="${yy}" width="${w}" height="${Math.max(hh,1)}"/>`;
+  if(v>0)g+=hh>r?`<path class="bar${h===nowH?' now':''}${rg&&(h<rg.from||h>=rg.to)?' out':''}" d="M${x},${H-B} V${yy+r} Q${x},${yy} ${x+r},${yy} H${x+w-r} Q${x+w},${yy} ${x+w},${yy+r} V${H-B} Z"/>`:`<rect class="bar" x="${x}" y="${yy}" width="${w}" height="${Math.max(hh,1)}"/>`;
   g+=`<rect class="hit" x="${L+cw*h}" y="${T}" width="${cw}" height="${H-T-B}" data-h="${h}" data-v="${esc(fmt(v))}"/>`;
  });
  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="每小時數值">${g}</svg><div class="hour-tip"></div>`;
@@ -1329,7 +1374,28 @@ function drawHourChart(id,vals,fmt,nowH){
 function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v))),n=v/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p;}
 // v1.3.13.0 每日背包統計
 let invStatsSelected='',invStatsToday='';
-function requestInvStats(day){if(day!==undefined)invStatsSelected=day;send('invstats',{value:invStatsSelected||''});}
+// H-023 自訂統計時段（整點，起含迄不含；整天 = 0～24）。時段只套用在「收益統計」頁；其他頁面要資料時一律要整天。
+let invFrom=0,invTo=24;
+try{const r=JSON.parse(localStorage.getItem('hhInvRange')||'null');if(r&&Number.isInteger(r.f)&&Number.isInteger(r.t)&&r.f>=0&&r.t<=24&&r.t>r.f){invFrom=r.f;invTo=r.t;}}catch(e){}
+function invRangePartial(){return invFrom>0||invTo<24;}
+function invSaveRange(){try{localStorage.setItem('hhInvRange',JSON.stringify({f:invFrom,t:invTo}));}catch(e){}}
+function invFillRange(){
+ const a=document.getElementById('invFrom'),b=document.getElementById('invTo');if(!a||!b)return;
+ const hh=n=>String(n).padStart(2,'0')+':00';
+ a.innerHTML=Array.from({length:24},(_,i)=>`<option value="${i}"${i===invFrom?' selected':''}>${hh(i)}</option>`).join('');
+ b.innerHTML=Array.from({length:24},(_,i)=>i+1).map(i=>`<option value="${i}"${i===invTo?' selected':''}>${hh(i)}</option>`).join('');
+}
+function invRangeChanged(){
+ invFrom=Number(document.getElementById('invFrom').value);invTo=Number(document.getElementById('invTo').value);
+ if(invTo<=invFrom)invTo=Math.min(24,invFrom+1);
+ invSaveRange();invFillRange();requestInvStats();
+}
+function invRangeAll(){invFrom=0;invTo=24;invSaveRange();invFillRange();requestInvStats();}
+function invExport(mode){send('invstatsexport',{value:(invStatsSelected||'')+'|'+invFrom+'|'+invTo+'|'+mode});}
+function requestInvStats(day,full){
+ if(day!==undefined)invStatsSelected=day;
+ send('invstats',{value:(invStatsSelected||'')+(!full&&invRangePartial()?'|'+invFrom+'|'+invTo:'')});
+}
 function fmtNum(n){return n===null||n===undefined?'—':Number(n).toLocaleString();}
 function fmtSigned(n){n=Number(n||0);return `<span class="${n>0?'money-pos':n<0?'money-neg':''}" title="${n.toLocaleString()}">${n>0?'+':''}${fmtMoney(n)}</span>`;}
 // 金幣簡寫：1 億以上顯示「x.xx 億」、1 萬以上顯示「x.x 萬」；完整數字放在滑鼠提示
@@ -1340,12 +1406,28 @@ function invItemTable(list,limit,cols){
  return `<ul class="item-list${cols?' cols':''}">`+shown.map(x=>{const n=x.name||'（未知道具）';return `<li title="${esc(n)}｜ID ${esc(x.key)}"><span class="item-name">${esc(n)}</span><span class="item-count">×${Number(x.count).toLocaleString()}</span></li>`}).join('')+'</ul>'+(limit&&list.length>limit?`<div class="item-more">…另有 ${list.length-limit} 種</div>`:'');
 }
 // v1.3.18.9 每日擊殺：依地圖分組，列出各怪物隻數
-function killBlock(maps){
+// 卡片收合（每小時收益、全部角色合計）：狀態記在瀏覽器
+let cardCollapsed={};
+try{cardCollapsed=JSON.parse(localStorage.getItem('hhCardCollapsed')||'{}')||{};}catch(e){cardCollapsed={};}
+function applyCardState(){Object.keys(cardCollapsed).forEach(id=>{const c=document.getElementById(id);if(c)c.classList.toggle('collapsed',!!cardCollapsed[id]);});}
+function toggleCard(id){const c=document.getElementById(id);if(!c)return;const on=!c.classList.contains('collapsed');c.classList.toggle('collapsed',on);cardCollapsed[id]=on?1:0;try{localStorage.setItem('hhCardCollapsed',JSON.stringify(cardCollapsed));}catch(e){}}
+applyCardState();// H-021 擊殺列表可展開 / 收合：每個角色一個總標題、每張地圖一列（點開才看怪物明細）。
+// 展開狀態記在瀏覽器（每 10 秒重畫也不會被收回去）。預設：總標題展開、地圖收合。
+let killState={};
+try{killState=JSON.parse(localStorage.getItem('hhKillState')||'{}')||{};}catch(e){killState={};}
+function killIsOpen(k,def){return Object.prototype.hasOwnProperty.call(killState,k)?!!killState[k]:def;}
+function killToggle(el){killState[el.dataset.k]=el.open?1:0;try{localStorage.setItem('hhKillState',JSON.stringify(killState));}catch(e){}}
+function killAll(open){document.querySelectorAll('#invStatsRoles details.kill-map-d').forEach(el=>{el.open=open;killState[el.dataset.k]=open?1:0;});
+ try{localStorage.setItem('hhKillState',JSON.stringify(killState));}catch(e){}}
+function killBlock(maps,role){
  if(!maps||!maps.length)return '';
- const total=maps.reduce((s,m)=>s+Number(m.total),0);
- return `<div class="inv-sub">⚔️ 擊殺 <span class="count">${total.toLocaleString()} 隻</span></div>`
-  +maps.map(m=>`<div class="kill-map">🗺️ ${esc(m.map)}<span>${Number(m.total).toLocaleString()} 隻</span></div>`
-   +`<ul class="item-list">`+(m.mobs||[]).map(x=>`<li><span class="item-name">👾 ${esc(x.name)}</span><span class="item-count">×${Number(x.count).toLocaleString()}</span></li>`).join('')+'</ul>').join('');
+ const total=maps.reduce((s,m)=>s+Number(m.total),0), kinds=maps.reduce((s,m)=>s+(m.mobs||[]).length,0);
+ const sk='S|'+(role||'');
+ return `<details class="kill-sec" data-k="${esc(sk)}" ${killIsOpen(sk,true)?'open':''} ontoggle="killToggle(this)"><summary class="inv-sub">⚔️ 擊殺 <span class="count" title="${kinds} 種怪">${total.toLocaleString()} 隻｜${maps.length} 張圖</span></summary>`
+  +maps.map(m=>{const mk='M|'+(role||'')+'|'+m.map;
+   return `<details class="kill-map-d" data-k="${esc(mk)}" ${killIsOpen(mk,false)?'open':''} ontoggle="killToggle(this)"><summary class="kill-map">🗺️ ${esc(m.map)}<span>${(m.mobs||[]).length} 種｜${Number(m.total).toLocaleString()} 隻</span></summary>`
+   +`<ul class="item-list">`+(m.mobs||[]).map(x=>`<li><span class="item-name">👾 ${esc(x.name)}</span><span class="item-count">×${Number(x.count).toLocaleString()}</span></li>`).join('')+'</ul></details>';}).join('')
+  +'</details>';
 }
 function renderInvStats(d){
  invStatsData=d;renderHourly(); if(latestState)renderHpMonitor(latestState.accounts||[],false);
@@ -1353,25 +1435,49 @@ function renderInvStats(d){
  const sel=document.getElementById('invStatsDay');
  if(sel){const opts=(d.days||[]).map(x=>`<option value="${x}"${x===d.day?' selected':''}>${x}${x===d.today?'（今天）':''}</option>`).join('');if(sel.innerHTML!==opts)sel.innerHTML=opts;}
  const hint=document.getElementById('invStatsHint');
- if(hint)hint.textContent=!d.pdbReady?'遊戲資料讀取尚未就緒，暫時無法統計（遊戲更新後第一次啟動需要幾十秒）':d.day===d.today?'自動更新中':'歷史紀錄';
+ const part=!!(d.range&&d.range.partial);
+ const hh2=n=>String(n).padStart(2,'0')+':00';
+ if(hint)hint.textContent=!d.pdbReady?'遊戲資料讀取尚未就緒，暫時無法統計（遊戲更新後第一次啟動需要幾十秒）':(part?`只統計 ${hh2(d.range.from)}～${hh2(d.range.to)}｜`:'')+(d.day===d.today?'自動更新中':'歷史紀錄');
  const t=d.totals||{},gained=t.gained||[],totalCount=gained.reduce((s,x)=>s+Number(x.count),0);
  const tot=document.getElementById('invStatsTotals');
- if(tot)tot.innerHTML=`<div class="card stat"><div class="ico g">${icon('coin')}</div><div><div class="label">金幣淨變化</div><div class="num">${fmtSigned(t.moneyNet)}</div></div></div>`
+ if(tot)tot.innerHTML=`<div class="card stat"><div class="ico g">${icon('coin')}</div><div><div class="label">${part?'該時段金幣淨變化':'金幣淨變化'}</div><div class="num">${fmtSigned(t.moneyNet)}</div></div></div>`
   +`<div class="card stat"><div class="ico b">${icon('trend')}</div><div><div class="label">金幣增加 / 減少</div><div class="num" style="font-size:20px"><span title="${fmtNum(t.moneyGain)}">${fmtMoney(t.moneyGain)}</span> / <span title="${fmtNum(t.moneySpend)}">${fmtMoney(t.moneySpend)}</span></div></div></div>`
   +`<div class="card stat"><div class="ico a">${icon('invstats')}</div><div><div class="label">打怪拾取</div><div class="num" style="font-size:18px">${gained.length} 種 / ${totalCount.toLocaleString()} 個</div></div></div>`
   +`<div class="card stat"><div class="ico b">${icon('people')}</div><div><div class="label">統計角色</div><div class="num">${(d.roles||[]).length}</div></div></div>`;
  const ti=document.getElementById('invStatsTotalItems');if(ti)ti.innerHTML=invItemTable(gained,40,true);
  const tp=document.getElementById('invStatsTotalPill');if(tp)tp.textContent=`${gained.length} 種｜${totalCount.toLocaleString()} 個`;
  const rl=document.getElementById('invStatsRoles');
- if(rl)rl.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const gn=(r.gained||[]).reduce((s,x)=>s+Number(x.count),0);return `<div class="hp-card inv-card"><div class="hp-head"><div class="hp-name">${esc(r.name)}</div><span class="hp-status ${r.live?'good':'off'}">${r.live?'統計中':'未連線'}</span></div>`
-  +`<div class="inv-money"><div><small>開始金幣</small><b title="${fmtNum(r.moneyStart)}">${fmtMoney(r.moneyStart)}</b></div><div><small>目前金幣</small><b title="${fmtNum(r.moneyNow)}">${fmtMoney(r.moneyNow)}</b></div><div><small>今日增加</small><b class="money-pos" title="增加 ${fmtNum(r.moneyGain)}｜減少 ${fmtNum(r.moneySpend)}">+${fmtMoney(r.moneyGain)}</b></div></div>`
-  +killBlock(r.kills)
+ if(rl)rl.innerHTML=(d.roles||[]).length?orderedRoles(d.roles).map(r=>{const gn=(r.gained||[]).reduce((s,x)=>s+Number(x.count),0);return `<div class="hp-card inv-card" data-role="${esc(r.name)}"><div class="hp-head"><span class="drag-h" draggable="true" title="按住這裡拖拉，可以換這個角色的順序">⠿</span><div class="hp-name">${esc(r.name)}</div><span class="hp-status ${r.live?'good':'off'}">${r.live?'統計中':'未連線'}</span></div>`
+  +(part?`<div class="inv-money"><div><small>該時段增加</small><b class="money-pos" title="${fmtNum(r.moneyGain)}">+${fmtMoney(r.moneyGain)}</b></div><div><small>該時段減少</small><b title="${fmtNum(r.moneySpend)}">−${fmtMoney(r.moneySpend)}</b></div><div><small>淨變化</small><b title="${fmtNum(r.moneyNet)}">${fmtSigned(r.moneyNet)}</b></div></div>`+(r.hasHourly===false?`<div class="hint" style="margin:6px 0">⚠ 這天是舊版留下的紀錄，沒有逐小時的道具資料：只算得出金幣增加，道具與金幣減少無法分時段（整天的數字請把時段改成「整天」）。</div>`:''):`<div class="inv-money"><div><small>開始金幣</small><b title="${fmtNum(r.moneyStart)}">${fmtMoney(r.moneyStart)}</b></div><div><small>目前金幣</small><b title="${fmtNum(r.moneyNow)}">${fmtMoney(r.moneyNow)}</b></div><div><small>今日增加</small><b class="money-pos" title="增加 ${fmtNum(r.moneyGain)}｜減少 ${fmtNum(r.moneySpend)}">+${fmtMoney(r.moneyGain)}</b></div></div>`)
+  +killBlock(r.kills,r.name)
   +`<div class="inv-sub">打怪拾取 <span class="count">${(r.gained||[]).length} 種｜${gn.toLocaleString()} 個</span></div>${invItemTable(r.gained,15)}`
   +((r.removed||[]).length?`<details><summary>減少道具（${r.removed.length} 種）</summary>${invItemTable(r.removed)}</details>`:'')
   +(((r.xferIn||[]).length||(r.xferOut||[]).length||r.moneyXferIn||r.moneyXferOut)?`<details><summary>🔁 角色間轉移（不算拾取）</summary>${r.moneyXferIn||r.moneyXferOut?`<div class="account-sub">💰 轉入 ${fmtMoney(r.moneyXferIn||0)}｜轉出 ${fmtMoney(r.moneyXferOut||0)}</div>`:''}${(r.xferIn||[]).length?`<div class="inv-sub">⬅️ 從其他角色收到</div>${invItemTable(r.xferIn)}`:''}${(r.xferOut||[]).length?`<div class="inv-sub">➡️ 給了其他角色</div>${invItemTable(r.xferOut)}`:''}</details>`:'')+`</div>`}).join('')
   :'<div class="hint">這一天還沒有統計資料。角色登入遊戲後會自動開始統計。</div>';
 }
-// H-017 M 箱自動開啟
+// H-022 各角色統計卡可以拖拉排順序（記在瀏覽器；新出現的角色排在最後）
+let roleOrder=[];
+try{roleOrder=JSON.parse(localStorage.getItem('hhRoleOrder')||'[]')||[];}catch(e){roleOrder=[];}
+function orderedRoles(roles){
+ const pos=new Map(roleOrder.map((n,i)=>[n,i]));
+ return roles.map((r,i)=>[r,i]).sort((a,b)=>{const pa=pos.has(a[0].name)?pos.get(a[0].name):1e6+a[1],pb=pos.has(b[0].name)?pos.get(b[0].name):1e6+b[1];return pa-pb;}).map(x=>x[0]);
+}
+function saveRoleOrder(){try{localStorage.setItem('hhRoleOrder',JSON.stringify(roleOrder));}catch(e){}}
+function resetRoleOrder(){roleOrder=[];saveRoleOrder();if(invStatsData)renderInvStats(invStatsData);}
+(function(){
+ let dragging=null;
+ const box=()=>document.getElementById('invStatsRoles');
+ document.addEventListener('dragstart',e=>{const h=e.target.closest&&e.target.closest('.drag-h');if(!h)return;dragging=h.closest('.inv-card');if(!dragging)return;
+  dragging.classList.add('dragging');try{e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragging.dataset.role||'');}catch(x){}});
+ document.addEventListener('dragend',()=>{if(dragging)dragging.classList.remove('dragging');document.querySelectorAll('.inv-card.drop-target').forEach(c=>c.classList.remove('drop-target'));dragging=null;});
+ document.addEventListener('dragover',e=>{if(!dragging)return;const c=e.target.closest&&e.target.closest('.inv-card');if(!c||!box()||!box().contains(c))return;e.preventDefault();
+  document.querySelectorAll('.inv-card.drop-target').forEach(x=>x.classList.remove('drop-target'));if(c!==dragging)c.classList.add('drop-target');});
+ document.addEventListener('drop',e=>{if(!dragging)return;const c=e.target.closest&&e.target.closest('.inv-card');if(!c||!box()||!box().contains(c)||c===dragging)return;e.preventDefault();
+  const cards=[...box().querySelectorAll('.inv-card')];const from=cards.indexOf(dragging),to=cards.indexOf(c);
+  if(from<to)c.after(dragging);else c.before(dragging);
+  roleOrder=[...box().querySelectorAll('.inv-card')].map(x=>x.dataset.role);saveRoleOrder();});
+})();invFillRange();
+// H-017 命運箱子自動開啟
 let mboxSig='';
 function renderMBox(d){
  const en=document.getElementById('mboxEnabled'),iv=document.getElementById('mboxInterval'),bl=document.getElementById('mboxBlocker'),pill=document.getElementById('mboxPill');
@@ -1385,12 +1491,74 @@ function renderMBox(d){
  box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr data-idx="${r.index}" data-name="${esc(r.name)}"><td><input type="checkbox" ${r.on?'checked':''} onchange="saveMBoxRole(this)"></td>`
   +`<td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td>`
   +`<td><input type="text" value="${esc(r.key)}" maxlength="3" style="width:60px" onchange="saveMBoxRole(this)"></td>`
-  +`<td>${r.on?(r.nextIn>0?r.nextIn+' 秒後':(d.enabled?'馬上':'—')):'—'}</td><td>${r.count>=0?r.count+' 個':'—'}</td><td class="account-sub">${esc(r.status||'')}</td></tr>`).join('')
+  +`<td>${r.on?(r.nextIn>0?r.nextIn+' 秒後':(d.enabled?'馬上':'—')):'—'}</td><td>${r.count>=0?r.count+' 個':'—'}</td><td class="account-sub">${esc(r.status||'')}${r.buff?'<br><span title="遊戲角色身上的效果清單（右下角狀態圖示的資料）">'+esc(r.buff)+'</span>':''}</td></tr>`).join('')
   :'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
 }
 function saveMBoxCfg(){send('mboxcfg',{value:`${document.getElementById('mboxEnabled').checked?1:0}~${Math.max(30,Number(document.getElementById('mboxInterval').value)||180)}`});}
 function saveMBoxRole(el){const tr=el.closest('tr');const key=(tr.querySelector('input[type=text]').value||'e').trim();
  send('mboxrole',{value:`${tr.dataset.idx}~${tr.querySelector('input[type=checkbox]').checked?1:0}~${key}~${tr.dataset.name}`});}
+// H-027 技能組合
+function renderSkillCombo(d){
+ const en=document.getElementById('scEnabled'),pk=document.getElementById('scPauseKey'),pill=document.getElementById('scPill'),st=document.getElementById('scState');
+ if(en&&document.activeElement!==en)en.checked=!!d.enabled;
+ if(pk&&document.activeElement!==pk)pk.value=d.pauseKey||'';
+ const on=(d.combos||[]).filter(c=>c.on&&!c.err).length;
+ if(pill)pill.textContent=d.enabled?(d.paused?`已暫停｜${on} 組`:`啟用中｜${on} 組`):'未啟用';
+ if(st)st.textContent=d.enabled?`已送出 ${d.fired||0} 次`:'';
+ const box=document.getElementById('scRows');if(!box)return;
+ if(box.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&document.activeElement.type==='text')return;   // 正在輸入時不重畫
+ const rows=d.combos||[];
+ box.innerHTML=rows.length?rows.map((c,i)=>`<tr data-i="${i}"><td><input type="checkbox" ${c.on?'checked':''} onchange="saveSCList()"></td>`
+  +`<td><input type="text" class="sc-label" value="${esc(c.label)}" maxlength="12" style="width:90px" onchange="saveSCList()"></td>`
+  +`<td><input type="text" class="sc-trigger" value="${esc(c.trigger)}" maxlength="10" style="width:76px" onchange="saveSCList()"></td>`
+  +`<td><input type="text" class="sc-keys" value="${esc(c.keys)}" maxlength="40" style="width:150px" placeholder="例如 1,2,3" onchange="saveSCList()"></td>`
+  +`<td><select class="sc-mode" onchange="saveSCList()"><option value="seq"${c.mode==='all'?'':' selected'}>依序</option><option value="all"${c.mode==='all'?' selected':''}>同時</option></select></td>`
+  +`<td><input type="number" class="sc-hold" value="${c.hold}" min="30" max="500" title="每個鍵按住幾毫秒：最少 30（遊戲大約每 16 毫秒才讀一次鍵盤，按得太短會被漏掉，只放出其中一個技能）" style="width:70px" onchange="saveSCList()"></td>`
+  +`<td><input type="number" class="sc-gap" value="${c.gap}" min="0" max="1000" style="width:70px" onchange="saveSCList()"></td>`
+  +`<td><input type="checkbox" class="sc-rep" ${c.repeat?'checked':''} onchange="saveSCList()"></td>`
+  +`<td><button class="btn soft" onclick="scDel(${i})">刪除</button></td></tr>`
+  +(c.err?`<tr class="sc-err"><td></td><td colspan="8" class="warn">⚠ ${esc(c.err)}</td></tr>`:'')).join('')
+  :'<tr><td colspan="9" class="hint">還沒有組合，按下面「＋ 新增組合」</td></tr>';
+}
+function scCollect(){
+ return [...document.querySelectorAll('#scRows tr[data-i]')].map(tr=>{
+  const g=s=>tr.querySelector(s);
+  const clean=v=>String(v).replace(/[~|\r\n]/g,'').trim();
+  return [g('input[type=checkbox]').checked?1:0,clean(g('.sc-trigger').value),clean(g('.sc-keys').value).replace(/\s+/g,''),g('.sc-mode').value,g('.sc-hold').value||40,g('.sc-gap').value||10,g('.sc-rep').checked?1:0,clean(g('.sc-label').value)].join('~');
+ });
+}
+function saveSCList(){send('skillcombolist',{value:scCollect().join('|')});}
+function scAdd(){const rows=scCollect();if(rows.length>=12)return;rows.push('1~~~all~45~0~0~');send('skillcombolist',{value:rows.join('|')});}
+function scDel(i){const rows=scCollect();rows.splice(i,1);send('skillcombolist',{value:rows.join('|')});}
+function saveSCCfg(){send('skillcombocfg',{value:`${document.getElementById('scEnabled').checked?1:0}~${document.getElementById('scPauseKey').value.trim()}`});}// H-018 自動組隊
+let partySig='';
+function renderParty(d){
+ const en=document.getElementById('partyEnabled'),st=document.getElementById('partySettle'),bl=document.getElementById('partyBlocker'),pill=document.getElementById('partyPill');
+ if(en&&document.activeElement!==en)en.checked=!!d.enabled;
+ if(st&&document.activeElement!==st)st.value=d.settle;
+ const leaders=(d.roles||[]).filter(r=>r.leader).length;
+ if(pill)pill.textContent=d.enabled?`啟用中｜${leaders} 位隊長`:'未啟用';
+ if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
+ const box=document.getElementById('partyRows');if(!box)return;
+ const names=d.names||[];
+ const sig=JSON.stringify([names,(d.roles||[]).map(r=>[r.index,r.name,r.alive,r.leader,r.members])]);
+ if(sig!==partySig){   // 名單或設定變了才重畫（不然你正在點的勾選框會被洗掉）
+  partySig=sig;
+  box.innerHTML=(d.roles||[]).length?d.roles.map(r=>{
+   const others=names.filter(n=>n!==r.name);
+   const mem=r.leader?(others.length?others.map(n=>`<label style="display:inline-block;margin:2px 10px 2px 0"><input type="checkbox" class="party-mem" value="${esc(n)}" ${(r.members||[]).includes(n)?'checked':''} onchange="savePartyRole(this)"> ${esc(n)}</label>`).join(''):'<span class="account-sub">沒有其他角色</span>'):'<span class="account-sub">勾選「隊長」後才能選隊員</span>';
+   const hidden=(r.members||[]).filter(n=>!names.includes(n));   // 沒開啟監控所以沒列出來的既有隊員：存檔時要保留
+   return `<tr data-idx="${r.index}" data-name="${esc(r.name)}" data-hidden="${esc(hidden.join('|'))}"><td><input type="checkbox" class="party-leader" ${r.leader?'checked':''} onchange="savePartyRole(this)"></td>`
+    +`<td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${mem}</td>`
+    +`<td class="account-sub party-status"></td><td>${r.leader&&(r.members||[]).length?`<button class="btn soft" onclick="send('partynow',{value:'${r.index}'})">立即組隊</button>`:''}</td></tr>`;}).join('')
+   :'<tr><td colspan="5" class="hint">沒有開啟監控的角色</td></tr>';
+ }
+ (d.roles||[]).forEach(r=>{const tr=box.querySelector(`tr[data-idx="${r.index}"]`);const c=tr&&tr.querySelector('.party-status');if(c)c.textContent=r.leader?(r.status||''):'';});
+}
+function savePartyCfg(){send('partycfg',{value:`${document.getElementById('partyEnabled').checked?1:0}~${Math.max(0,Math.min(600,Number(document.getElementById('partySettle').value)||0))}`});}
+function savePartyRole(el){const tr=el.closest('tr');const lead=tr.querySelector('.party-leader').checked?1:0;
+ const mem=[...[...tr.querySelectorAll('.party-mem:checked')].map(x=>x.value),...(tr.dataset.hidden?tr.dataset.hidden.split('|'):[])].join('|');
+ send('partyrole',{value:`${tr.dataset.idx}~${lead}~${mem}~${tr.dataset.name}`});}
 // H-016 GitHub 更新：有新版時頂端出現「🆕 有新版」，按了確認才更新
 let updateState=null,updateLastStatus='';
 function renderUpdate(d){
@@ -1398,6 +1566,23 @@ function renderUpdate(d){
  if(b){b.style.display=d.available?'':'none';if(d.available)b.textContent='🆕 有新版 '+d.available.version;}
  if(l)l.textContent=d.checking?'檢查中…':'檢查更新';
  if(d.status&&d.status!==updateLastStatus)showToast(d.status);updateLastStatus=d.status||'';
+}
+// H-042 使用授權：設定→其他的卡片；剩 7 天內頂端出現提醒
+let licWarnShown='';
+function renderLicense(d){
+ const $=id=>document.getElementById(id);if(!$('licenseCard'))return;
+ const ok=d.state==='ok',left=d.daysLeft;
+ $('licensePill').textContent=ok?(d.warn?'⚠️ 即將到期':'✅ 已授權'):'⛔ 無法使用';
+ $('licenseHint').textContent=ok?(d.warn||'這台電腦已取得使用許可。'):(d.reason||'這份程式需要作者授權才能使用。');
+ $('licUser').textContent=d.user||'—';
+ $('licExpire').textContent=d.expires?(d.expires+(ok&&left>=0?`（剩 ${left} 天）`:'')):'—';
+ $('licMode').textContent=!d.mode?'—':d.mode==='any'?'不限帳號':d.mode==='count'?`最多 ${d.count} 個帳號`:'只限指定帳號';
+ $('licMachine').textContent=d.machine||'—';
+ const b=$('licBlocked');
+ if(d.blocked&&d.blocked.length){b.style.display='';b.textContent='🚫 這些帳號沒有授權，不會被監控或啟動：'+d.blocked.join('、')+'（請向作者申請，設定不會遺失）';}else b.style.display='none';
+ const badge=$('licenseBadge');
+ if(badge){badge.style.display=d.warn?'':'none';if(d.warn){badge.textContent='⚠️ 授權剩 '+left+' 天';badge.title=d.warn;}}
+ if(d.warn&&d.warn!==licWarnShown){licWarnShown=d.warn;showToast(d.warn);}
 }
 function askUpdate(){
  const a=updateState&&updateState.available;if(!a)return;
@@ -1480,27 +1665,76 @@ function renderRecStats(d){
  const ts=t.topSteps||[];
  if(top)top.textContent=ts.length?'🚧 整體最常卡住：'+ts.map(x=>`${x.label} ×${x.count}`).join('、'):'';
 }
-document.querySelector('#nav [data-page="invstats"]')?.addEventListener('click',()=>requestInvStats(''));
+document.querySelector('.side [data-page="invstats"]')?.addEventListener('click',()=>requestInvStats(''));
 // v1.3.16.0 每日道具 / 示範錄製
 // v1.3.24.0 每日道具角色設定：勾選項目、回城 / 原地換、武器造型種類
 let dailyCfgSig='';
 function renderDailyCfg(d){
  const box=document.getElementById('dailyCfgRows');if(!box)return;
- const ae=document.activeElement;if(box.contains(ae)&&ae.type==='text')return;   // 正在輸入武器名稱時不重畫
+ const ae=document.activeElement;if(box.contains(ae)&&(ae.type==='text'||ae.tagName==='SELECT'))return;   // 正在輸入 / 選擇時不重畫
+ if(box.querySelector('.dd-list:not([hidden])'))return;   // 下拉清單開著時不重畫
+ const ck=d.cardKeys||{};for(const [id,v] of [['dcStart',ck.start],['dcPrev',ck.prev],['dcQuick',ck.quick]]){const e=document.getElementById(id);if(e&&document.activeElement!==e)e.value=(v||'').toUpperCase();}
  const roles=d.roles||[],opts=d.options||[];
- const sig=JSON.stringify([opts,d.weaponDefault,roles.map(r=>[r.index,r.name,r.items,r.mode,r.weapon])]);
+ const sig=JSON.stringify([opts,d.weaponDefault,d.weaponChoices,roles.map(r=>[r.index,r.name,r.items,r.mode,r.weapon])]);
  if(sig===dailyCfgSig)return;dailyCfgSig=sig;
  if(!roles.length){box.innerHTML='<div class="hint">沒有開啟監控的角色</div>';return;}
  box.innerHTML=roles.map(r=>{const has=new Set(String(r.items||'').split(',').filter(Boolean));
   return `<div class="daily-cfg-row${has.size?'':' daily-cfg-off'}" data-idx="${r.index}" data-name="${esc(r.name)}"><div class="account-name">${esc(r.name)}${has.size?'':'<div class="account-sub">不自動更換</div>'}</div>`
-   +`<div class="daily-cfg-opts">${opts.map(o=>`<label><input type="checkbox" data-opt="${o[0]}" ${has.has(o[0])?'checked':''} onchange="saveDailyCfg(this)"> ${esc(o[1])}</label>`).join('')}</div>`
-   +`<div class="daily-cfg-side"><select onchange="saveDailyCfg(this)" title="在哪裡換"><option value="town"${r.mode==='here'?'':' selected'}>🏙️ 回城換</option><option value="here"${r.mode==='here'?' selected':''}>📍 原地換</option></select>`
-   +`<input type="text" value="${esc(r.weapon||'')}" placeholder="武器：${esc(d.weaponDefault||'')}（共用）" title="武器造型選擇盒要選的武器（例如 雙槍、弓、劍）；空白用共用設定" onchange="saveDailyCfg(this)"></div></div>`}).join('');
+      +`<div class="daily-cfg-opts"><div class="dd" data-items="${esc([...has].join(','))}"><button type="button" class="dd-btn" onclick="ddToggle(this)" title="按一下選要自動更換的道具"><span class="dd-sum">${ddSummary(opts,has)}</span><span class="dd-caret">▾</span></button>`
+   +`<div class="dd-list" hidden>${opts.map(o=>`<div class="dd-item${has.has(o[0])?' on':''}" data-opt="${o[0]}" onclick="ddPick(this)"><span class="dd-check">${has.has(o[0])?'✓':''}</span><span>${esc(o[1])}</span></div>`).join('')}`
+   +`<div class="dd-foot"><a href="#" onclick="ddAll(this,true);return false">全選</a> · <a href="#" onclick="ddAll(this,false);return false">全不選</a></div></div></div></div>`
+   +`<div class="daily-cfg-side"><select onchange="saveDailyCfg(this)" title="在哪裡換"><option value="town"${r.mode==='here'||r.mode==='auto'?'':' selected'}>🏙️ 回城換</option><option value="here"${r.mode==='here'?' selected':''}>📍 原地換</option><option value="auto"${r.mode==='auto'?' selected':''}>🧭 自動（看快捷欄）</option></select>`
+   +weaponCtl(r,d)+`</div></div>`}).join('');
 }
+// H-033 登入後選擇角色：每個帳號一個下拉選單（選項來自遊戲的選角清單）
+let lcSig='';
+function renderLoginChars(d){
+ const box=document.getElementById('lcRows');if(!box)return;
+ if(box.contains(document.activeElement)&&document.activeElement.tagName==='SELECT')return;
+ const roles=d.roles||[];
+ const sig=JSON.stringify(roles);if(sig===lcSig)return;lcSig=sig;
+ const pill=document.getElementById('lcPill');if(pill)pill.textContent=roles.filter(r=>r.selected).length+' 個帳號指定了角色';
+ if(!roles.length){box.innerHTML='<div class="hint">還沒有帳號</div>';return;}
+ box.innerHTML=roles.map(r=>{
+  const names=r.chars.slice();if(r.selected&&!/^#/.test(r.selected)&&!names.includes(r.selected))names.push(r.selected);
+  const multi=names.length>1;
+  return `<div class="lc-row" data-idx="${r.index}" data-name="${esc(r.name)}"><div class="account-name">${esc(r.name)}</div>`
+   +`<select onchange="saveLoginChar(this)" title="重新登入後要進哪一隻角色"><option value="">預設（照原本位置 / 第 1 隻）</option><optgroup label="依順序（選角畫面由左到右）">${[1,2,3,4].map(i=>`<option value="#${i}"${r.selected==='#'+i?' selected':''}>第 ${i} 隻${names[i-1]?'：'+esc(names[i-1]):''}</option>`).join('')}</optgroup><optgroup label="依角色名稱（換順序也不會錯）">${names.map(n=>`<option value="${esc(n)}"${n===r.selected?' selected':''}>${esc(n)}</option>`).join('')}</optgroup></select>`
+   +`<div class="hint" style="margin:0">${names.length?(multi?`選角清單有 ${names.length} 隻角色`:'這個帳號只有 1 隻角色'):'還沒讀過選角清單（先讓這個帳號的遊戲開著）'}</div></div>`}).join('');
+}
+function saveLoginChar(el){const row=el.closest('.lc-row');if(!row)return;lcSig='';send('logincharsave',{value:`${row.dataset.idx}~${el.value.replace(/[~|\r\n]/g,'')}~${row.dataset.name}`});}
+// 武器造型選擇盒要選哪一個：選項直接來自遊戲裡盒子的內容（讀過一次後記住）；還讀不到時才讓你自己打字
+function weaponCtl(r,d){
+ const ch=d.weaponChoices||[];
+ if(!ch.length)return `<input type="text" class="wpn" value="${esc(r.weapon||'')}" placeholder="武器：${esc(d.weaponDefault||'')}（共用）" title="武器造型選擇盒要選的武器（例如 雙槍、弓、劍）；空白用共用設定。選項還沒讀到（需要有人的背包裡出現過選擇盒）" onchange="saveDailyCfg(this)">`;
+ const cur=r.weapon||'',known=ch.some(c=>c.name===cur);
+ return `<select class="wpn" onchange="saveDailyCfg(this)" title="打開紀念造型服飾禮包後，武器造型貼選擇盒要選哪一個"><option value="">武器：共用設定（${esc(d.weaponDefault||'')}）</option>`
+  +ch.map(c=>`<option value="${esc(c.name)}"${c.name===cur?' selected':''}${c.ok?'':' disabled'}>第 ${c.index} 個：${esc(c.name)}${c.ok?'':'（要捲動，暫不支援）'}</option>`).join('')
+  +(cur&&!known?`<option value="${esc(cur)}" selected>${esc(cur)}（自訂）</option>`:'')+`</select>`;
+}
+function saveDailyCardKeys(){const g=id=>document.getElementById(id).value.replace(/[~|\r\n\s]/g,'');send('dailycardkeys',{value:g('dcStart')+'~'+g('dcPrev')+'~'+g('dcQuick')});}
+// H-025 每日道具「要換哪些」改成下拉清單：點開後每個項目旁邊打勾，可多選（和旁邊「回城換 / 原地換」的下拉一致）
+function ddSummary(opts,has){
+ const names=opts.filter(o=>has.has(o[0])).map(o=>o[1]);
+ if(!names.length)return '不自動更換';
+ if(names.length===opts.length)return `全部（${names.length} 項）`;
+ return names.length<=2?names.join('、'):`${names.slice(0,2).join('、')} 等 ${names.length} 項`;
+}
+function ddClose(){document.querySelectorAll('.dd-list:not([hidden])').forEach(l=>l.hidden=true);}
+function ddToggle(btn){const l=btn.parentElement.querySelector('.dd-list');const open=l.hidden;ddClose();l.hidden=!open;}
+function ddRefresh(dd){
+ const items=[...dd.querySelectorAll('.dd-item')];
+ items.forEach(i=>{i.querySelector('.dd-check').textContent=i.classList.contains('on')?'✓':'';});
+ const on=items.filter(i=>i.classList.contains('on'));
+ dd.querySelector('.dd-sum').textContent=!on.length?'不自動更換':(on.length===items.length?`全部（${on.length} 項）`:(on.length<=2?on.map(i=>i.textContent.replace('✓','').trim()).join('、'):`${on.slice(0,2).map(i=>i.textContent.replace('✓','').trim()).join('、')} 等 ${on.length} 項`));
+}
+function ddPick(item){item.classList.toggle('on');const dd=item.closest('.dd');ddRefresh(dd);saveDailyCfg(dd);}
+function ddAll(a,on){const dd=a.closest('.dd');dd.querySelectorAll('.dd-item').forEach(i=>i.classList.toggle('on',on));ddRefresh(dd);saveDailyCfg(dd);}
+document.addEventListener('click',e=>{if(!e.target.closest('.dd'))ddClose();});
 function saveDailyCfg(el){
  const row=el.closest('.daily-cfg-row');if(!row)return;
- const items=[...row.querySelectorAll('input[data-opt]:checked')].map(x=>x.dataset.opt).join(',');
- const mode=row.querySelector('select').value,weapon=row.querySelector('input[type=text]').value.replace(/[~|\r\n]/g,'').trim();
+ const items=[...row.querySelectorAll('.dd-item.on')].map(x=>x.dataset.opt).join(',');
+ const mode=row.querySelector('select').value,weapon=row.querySelector('.wpn').value.replace(/[~|\r\n]/g,'').trim();
  row.classList.toggle('daily-cfg-off',!items);dailyCfgSig='';
  send('dailycfg',{value:`${row.dataset.idx}~${items}~${mode}~${weapon}~${row.dataset.name}`});
 }
@@ -1511,7 +1745,7 @@ function renderDaily(d){
  if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td></tr>`}).join(''):'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
  renderDailyCfg(d);
  const info=document.getElementById('dailyRunInfo');
- if(info)info.textContent=(d.running?`🔄 正在自動更換：${d.running}　`:'')+(d.queue?`等待中：${d.queue}　`:'')+(d.autorun?`到期後跳出提醒；${d.idle} 秒內沒有鍵鼠操作就自動更換。`:'到期後跳出提醒（目前未開啟無人自動執行，可在提醒視窗按「立即更換」）。');
+ if(info)info.textContent=(d.running?`🔄 正在自動更換：${d.running}　`:'')+(d.queue?`等待中：${d.queue}　`:'')+(d.popupTimeout>0?`到期後跳出提醒；${d.popupTimeout} 秒內沒有人點選提醒視窗就自動更換。`:d.autorun?`到期後跳出提醒；${d.idle} 秒內沒有鍵鼠操作就自動更換。`:'到期後跳出提醒（目前未開啟無人自動執行，可在提醒視窗按「立即更換」）。');
  const sel=document.getElementById('recRole');
  if(sel&&document.activeElement!==sel){const keep=sel.value;const opts=(d.roles||[]).filter(r=>r.alive).map(r=>`<option value="${r.index}">${esc(r.name)}｜${esc(r.status)}</option>`).join('');if(sel.innerHTML!==opts){sel.innerHTML=opts;if(keep)sel.value=keep;}}
  const rec=d.recorder||{},badge=document.getElementById('recBadge'),st=document.getElementById('recStatus');
@@ -1524,10 +1758,13 @@ setInterval(()=>{if(isShown('daily'))send('dailystate');},5000);
 setInterval(()=>{if(isShown('recovery'))send('recstats');},60000);
 setInterval(()=>{if(isShown('dropRates'))send('dropindex');},30000);
 setInterval(()=>{if(isShown('mbox'))send('mboxstate');},2000);
+setInterval(()=>{if(isShown('party'))send('partystate');},2000);
+setInterval(()=>{if(isShown('skillcombo'))send('skillcombostate');},2500);
 setInterval(()=>{if(isShown('home')||!dailyCache)send('dailystate');},60000);
 setTimeout(()=>send('dailystate'),1500);
 setTimeout(()=>send('updatestate'),2500);
+setTimeout(()=>send('licensestate'),2000);setInterval(()=>send('licensestate'),600000);
 setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
 setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
-if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);});}
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
 </script><div id="toast"></div></body></html>

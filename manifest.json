@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.24.0",
+    "version":  "v1.3.39.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "f22a8a4932e6486a65f8f2540293d27a8bb6c09319522d92ecf510ded9f969f9"
+                      "sha256":  "131fc94b9a459f8162a71a7af8cecd6eb4175740a98ff066a27a88a0de2bb6b9"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -43,7 +43,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "ac11160e9e193f956fe0aad9cdc22b1a241ca890b80b47524dc79f13a013143a"
+                      "sha256":  "2260842e55ddcff9d038afc442dce9029845d8f070a8fe6e8bda452acdc43960"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -122,16 +122,20 @@
                       "sha256":  "e683d19274c588eaea616f5520d2fc65bdf2cafd152e996f356a5eb9cec74188"
                   },
                   {
+                      "path":  "modules\\AutoParty.ahk",
+                      "sha256":  "7f18a95e4e460ec116e666b414e003cea182e68976918321e9a6acfe29634f70"
+                  },
+                  {
                       "path":  "modules\\DailyItems.ahk",
-                      "sha256":  "5bfc6edc440dbce1053e49b356169459768180517b5db5cf9896bf4ac4aa1b6e"
+                      "sha256":  "8633e22fc09ddbd695d6efa975597f4e31916c408f53fff12b22eada47d647aa"
                   },
                   {
                       "path":  "modules\\DailyRoutine.ahk",
-                      "sha256":  "eb5e9ad10d97616f70b07c614c634f8b9792df8e4909109538ad4f5e7f68afb0"
+                      "sha256":  "6f326104873338d544748d4b361371fb061eb057c8fd458195ebb9b4957c437a"
                   },
                   {
                       "path":  "modules\\DeathStats.ahk",
-                      "sha256":  "dce561085b2dd9f1b6605f91570717e39d2b77ec8aa4b236d56653d9fd62d4db"
+                      "sha256":  "8698cbc8ee8a7830501d92cf3fe5fbe07a62acd63d7b2ce9c1732ee7c1b03d26"
                   },
                   {
                       "path":  "modules\\DesktopShortcut.ahk",
@@ -147,23 +151,35 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "fa60a42adbcd133cf3c2fcf75136e658a94fd0f6c30f0b39dddeed5cdf362287"
+                      "sha256":  "8b9d802a52f52425a92e97bc3897b0541532514ce883e814c75b197d6266519a"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
-                      "sha256":  "495cddf787a8ce24375a66a437852eb83a8e350c43590343996ef3ba367399bb"
+                      "sha256":  "9884482d131b4c04acbd00f0b2a3d8fc2955f153106e217273fe0eaeead1f348"
                   },
                   {
                       "path":  "modules\\KillStats.ahk",
-                      "sha256":  "25d3a24fe1d13c32e5d59904d2f5be9fd576048c428482e08aea26823e868fa6"
+                      "sha256":  "143b1386425c06f01e0be4d2c3487820bd723d2f11b2475dc6f7cbaf00695728"
+                  },
+                  {
+                      "path":  "modules\\License.ahk",
+                      "sha256":  "1002537c01d3c1e5e001b9dde17b10103a9032902f9d2da101ba8d67cd301b29"
+                  },
+                  {
+                      "path":  "modules\\LoginUi.ahk",
+                      "sha256":  "9e12c7dd0c99b1f8b9909ab081f136f68b0edc86360801b4751737f30d04d933"
                   },
                   {
                       "path":  "modules\\MBox.ahk",
-                      "sha256":  "995d00a1000b3ae91b985c9301f1a9a1bebc517e69b67ffeb8ed53708107c6dd"
+                      "sha256":  "01419f89c63555f911e288931911694c4a1d49eb8abfb7ad75b177e1aff704ad"
                   },
                   {
                       "path":  "modules\\Mining.ahk",
                       "sha256":  "797ba4d5c9ecdb8bfd13f7c83b19551318fe0a37e6eb91298f4b28c60c1ff682"
+                  },
+                  {
+                      "path":  "modules\\NetGuard.ahk",
+                      "sha256":  "8ba56f066e413086db60eb0cbc2ecf75eeedbc788985c3440be868f4c9bd3a32"
                   },
                   {
                       "path":  "modules\\QuietHours.ahk",
@@ -174,8 +190,12 @@
                       "sha256":  "2d92cca32eaa3ff5018acc36afef693e2aba3086f04188f08308fe4ba0b66d8c"
                   },
                   {
+                      "path":  "modules\\RecoveryBatch.ahk",
+                      "sha256":  "3851eb47a2dfc324866de15fc80140e171d1155da86f50a7a2e7926c971bf1af"
+                  },
+                  {
                       "path":  "modules\\RecoveryGuard.ahk",
-                      "sha256":  "7b5f978584a9a91041e468eed66da49e6f5085fa19cb7e041987881239ce4d8e"
+                      "sha256":  "f76055bd0c7484a09e30d6f3754e71df9001ec4ffe8ef8da70e411626278916a"
                   },
                   {
                       "path":  "modules\\RecoveryQueue.ahk",
@@ -195,15 +215,19 @@
                   },
                   {
                       "path":  "modules\\ReviveAssist.ahk",
-                      "sha256":  "3cda5c2a0c50a5f9abfa1d6759cecb79d4a5489888fa34543b911703f0aa0ad0"
+                      "sha256":  "ee6da25e645e6996e8121c857beb10a1ace9ea2523442ed508b2625ceb1aadc1"
                   },
                   {
                       "path":  "modules\\Signals.ahk",
                       "sha256":  "d6ff8535316a9fe4475eabfd1ba2c146aec2015a51a0d138f62d5bd5de2bf74f"
                   },
                   {
+                      "path":  "modules\\SkillCombo.ahk",
+                      "sha256":  "9c088cf5d6638c4f536580cc9f45d2dbf9349f388f19276eaf81c9d75717ea93"
+                  },
+                  {
                       "path":  "modules\\Updater.ahk",
-                      "sha256":  "9ce9dbbe712334a0f8501ecc663de65f9f8d2d079ff82ab7d13bfe126685f4a3"
+                      "sha256":  "8280e88b7ce5421343381a344f70a3388b86d0528e5a716c39b080641e4eb7a9"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -226,6 +250,14 @@
                       "sha256":  "d27c2021f22024f6e09af912cacd9af2feb81c75de879cbf2b6d372ec126137d"
                   },
                   {
+                      "path":  "tools\\license_verify.ps1",
+                      "sha256":  "154ffe4b78e1190ece81fd48cd1210f7ff0f44a9656586408d48285f2b759169"
+                  },
+                  {
+                      "path":  "tools\\login_test.ahk",
+                      "sha256":  "59256aa87dc702119b3054c7034b89be26c0c66faacda158fec50d2f4a3d896a"
+                  },
+                  {
                       "path":  "tools\\package\\HiHiyong帳號管理.bat",
                       "sha256":  "38dbbad49c55e308fae1857a577f0dabc609a28dee951d20b81dce7df6b20cba"
                   },
@@ -235,11 +267,15 @@
                   },
                   {
                       "path":  "tools\\resolve_game_offsets.py",
-                      "sha256":  "ab22903e471ad41af0639963ccc493de75c8d3bedabf407f208c8ec04f815354"
+                      "sha256":  "030d742d605e8295374ba7c391555c8fda42593195fced43655e88791efed1e2"
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "dcda8ef2199c6875ce7f675d191625020d1fd1be6eed07ef68c1c8f0dd3b748d"
+                      "sha256":  "2c15448f1f7b6028abd7598b83599c74e1d12b2de9085b64d811a831ad2ee1d1"
+                  },
+                  {
+                      "path":  "登入測試.bat",
+                      "sha256":  "5aedc7e890d53a68da9b5e4b0ebab22d18b27c723092cd32a10631361d6a0415"
                   }
               ]
 }

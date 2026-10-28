@@ -23,6 +23,8 @@ global GLAT_FALLING := 9, GLAT_DIE := 10, CROW_MOB := 2
 global killDay := ""
 global killLedger := Map()            ; 角色名稱 → Map("地圖｜怪物" → 次數)
 global killDirty := Map()
+; v1.3.26.0（H-023 自訂統計時段）：逐小時擊殺。角色名稱 → Map("小時@地圖｜怪物" → 次數)；存在同一個 ini 的 [_h:角色名稱] 區段
+global killHourLedger := Map(), killHourDirty := Map(), killTestHour := ""
 global killRecent := Map()            ; "地圖ID|GlobID|怪物ID" → 記錄時間（去除重複）
 global killCrowNames := Map()         ; "主ID-子ID" → 怪物名稱
 global killLastSave := 0
@@ -37,6 +39,7 @@ KillStatsInit() {
     global killDay,killLedger,killLastSave
     killDay:=FormatTime(,"yyyy-MM-dd")
     killLedger:=LoadKillLedger(killDay)
+    killHourLedger:=LoadKillHourLedger(killDay),killHourDirty:=Map()
     killLastSave:=A_TickCount
     OnExit(KillStatsOnExit)
 }
@@ -60,7 +63,7 @@ LoadKillLedger(day) {
     catch
         return ledger
     for name in StrSplit(names,"`n","`r") {
-        if name="" || name="_meta"
+        if name="" || SubStr(name,1,1)="_"   ; _meta、_h:（逐小時）不是角色
             continue
         counts:=Map()
         try section:=IniRead(path,name)
@@ -76,10 +79,41 @@ LoadKillLedger(day) {
     return ledger
 }
 
+; 逐小時擊殺紀錄（沒有這個區段 = 舊版留下的，只有整天的合計）
+LoadKillHourLedger(day) {
+    ledger:=Map()
+    path:=KillStatsFile(day)
+    if !FileExist(path)
+        return ledger
+    try names:=IniRead(path)
+    catch
+        return ledger
+    for sec in StrSplit(names,"`n","`r") {
+        if SubStr(sec,1,3)!="_h:"
+            continue
+        name:=SubStr(sec,4),counts:=Map()
+        try section:=IniRead(path,sec)
+        catch
+            continue
+        for line in StrSplit(section,"`n","`r") {
+            eq:=InStr(line,"=",,-1)
+            if eq>1
+                counts[SubStr(line,1,eq-1)]:=Integer(SubStr(line,eq+1))
+        }
+        ledger[name]:=counts
+    }
+    return ledger
+}
+
+KillHourNow() {
+    global killTestHour
+    return killTestHour!="" ? String(killTestHour) : String(A_Hour+0)
+}
+
 KillStatsSave() {
-    global killDay,killLedger,killDirty,killLastSave,killUnowned,STATS_DIR,KILL_LEDGER_VERSION
+    global killDay,killLedger,killDirty,killLastSave,killUnowned,STATS_DIR,KILL_LEDGER_VERSION,killHourLedger,killHourDirty
     killLastSave:=A_TickCount
-    if killDay="" || !killDirty.Count
+    if killDay="" || (!killDirty.Count && !killHourDirty.Count)
         return
     path:=KillStatsFile(killDay)
     try {
@@ -100,6 +134,18 @@ KillStatsSave() {
         }
     }
     killDirty:=Map()
+    ; 逐小時：只寫這一分鐘有變動的格子（整天的格子很多，全寫會很慢）
+    for name,keys in killHourDirty {
+        if !killHourLedger.Has(name)
+            continue
+        try {
+            for key in keys
+                IniWrite killHourLedger[name][key],path,"_h:" name,key
+        } catch as err {
+            EventLog("GLOBAL","KILL_STATS_SAVE_FAIL","_h:" name "｜" err.Message)
+        }
+    }
+    killHourDirty:=Map()
 }
 
 KillStatsTick() {
@@ -111,6 +157,7 @@ KillStatsTick() {
         KillStatsSave()
         killDay:=day
         killLedger:=LoadKillLedger(day)
+        killHourLedger:=LoadKillHourLedger(day),killHourDirty:=Map()
         killUnowned:=0
     }
     for p in profiles {
@@ -193,7 +240,7 @@ KillOwner(mapId,glob) {
 
 ; 讀一個角色周圍的怪物，找出這一秒倒下的。
 KillStatsSample(p) {
-    global killRecent,killLedger,killDirty,killUnowned,KILL_MAX_CROWS,GLAT_FALLING,GLAT_DIE
+    global killRecent,killLedger,killDirty,killUnowned,KILL_MAX_CROWS,GLAT_FALLING,GLAT_DIE,killHourLedger,killHourDirty
     pid:=p.pid
     if !GameOffsetsReady(pid)
         return
@@ -268,6 +315,13 @@ KillStatsSample(p) {
         counts:=killLedger[owner]
         counts[k]:=(counts.Has(k) ? counts[k] : 0)+1
         killDirty[owner]:=1
+        hk:=KillHourNow() "@" k
+        if !killHourLedger.Has(owner)
+            killHourLedger[owner]:=Map()
+        killHourLedger[owner][hk]:=(killHourLedger[owner].Has(hk) ? killHourLedger[owner][hk] : 0)+1
+        if !killHourDirty.Has(owner)
+            killHourDirty[owner]:=Map()
+        killHourDirty[owner][hk]:=1
     }
     p.killTrack:=nextTrack
 }
@@ -312,13 +366,28 @@ KillCrowName(pid,hProc,dataPtr,nid) {
 }
 
 ; 背包統計頁：[{"map":"波斯宮","total":123,"mobs":[{"name":"波斯女巫","count":60},…]},…]，依擊殺數由多到少。
-KillStatsJson(name,day) {
-    global killDay,killLedger
-    ledger:=day=killDay ? killLedger : LoadKillLedger(day)
-    if !ledger.Has(name)
-        return "[]"
+KillStatsJson(name,day,from:=0,to:=24) {
+    global killDay,killLedger,killHourLedger
+    if from>0 || to<24 {
+        ; 自訂時段：用逐小時紀錄加總；舊版留下的紀錄（沒有逐小時資料）無法分時段，回傳空
+        hl:=day=killDay ? killHourLedger : LoadKillHourLedger(day)
+        if !hl.Has(name)
+            return "[]"
+        counts:=Map()
+        for hk,n in hl[name] {
+            parts:=StrSplit(hk,"@",,2)
+            if parts.Length<2 || !IsInteger(parts[1]) || parts[1]<from || parts[1]>=to
+                continue
+            counts[parts[2]]:=(counts.Has(parts[2]) ? counts[parts[2]] : 0)+n
+        }
+    } else {
+        ledger:=day=killDay ? killLedger : LoadKillLedger(day)
+        if !ledger.Has(name)
+            return "[]"
+        counts:=ledger[name]
+    }
     maps:=Map()
-    for key,n in ledger[name] {
+    for key,n in counts {
         parts:=StrSplit(key,"｜",,2)
         if parts.Length<2 || n<=0
             continue

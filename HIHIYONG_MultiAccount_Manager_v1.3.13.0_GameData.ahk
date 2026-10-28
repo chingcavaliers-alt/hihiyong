@@ -1,4 +1,4 @@
-﻿#Requires AutoHotkey v2.0
+#Requires AutoHotkey v2.0
 #SingleInstance Force
 #Include *i Lib\WebView2\WebView2.ahk
 Persistent
@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.24.0"
+global APP_VERSION := "v1.3.39.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -91,6 +91,8 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\DesktopShortcut.ahk
 ; H-004: 重新登入排程的排入邏輯（隊長優先、載入中 / 重複略過）。
 #Include modules\RecoveryQueue.ahk
+; H-039: 斷線重新登入一整批結束後，把所有遊戲畫面合成一張傳到 Discord。
+#Include modules\RecoveryBatch.ahk
 ; H-003: 重新登入統計（日誌 → 成功率）與其顯示文字 / JSON。
 #Include modules\RecoveryStats.ahk
 #Include modules\RecoveryStatsView.ahk
@@ -102,8 +104,14 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\DropRates.ahk
 ; H-016: 從 GitHub 檢查新版，跳提醒、使用者按了才更新。
 #Include modules\Updater.ahk
-; H-017: M 箱自動開啟（每個角色自選；切到前面按鍵、確認數量減少、切回原本的視窗）。
+; H-017: 命運箱子自動開啟（每個角色自選；切到前面按鍵、確認數量減少、切回原本的視窗）。
 #Include modules\MBox.ahk
+; H-018: 自動組隊（全部登入完成後，隊長邀請設定好的隊員；預設關閉）。
+#Include modules\AutoParty.ahk
+#Include modules\LoginUi.ahk
+#Include modules\SkillCombo.ahk
+#Include modules\NetGuard.ahk
+#Include modules\License.ahk
 ; v1.3.20.0：自動採礦已停用（效益不足），MiningRun.ahk 保留在 Git 紀錄中，不再載入。
 ; v1.3.12.2 migration: known stale offsets from the previous maintenance must not override the newly validated value.
 if MEMORY_HP_RUNTIME_OFFSET=0xE7ADE0 || MEMORY_HP_RUNTIME_OFFSET=0x26B250 {
@@ -201,9 +209,6 @@ global invStopHotkey := "F9"
 global invPauseHotkeyApplied := ""
 global invStopHotkeyApplied := ""
 global invControlKeyState := Map()
-global netWatchEnabled:=false, netGateway:="", netInternetTarget:="1.1.1.1", netIntervalSec:=1
-global netLastGateway:="未檢查", netLastInternet:="未檢查", netLastGameTcp:="未檢查", netLastGameRemote:="-", netLastCheck:="-", netLastAnomaly:="-"
-global netAnomalyCount:=0, netWatchBusy:=false, netPrevGatewayOk:="", netPrevInternetOk:="", netPrevGameTcp:=""
 global netOutageActive:=false, netDownStreak:=0, netUpStreak:=0
 
 
@@ -250,8 +255,12 @@ EnsureWebViewDependency() {
 if !EnsureWebViewDependency()
     ExitApp
 
+; H-042：沒有授權就跳出授權視窗，直到成功或離開
+Lic_Gate()
 LoadPoints()
 LoadProfiles()
+Lic_ApplyToProfiles(profiles, licState)
+SetTimer(Lic_Tick, 5000)
 
 ; v1.3.11.13 one-time targeted max-HP relearn.
 ; Game update changed the HP reader. Only clear the known stale value for 欸等欸.
@@ -281,12 +290,6 @@ LoadInventoryCleanerConfig()
 LoadWindowLayoutConfig()
 LoadInventoryBindings()
 LoadInventoryControlHotkeys()
-; v1.3.10.11：Network Watch 狀態可驗證；首頁顯示網路監控狀態。
-LoadNetworkWatchConfig()
-if netWatchEnabled {
-    NetworkWatchLog("NETWORK_WATCH_START | Interval=" netIntervalSec "s")
-    EventLog("GLOBAL","NETWORK_WATCH_START","Network Watch 已啟動｜檢查間隔 " netIntervalSec " 秒")
-}
 
 ; H-009：每秒看一次前景視窗，變成非遊戲、非管理程式時只寫日誌（預設開）。
 global focusSeen := Map(), focusRecent := [], focusLastHwnd := 0
@@ -619,6 +622,7 @@ SetTimer QuietFlushTick, 60000
 ; Network Watch 延後啟動，避免 WebView/GUI 啟動階段被網路探測阻塞。
 ; Network Watch 僅作佐證，延後到 WebView 完成後啟動。
 LoadSwitchStopHotkey()
+SkillComboInit()   ; H-027 技能組合快速施法（預設關閉）
 g.Show("Hide w1080 h748")
 SetTimer InitWebUI, -50
 
@@ -641,11 +645,14 @@ LoadProfiles() {
             softDetect: Integer(IniRead(PROFILE_INI,sec,"SoftDetect","1")),
             softAutoRecover: Integer(IniRead(PROFILE_INI,sec,"SoftAutoRecover","0")),
             recoveryFirst: Integer(IniRead(PROFILE_INI,sec,"RecoveryFirst","0")),
+            deathAlarm: Integer(IniRead(PROFILE_INI,sec,"DeathAlarm","1")),
             dailyItems: DailyNormalizeItems(IniRead(PROFILE_INI,sec,"DailyItems",DAILY_ALL_ITEMS)),
             dailyMode: IniRead(PROFILE_INI,sec,"DailyMode","town"),
             dailyWeapon: IniRead(PROFILE_INI,sec,"DailyWeapon",""),
             mboxEnabled: Integer(IniRead(PROFILE_INI,sec,"MBoxEnabled","0")),
             mboxKey: IniRead(PROFILE_INI,sec,"MBoxKey","e"),
+            partyLeader: Integer(IniRead(PROFILE_INI,sec,"PartyLeader","0")),
+            partyMembers: IniRead(PROFILE_INI,sec,"PartyMembers",""),
             switchEnabled: Integer(IniRead(PROFILE_INI,sec,"SwitchEnabled","1")),
             switchSeconds: Max(1,Integer(IniRead(PROFILE_INI,sec,"SwitchSeconds","10"))),
             switchKeys: IniRead(PROFILE_INI,sec,"SwitchKeys",""),
@@ -660,6 +667,8 @@ LoadProfiles() {
             winH: Integer(IniRead(PROFILE_INI,sec,"WinH","0")),
             hasPos: Integer(IniRead(PROFILE_INI,sec,"HasPos","0")),
             charName: IniRead(PROFILE_INI,sec,"CharName",""),
+            loginChar: IniRead(PROFILE_INI,sec,"LoginChar",""),
+            loginCharList: IniRead(PROFILE_INI,sec,"LoginCharList",""),
             hpDeadSince:0,hpFullSince:0,hpEventOpen:0,hpEventTick:0,hpEventNo:Integer(IniRead(PROFILE_INI,sec,"DeathCount","0")),hpReviveNo:Integer(IniRead(PROFILE_INI,sec,"ReviveCount","0")),
             hpNoReviveAlerted:0,hpDeathTime:"",hpLastRatio:-1,hpLastChangeTick:A_TickCount,hpUnreadableSince:0,hpUnreadableLogged:0,
             memHp:-1,memHpMin:-1,memHpMax:-1,memHpLearnedMax:Integer(IniRead(PROFILE_INI,sec,"MemoryHPLearnedMax","0")),memHpConfirmedMax:Integer(IniRead(PROFILE_INI,sec,"MemoryHPConfirmedMax","0")),memHpArmed:0,memHpStale:0,memHpPlausibleStreak:0,memHpUnarmedSince:A_TickCount,memHpSuspectLogged:0,memHpLearnedMaxDirty:0,memHpLearnedMaxSaveTick:A_TickCount,memHpChanges:0,memHpLastChangeTick:A_TickCount,memHpReadOk:0,memHpState:"等待監控",memSoftState:"正常",memSoftAlerted:0,memHpZeroStreak:0,memHpAliveStreak:0,memHpMaxStaticMs:0,memHpStaticCount:0,memHpWasStatic:0,memHpSessionPid:0,memHpGraceUntil:0,memHpOffset:MEMORY_HP_RUNTIME_OFFSET,memHpCalibrating:0,
@@ -673,18 +682,21 @@ SaveProfiles() {
     IniWrite profiles.Length, PROFILE_INI, "General", "Count"
     for i,p in profiles {
         sec := "Profile_" i
-        IniWrite p.enabled, PROFILE_INI, sec, "Enabled"
-        IniWrite p.launchEnabled, PROFILE_INI, sec, "LaunchEnabled"
+        IniWrite Lic_EnabledToSave(p), PROFILE_INI, sec, "Enabled"
+        IniWrite Lic_LaunchToSave(p), PROFILE_INI, sec, "LaunchEnabled"
         IniWrite p.deathDetect, PROFILE_INI, sec, "DeathDetect"
         IniWrite p.deathNotify, PROFILE_INI, sec, "DeathNotify"
         IniWrite p.softDetect, PROFILE_INI, sec, "SoftDetect"
         IniWrite (p.HasOwnProp("softAutoRecover") ? p.softAutoRecover : 0), PROFILE_INI, sec, "SoftAutoRecover"
         IniWrite (p.HasOwnProp("recoveryFirst") ? p.recoveryFirst : 0), PROFILE_INI, sec, "RecoveryFirst"
+        IniWrite (p.HasOwnProp("deathAlarm") ? p.deathAlarm : 1), PROFILE_INI, sec, "DeathAlarm"
         IniWrite DailyItemsOf(p), PROFILE_INI, sec, "DailyItems"
         IniWrite DailyModeOf(p), PROFILE_INI, sec, "DailyMode"
         IniWrite DailyWeaponOf(p), PROFILE_INI, sec, "DailyWeapon"
         IniWrite (MBoxOn(p) ? 1 : 0), PROFILE_INI, sec, "MBoxEnabled"
         IniWrite MBoxKeyOf(p), PROFILE_INI, sec, "MBoxKey"
+        IniWrite (ApIsLeader(p) ? 1 : 0), PROFILE_INI, sec, "PartyLeader"
+        IniWrite (p.HasOwnProp("partyMembers") ? p.partyMembers : ""), PROFILE_INI, sec, "PartyMembers"
         IniWrite p.switchEnabled, PROFILE_INI, sec, "SwitchEnabled"
         IniWrite p.switchSeconds, PROFILE_INI, sec, "SwitchSeconds"
         IniWrite p.switchKeys, PROFILE_INI, sec, "SwitchKeys"
@@ -698,6 +710,8 @@ SaveProfiles() {
         IniWrite p.winH, PROFILE_INI, sec, "WinH"
         IniWrite p.hasPos, PROFILE_INI, sec, "HasPos"
         IniWrite (p.HasOwnProp("charName") ? p.charName : ""), PROFILE_INI, sec, "CharName"
+        IniWrite (p.HasOwnProp("loginChar") ? p.loginChar : ""), PROFILE_INI, sec, "LoginChar"
+        IniWrite (p.HasOwnProp("loginCharList") ? p.loginCharList : ""), PROFILE_INI, sec, "LoginCharList"
         IniWrite p.hpEventNo, PROFILE_INI, sec, "DeathCount"
         IniWrite p.hpReviveNo, PROFILE_INI, sec, "ReviveCount"
         IniWrite (p.HasOwnProp("memHpLearnedMax") ? p.memHpLearnedMax : 0), PROFILE_INI, sec, "MemoryHPLearnedMax"
@@ -1027,6 +1041,7 @@ AutoBindGames(*) {
 ; 遊戲視窗裡的角色名稱跟帳號記住的不同 → 不能用位置 / 唯一候選硬配。名稱讀不到（還在登入畫面）就不限制。
 CharNameCompatible(p, gameCharName) {
     return gameCharName="" || !p.HasOwnProp("charName") || p.charName="" || p.charName=gameCharName
+        || (p.HasOwnProp("loginChar") && p.loginChar!="" && p.loginChar=gameCharName)
 }
 
 ; 已綁定且角色已進入遊戲時，記住這個帳號的角色名稱，下次自動配對用。
@@ -1305,7 +1320,7 @@ SaveGeneral(*) {
 
 BatchStartChecked(*) {
     global running,abortRequested,profiles,recoveryQueue,queued,processingQueue,Status
-    if !PointsConfigured() {
+    if !PointsConfigured() && !LoginMemoryAvailable() {
         MsgBox "找不到完整 8 點登入座標。請先完成登入座標校正。", APP_TITLE
         return
     }
@@ -1379,7 +1394,7 @@ RestartCheckedAccounts(*) {
 StartMonitoring(*) {
     global running,abortRequested,profiles,Status,emergencyStop,DeathResetOnMonitorCB
     emergencyStop:=false
-    if !PointsConfigured() {
+    if !PointsConfigured() && !LoginMemoryAvailable() {
         MsgBox "找不到完整 8 點登入座標。請先用 v0.5.x 完成座標校正；v0.6 會沿用同一個 HIHIYONG_AutoRecovery.ini。",APP_TITLE
         return
     }
@@ -1645,7 +1660,7 @@ HPAndSoftMonitorTick() {
                     if p.deathNotify
                         SendDeathEventDiscord(p,"NO_REVIVE")
                     ; 本機警報音獨立於 Discord 通知（v1.3.12.0 設計）；v1.3.13.0 移除重複呼叫。
-                    StartDeathAlarm()
+                    StartDeathAlarm(0, p)
                 }
                 if rr>=fullTh {
                     if p.hpFullSince=0
@@ -1653,6 +1668,7 @@ HPAndSoftMonitorTick() {
                     if A_TickCount-p.hpFullSince>=HP_REVIVE_CONFIRM_MS {
                         dur:=Round((A_TickCount-p.hpEventTick)/1000)
                         p.hpReviveNo+=1
+                        DeathStatsReviveRecord(p)
                         AddRecentEvent("♥ " p.name " 復活 #" p.hpReviveNo)
                         EventLog(p.name,"REVIVE","死亡事件 #" p.hpEventNo " 結案｜" dur " 秒")
                         SaveProfiles()
@@ -1900,6 +1916,7 @@ MemoryHPConfirmDeath(p) {
 MemoryHPConfirmRevive(p) {
     dur:=Round((A_TickCount-p.hpEventTick)/1000)
     p.hpReviveNo+=1
+    DeathStatsReviveRecord(p)
     AddRecentEvent("♥ " p.name " 復活 #" p.hpReviveNo "｜Memory HP")
     EventLog(p.name,"REVIVE","Memory HP > 0｜死亡事件 #" p.hpEventNo " 結案｜" dur " 秒")
     SaveProfiles()
@@ -2075,7 +2092,7 @@ MemoryHPMonitorTick() {
                     if p.deathNotify
                         SendDeathEventDiscord(p,"NO_REVIVE")
                     ; 本機警報音獨立於 Discord 通知（v1.3.12.0 設計）。
-                    StartDeathAlarm()
+                    StartDeathAlarm(0, p)
                 }
                 if hp>0 && p.memHpAliveStreak>=MEMORY_HP_ALIVE_CONFIRM_SAMPLES {
                     MemoryHPConfirmRevive(p)
@@ -3371,13 +3388,13 @@ NotificationLocationText(p) {
 SendDeathClosedDiscord(p,dur) {
     loc:=NotificationLocationText(p)
     deathTime:=p.hpDeathTime!="" ? p.hpDeathTime : "-"
-    msg:="☠️ HIHIYONG 死亡事件 #" p.hpEventNo " 已結案"
+    msg:="☠️ HIHIYONG 死亡事件 #" DeathStatsEventNo(p) " 已結案"
         . "`n角色：" p.name
         . "`n死亡時間：" deathTime
         . "`n復活時間：" FormatTime(,"yyyy-MM-dd HH:mm:ss")
         . "`n死亡持續：約 " dur " 秒"
         . "`n判定位置：" loc
-        . "`n累計死亡：" p.hpEventNo " 次 / 復活：" p.hpReviveNo " 次"
+        . "`n今日死亡：" DeathStatsTodayText(p)
     try SendDeathDiscordMessage(msg)
 }
 
@@ -3385,11 +3402,11 @@ SendDeathEventDiscord(p,kind,dur:=0) {
     ; v0.7.5.0: 只使用最近一次已快取的位置，禁止死亡通知觸發 WinActivate。
     loc:=NotificationLocationText(p)
     if kind="DEATH"
-        msg:="☠️ 角色死亡通知`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" p.hpEventNo "`n死亡時間：" p.hpDeathTime
+        msg:="☠️ 角色死亡通知`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" DeathStatsEventNo(p) "`n死亡時間：" p.hpDeathTime
     else if kind="NO_REVIVE"
-        msg:="🚨 死亡超過 30 秒未復活`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" p.hpEventNo "`n死亡時間：" p.hpDeathTime
+        msg:="🚨 死亡超過 30 秒未復活`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" DeathStatsEventNo(p) "`n死亡時間：" p.hpDeathTime
     else
-        msg:="♥️ 角色復活通知`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" p.hpEventNo "`n死亡持續：約 " dur " 秒"
+        msg:="♥️ 角色復活通知`n角色：" p.name "`n判定位置：" loc "`n死亡事件：#" DeathStatsEventNo(p) "`n死亡持續：約 " dur " 秒"
     try SendDeathDiscordMessage(msg)
 }
 
@@ -3404,9 +3421,12 @@ SendDeathDiscordMessage(msg,force:=false) {
     SendDiscordAsync(url,payload)
 }
 
-StartDeathAlarm(seconds:=0) {
+StartDeathAlarm(seconds:=0, p:=0) {
     global DeathAlarmEnableCB,DeathAlarmSecondsEdit,deathAlarmRunning,deathAlarmUntil,deathAlarmPhase
     if !DeathAlarmEnableCB.Value
+        return
+    ; H-020：每個角色可以各自關掉警報音（預設開）。p = 觸發警報的角色；測試按鈕沒有角色，一定會響
+    if IsObject(p) && p.HasOwnProp("deathAlarm") && !p.deathAlarm
         return
     if seconds<=0
         seconds:=Max(5,Min(300,DeathAlarmSecondsEdit.Value+0))
@@ -3551,6 +3571,7 @@ ProcessNextRecovery() {
     p.state:="恢復中"
     RefreshProfileLV()
     EventLog(p.name, "RECOVERY_START", "開始恢復" Focus_RecentNote(focusRecent, A_Now))
+    RecoveryBatchNote()
     AddRecentEvent(p.name " 開始 Recovery")
     asyncLoading:=false
     try {
@@ -3601,21 +3622,28 @@ FinalizeRecovery(idx, newHwnd, oldBoundPid) {
         ; v1.3.10.4: RecoverProfile 的首次共識可能判成怪物區，但 Recovery_REBIND
         ; 再掃描卻確認為一般區（復活點）。舊版會直接 RECOVERY_OK，漏掉前點卡。
         ; 這裡以綁定後的最終位置為準補做一次前點，並再次確認已回怪物區。
+        ; H-032：記憶體已確認在怪物地圖時，畫面掃描誤判成復活點也不能再按前點卡（耗用一張還會被傳走）。
+        if p.locType="復活點" && (fieldNow:=RecoveryLeftTown(newHwnd))!="" {
+            EventLog(p.name,"RECOGNITION_MEMORY","畫面掃描判成復活點，但記憶體確認在怪物地圖（" fieldNow "）｜不按前點卡")
+            p.locType:="怪物區"
+        }
         if p.locType="復活點" {
-            key:=Trim(ReturnKeyEdit.Value)
-            if key=""
-                throw Error("Recovery 綁定後確認一般區，但前點卡按鍵未設定。")
-            EventLog(p.name,"NORMAL_AREA_ACTION","RECOVERY_REBIND 確認一般區｜開始前點 " key)
-            Status.Text:="狀態：" p.name "｜一般區確認，使用前點卡 " key
-            ActivateGame(newHwnd), SendOneKey(key), WaitSeconds(8)
+            EventLog(p.name,"NORMAL_AREA_ACTION","RECOVERY_REBIND 確認一般區｜開始前點")
+            Status.Text:="狀態：" p.name "｜一般區確認，使用前點卡"
+            key:=RecoveryUseReturnCard(newHwnd,p)
             EnsureRecoveryFocus(newHwnd,p.name)
             Sleep 700
             VerifyInGameHUD(newHwnd,p,"一般區前點後")
-            decision3:=ConsensusLocation(newHwnd,Integer(ConfEdit.Value))
-            EventLog(p.name,"NORMAL_AREA_ACTION_CHECK","前點後位置判定=" decision3)
-            if decision3!="normal" && (left:=RecoveryLeftTown(newHwnd))!="" {
-                EventLog(p.name,"RECOGNITION_MEMORY","畫面判定=" decision3 "，但記憶體確認已離開城裡（" left "）｜視為怪物區")
+            if (left:=RecoveryLeftTown(newHwnd))!="" {
+                EventLog(p.name,"RECOGNITION_MEMORY","記憶體確認已離開城裡（" left "）｜怪物區")
                 decision3:="normal"
+            } else {
+                if (still:=RecoveryTownName(newHwnd))!="" {
+                    EventLog(p.name,"RETURN_CARD_FAIL","一般區前點後記憶體確認仍在 " still)
+                    throw Error("一般區前點後記憶體確認仍在 " still "（前點卡沒有生效）。")
+                }
+                decision3:=ConsensusLocation(newHwnd,Integer(ConfEdit.Value))
+                EventLog(p.name,"NORMAL_AREA_ACTION_CHECK","前點後位置判定=" decision3)
             }
             if decision3!="normal"
                 throw Error("一般區前點後未確認回到怪物區。")
@@ -3657,6 +3685,7 @@ HandleRecoveryException(idx, e) {
         return true
     }
     p.failures += 1
+    fastLoginCritical:=false   ; 登入關鍵區中途失敗也要解除，否則排隊重啟的 Timer 會一直被擋住（2026-10-26 椰奶卡在選角後沒有自動重啟）
     EventLog(p.name, "RECOVERY_FAIL", e.Message)
 
     ; v1.3.7.4 Login Commit Point：
@@ -4012,7 +4041,9 @@ RecoverProfile(idx, &asyncLoading:=false) {
     EventLog(p.name, "STEP", "開始 Boot Loading Safe / Screen Ready 登入流程")
 
     serverTpl:=ScreenTemplatePath("server")
-    if FileExist(serverTpl) {
+    if LoginMemoryGate(hwnd,"server",p.name,60) {
+        ; H-033：記憶體已確認伺服器畫面
+    } else if FileExist(serverTpl) {
         if !WaitScreenReady(hwnd,"server",p.name,60)
             throw Error("伺服器畫面尚未 Ready；已禁止執行 server 座標並保留 game.exe。")
     } else {
@@ -4031,7 +4062,9 @@ RecoverProfile(idx, &asyncLoading:=false) {
     FastTrace(p.name,"01 Server Click",_t)
     recoveryStage[idx]:="伺服器已選擇"
 
-    if FileExist(ScreenTemplatePath("channel")) {
+    if LoginMemoryGate(hwnd,"channel",p.name,60) {
+        ; 記憶體已確認分流清單
+    } else if FileExist(ScreenTemplatePath("channel")) {
         if !WaitScreenReady(hwnd,"channel",p.name,60)
             throw Error("分流畫面尚未 Ready；已禁止執行 channel 座標。")
     } else {
@@ -4045,7 +4078,9 @@ RecoverProfile(idx, &asyncLoading:=false) {
     FastTrace(p.name,"02 Channel Click",_t)
     recoveryStage[idx]:="分流已選擇"
 
-    if FileExist(ScreenTemplatePath("connect")) {
+    if LoginMemoryGate(hwnd,"connect",p.name,60) {
+        ; 記憶體已確認連線按鈕
+    } else if FileExist(ScreenTemplatePath("connect")) {
         if !WaitScreenReady(hwnd,"connect",p.name,60)
             throw Error("連線畫面尚未 Ready；已禁止執行 connect 座標。")
     } else {
@@ -4060,7 +4095,9 @@ RecoverProfile(idx, &asyncLoading:=false) {
     recoveryStage[idx]:="等待登入畫面"
 
     ; 帳密畫面 Ready 後才開始輸入；未 Ready 絕不 fallback 等秒數後硬輸入。
-    if FileExist(ScreenTemplatePath("account")) {
+    if LoginMemoryGate(hwnd,"account",p.name,60) {
+        Sleep 120
+    } else if FileExist(ScreenTemplatePath("account")) {
         if !WaitScreenReady(hwnd,"account",p.name,60)
             throw Error("登入畫面尚未 Ready；已禁止帳密輸入。")
         Sleep 120
@@ -4090,7 +4127,9 @@ RecoverProfile(idx, &asyncLoading:=false) {
     FastTrace(p.name,"06 Login Click",_t)
     ; FastLoginTrace：第2~6步期間不反覆重建帳號 ListView，避免 GUI 更新拖慢登入。
     RefreshProfileLV()
-    if FileExist(ScreenTemplatePath("char")) {
+    if LoginMemoryGate(hwnd,"char",p.name,90) {
+        ; 記憶體已確認選角畫面（角色清單已載入）
+    } else if FileExist(ScreenTemplatePath("char")) {
         if !WaitScreenReady(hwnd,"char",p.name,60)
             throw Error("角色畫面尚未 Ready；已禁止執行 char 座標。")
     } else {
@@ -4098,8 +4137,14 @@ RecoverProfile(idx, &asyncLoading:=false) {
         if !WaitStageVisualReady(hwnd,p.name,"角色畫面 Ready",_loginBaseline,4,15,true,2,1200)
             throw Error("角色畫面 Ready 判斷失敗；已保留 game.exe。")
     }
-    ClickPoint(hwnd,"char")
-    if FileExist(ScreenTemplatePath("startgame")) {
+    picked:=LoginPickChar(hwnd,p)
+    if !picked {
+        ClickPoint(hwnd,"char")
+        LoginEnsureSelected(hwnd,p)   ; 選角畫面剛出現時點了常沒反應：用記憶體確認選到了，沒選到再點
+    }
+    if LoginMemoryGate(hwnd,"startgame",p.name,30) {
+        ; 記憶體已確認「開始遊戲」按鈕出現（角色已選好）
+    } else if FileExist(ScreenTemplatePath("startgame")) {
         if !WaitScreenReady(hwnd,"startgame",p.name,60)
             throw Error("開始遊戲畫面尚未 Ready；已禁止執行 startgame 座標。")
     } else {
@@ -4107,6 +4152,8 @@ RecoverProfile(idx, &asyncLoading:=false) {
         if !WaitStageVisualReady(hwnd,p.name,"開始遊戲 Ready","",1.5,6,false,0,900)
             throw Error("開始遊戲 Ready 判斷失敗；已保留 game.exe。")
     }
+    if picked
+        LoginConfirmChar(hwnd,p)
     ClickPoint(hwnd,"startgame")
     fastLoginCritical:=false
     EventLog(p.name,"FAST_LOGIN_GUARD_OFF","Start Game 已送出｜恢復背景監控 Timer")
@@ -4169,6 +4216,9 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
                 ; v1.3.21.0：F6 是開關，已經開著就不按（重試進入遊戲時不會把自動攻擊按掉）。
                 if StrUpper(key)="F6" && RecoveryAutoAttackOn(hwnd)
                     continue
+                ; H-032：這個鍵是快捷欄的寵物卡時，改由下面依寵物狀態判斷（寵物已經在外面再按會把它收起來）。
+                if RecoveryPetKeyHandled(hwnd,key)
+                    continue
                 SendOneKey(key)
                 Sleep 300
             }
@@ -4178,13 +4228,17 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
     }
 
     NormalizeCameraZoom(hwnd), WaitSeconds(1)
-    decision:=ConsensusLocation(hwnd,threshold)
-    EventLog(p.name, "RECOGNITION", "首次位置判定=" decision)
-    ; v1.3.21.0：記憶體讀得到地圖時以記憶體為準（畫面被擋住時辨識不可靠）。
+    ; H-032：位置以遊戲記憶體為準（在城裡 → 復活點；在怪物地圖 → 正常），讀不到才用畫面辨識。
     town:=RecoveryTownName(hwnd)
-    if decision!="revive" && town!="" {
-        EventLog(p.name,"RECOGNITION_MEMORY","畫面判定=" decision "，但記憶體確認角色在 " town "｜改用前點卡")
+    if town!="" {
         decision:="revive"
+        EventLog(p.name,"RECOGNITION_MEMORY","記憶體確認角色在 " town "｜使用前點卡（略過畫面辨識）")
+    } else if (field:=RecoveryLeftTown(hwnd))!="" {
+        decision:="normal"
+        EventLog(p.name,"RECOGNITION_MEMORY","記憶體確認角色在怪物地圖（" field "）｜略過畫面辨識")
+    } else {
+        decision:=ConsensusLocation(hwnd,threshold)
+        EventLog(p.name, "RECOGNITION", "讀不到地圖，改用畫面辨識｜首次位置判定=" decision)
     }
     if decision="normal"
         p.locType:="怪物區"
@@ -4192,20 +4246,23 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
         p.locType:="復活點"
 
     if decision="revive" {
-        key:=Trim(ReturnKeyEdit.Value)
-        if key=""
-            throw Error("復活點成立，但前點卡按鍵未設定。")
-        Status.Text:="狀態：" p.name "｜確認復活點，使用前點卡 " key
-        ActivateGame(hwnd), SendOneKey(key), WaitSeconds(8)
+        Status.Text:="狀態：" p.name "｜確認復活點，使用前點卡"
+        key:=RecoveryUseReturnCard(hwnd,p)
+        Status.Text:="狀態：" p.name "｜已使用前點卡 " key
         EnsureRecoveryFocus(hwnd,p.name)
         Sleep 700
-        VerifyInGameHUD(hwnd,p,"前點卡 W 後")
-        ; 前點卡後不再重新拉視角，直接用同一視角快速確認正常怪區。
-        decision2:=ConsensusLocation(hwnd,threshold)
-        EventLog(p.name, "RECOGNITION", "前點卡後位置判定=" decision2)
-        if decision2!="normal" && (left:=RecoveryLeftTown(hwnd))!="" {
-            EventLog(p.name,"RECOGNITION_MEMORY","畫面判定=" decision2 "，但記憶體確認已離開城裡（" left "）｜視為怪物區")
+        VerifyInGameHUD(hwnd,p,"前點卡 " StrUpper(key) " 後")
+        ; 前點卡後：記憶體確認已離開城裡就是怪物區；讀不到才用畫面（不再重新拉視角）。
+        if (left:=RecoveryLeftTown(hwnd))!="" {
+            EventLog(p.name,"RECOGNITION_MEMORY","記憶體確認已離開城裡（" left "）｜怪物區")
             decision2:="normal"
+        } else {
+            if (still:=RecoveryTownName(hwnd))!="" {
+                EventLog(p.name,"RETURN_CARD_FAIL","前點卡後記憶體確認仍在 " still)
+                throw Error("前點卡後記憶體確認仍在 " still "（前點卡沒有生效）。")
+            }
+            decision2:=ConsensusLocation(hwnd,threshold)
+            EventLog(p.name, "RECOGNITION", "前點卡後位置判定=" decision2)
         }
         if decision2!="normal"
             throw Error("前點卡後未確認為正常打怪區。")
@@ -4218,6 +4275,9 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
     }
 
     ; PostKeys 已於 LOGIN_COMMIT 後立即送出，這裡不可重複送第二次。
+
+    ; 寵物放在最後：前點卡傳送換地圖會把寵物收起來，所以位置處理完（已在怪物區）才確認並開啟。
+    try RecoveryEnsurePet(hwnd,p)
 
     ; 所有需要前景操作的登入/辨識/按鍵完成後，再把新視窗放回此 Profile 的固定位置。
     RestoreProfileWindowPosition(idx, hwnd)
@@ -4919,11 +4979,13 @@ ActivateGame(hwnd) {
     return EnsureRecoveryFocus(hwnd,name)
 }
 
-ClickPoint(hwnd,key) {
+ClickPoint(hwnd,key,ov:="") {
     global points, abortRequested, profiles, activeRecoveryHwnd, recoveryStage
     if abortRequested
         throw Error("使用者停止測試。")
-    if !points.Has(key)
+    ; H-033：能從遊戲記憶體找到這個登入步驟的位置就直接用（ov = 呼叫端指定的位置，例如選角的第 N 隻）；找不到才用預設點。
+    mem:=IsObject(ov) ? ov : LoginUiClickPoint(hwnd,key)
+    if !IsObject(mem) && !points.Has(key)
         throw Error("缺少登入座標：" key)
 
     ; 每一點都重新鎖定本輪 Recovery HWND，絕不沿用其他遊戲視窗的位置。
@@ -4935,7 +4997,10 @@ ClickPoint(hwnd,key) {
     if w<=0 || h<=0
         throw Error("無法取得 Recovery 遊戲 Client 尺寸。")
 
-    p:=points[key]
+    if IsObject(mem)
+        p:={nx:mem.x/1024,ny:mem.y/768,rx:mem.x,ry:mem.y,cw:1024,ch:768}
+    else
+        p:=points[key]
     if p.nx<0 || p.nx>1 || p.ny<0 || p.ny>1
         throw Error("登入座標超出遊戲視窗：" key "｜請重新校正 8 點座標。")
 
@@ -4978,7 +5043,7 @@ ClickPoint(hwnd,key) {
             }
         }
     }
-    EventLog(traceName,"CLICK_TRACE",key "｜HWND=" hwnd "｜Client=" x "," y " " w "x" h "｜Mode=" mode "｜Target=" px "," py)
+    EventLog(traceName,"CLICK_TRACE",key "｜HWND=" hwnd "｜Client=" x "," y " " w "x" h "｜Mode=" mode (IsObject(mem) ? "（記憶體）" : "") "｜Target=" px "," py)
 
     DllCall("SetCursorPos","Int",px,"Int",py)
     Sleep 80
@@ -5363,7 +5428,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer MonitorTick, 2000
     SetTimer HPAndSoftMonitorTick, 1000
     SetTimer MemoryHPMonitorTick, MEMORY_HP_SAMPLE_MS
-    SetTimer NetworkWatchTick, 3000
+    SetTimer NetGuardTick, 5000   ; H-031：整體斷網守門（不開任何外部程式）
     SetTimer InventoryStatsTick, INV_STATS_INTERVAL_MS
     SetTimer SignalsTick, SIGNAL_TICK_MS
     SetTimer DailyItemsTick, DAILY_TICK_MS
@@ -5374,6 +5439,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer UpdateCheckTick, UPDATE_CHECK_MS
     SetTimer UpdateCleanupOld, -30000
     SetTimer MBoxTick, 1000
+    SetTimer ApTick, 2000
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
     SetTimer KillStatsTick, KILL_TICK_MS
@@ -5459,12 +5525,6 @@ WebRunAction(action,value:=0,rawValue:="") {
         SetInventoryBindingChecked(rawValue)
     } else if action="invpause" {
         ToggleInventoryPause()
-    } else if action="networkwatchenable" {
-        SetNetworkWatchEnabled(rawValue)
-    } else if action="networkwatchsave" {
-        SaveNetworkWatchSettings(rawValue)
-    } else if action="networkwatchtest" {
-        NetworkWatchTick(true)
     } else if action="invstarthotkey" {
         SaveInventoryStartHotkey(rawValue)
     } else if action="invpausehotkey" {
@@ -5506,6 +5566,11 @@ WebRunAction(action,value:=0,rawValue:="") {
         DesktopShortcutChooseIcon()
     } else if action="shortcuticonreset" {
         DesktopShortcutResetIcon()
+    } else if action="loginchars" {
+        LoginCharsPushWeb()
+    } else if action="logincharsave" {
+        LoginCharSet(rawValue)
+        LoginCharsPushWeb()
     } else if action="dailystate" {
         DailyItemsPushWeb()
     } else if action="dailyrun" {
@@ -5520,7 +5585,9 @@ WebRunAction(action,value:=0,rawValue:="") {
         DailyItemsPushWeb()
 
     } else if action="invstats" {
-        InventoryStatsPushWeb(RegExMatch(rawValue,"^\d{4}-\d{2}-\d{2}$") ? rawValue : "")
+        ; 網頁端會把「|」編成 %7C（encodeURIComponent），一定要先解碼，否則時段完全沒有套用（H-033 修正）
+        rq:=InvParseRequest(WebUrlDecode(rawValue))   ; 「日期」或「日期|起|迄」（H-023 自訂統計時段）
+        InventoryStatsPushWeb(rq.day,rq.from,rq.to)
     } else if action="mboxstate" {
         MBoxPushWeb()
     } else if action="mboxcfg" {
@@ -5529,6 +5596,32 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="mboxrole" {
         MBoxSetRole(WebUrlDecode(rawValue))
         MBoxPushWeb()
+    } else if action="skillcombostate" {
+        SkillComboPushWeb()
+    } else if action="skillcombocfg" {
+        SkillComboSetGlobal(WebUrlDecode(rawValue))
+        SkillComboPushWeb()
+    } else if action="skillcombolist" {
+        SkillComboSetList(WebUrlDecode(rawValue))
+        SkillComboPushWeb()
+    } else if action="partystate" {
+        ApPushWeb()
+    } else if action="partycfg" {
+        ApSetGlobal(WebUrlDecode(rawValue))
+        ApPushWeb()
+    } else if action="partyrole" {
+        ApSetRole(WebUrlDecode(rawValue))
+        ApPushWeb()
+    } else if action="partynow" {
+        if IsInteger(WebUrlDecode(rawValue))
+            ApRequestNow(Integer(WebUrlDecode(rawValue)))
+        ApPushWeb()
+    } else if action="licensestate" {
+        Lic_PushWeb()
+    } else if action="licenseinstall" {
+        Lic_PickAndInstall()
+    } else if action="licensecopy" {
+        A_Clipboard := Lic_ShareNow()
     } else if action="updatestate" {
         UpdatePushWeb()
     } else if action="updatecheck" {
@@ -5544,7 +5637,10 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="recstats" {
         RecoveryStatsPushWeb()
     } else if action="invstatsexport" {
-        InventoryStatsExportCsv(RegExMatch(rawValue,"^\d{4}-\d{2}-\d{2}$") ? rawValue : "")
+        ; 「日期|起|迄|模式」：模式 detail（選的那天＋時段）/ all（全部日期明細）/ summary（每日摘要）
+        xp:=StrSplit(WebUrlDecode(rawValue),"|")
+        rq:=InvParseRequest(xp.Length>=3 ? xp[1] "|" xp[2] "|" xp[3] : (xp.Length ? xp[1] : ""))
+        InventoryStatsExportCsv(rq.day,rq.from,rq.to,xp.Length>=4 && RegExMatch(xp[4],"^(detail|all|summary)$") ? xp[4] : "detail")
     } else if action="profile" {
         WebSelectProfile(value)
     } else if action="game" {
@@ -5632,6 +5728,18 @@ WebRunAction(action,value:=0,rawValue:="") {
         WebSetSoftAutoRecover(rawValue)
     } else if action="recoveryfirst" {
         WebSetRecoveryFirst(rawValue)
+    } else if action="deathalarm" {
+        WebSetDeathAlarm(rawValue)
+    } else if action="alarmglobal" {
+        WebSetAlarmGlobal(rawValue)
+    } else if action="alarmtest" {
+        TestDeathAlarm()
+    } else if action="alarmstop" {
+        StopDeathAlarm()
+    } else if action="dailycardkeys" {
+        if !DailySetCardKeys(WebUrlDecode(rawValue))
+            AddRecentEvent("⚠ 傳送卡按鍵沒有儲存：只能填單一字母 / 數字 / F1～F12（快捷欄各格用逗號分隔）")
+        DailyItemsPushWeb()
     } else if action="dailycfg" {
         WebSetDailyConfig(rawValue)
         DailyItemsPushWeb()
@@ -5872,8 +5980,8 @@ WebRunSelfCheck() {
     items:=[]
     launcherOk:=FileExist(Trim(LauncherEdit.Value)) ? 1 : 0
     items.Push([launcherOk,"遊戲啟動程式",launcherOk ? "已設定" : "找不到啟動程式，請到「環境與通知」重新選擇"])
-    coordsOk:=PointsConfigured() ? 1 : 0
-    items.Push([coordsOk,"登入座標",coordsOk ? "8/8 已設定" : "尚未完成 8 點"])
+    coordsOk:=(PointsConfigured() || LoginMemoryAvailable()) ? 1 : 0
+    items.Push([coordsOk,"登入座標",PointsConfigured() ? "8/8 已設定" : (coordsOk ? "直接讀遊戲畫面（不需要記位置）" : "尚未完成 8 點")])
     profileOk:=profiles.Length>0 ? 1 : 0
     items.Push([profileOk,"帳號",profiles.Length " 個"])
     bound:=0
@@ -6007,15 +6115,44 @@ WebSetDailyConfig(rawValue) {
     }
     items:=DailyNormalizeItems(parts[2])
     p.dailyItems:=items
-    p.dailyMode:=parts[3]="here" ? "here" : "town"
+    p.dailyMode:=(parts[3]="here" || parts[3]="auto") ? parts[3] : "town"
     p.dailyWeapon:=parts.Length>=4 ? Trim(RegExReplace(parts[4],"[\r\n~|]")) : ""
     SaveProfiles()
     ; 勾選改變 → 到期時間要重新計算（只看有勾的項目）
     if p.HasOwnProp("dailyExpiry")
         p.DeleteProp("dailyExpiry")
-    AddRecentEvent(p.name " → 每日道具：" (items="" ? "不更換" : (p.dailyMode="here" ? "原地換" : "回城換")))
+    AddRecentEvent(p.name " → 每日道具：" (items="" ? "不更換" : (p.dailyMode="here" ? "原地換" : p.dailyMode="auto" ? "自動（依快捷欄）" : "回城換")))
     if items="" && DailyInProgress(p.name)
         AddRecentEvent("⚠ " p.name " 上次每日道具更換沒有完成，裝備可能還在背包：請按「立即更換」穿回")
+}
+
+; H-020：死亡警報音 — 每個角色的開關（「編號~0/1」）
+WebSetDeathAlarm(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<2 || !IsInteger(parts[1]) || !IsInteger(parts[2])
+        return
+    idx:=Integer(parts[1]), on:=Integer(parts[2])
+    if idx<1 || idx>profiles.Length
+        return
+    profiles[idx].deathAlarm:=on ? 1 : 0
+    SaveProfiles()
+    AddRecentEvent(profiles[idx].name " → 死亡警報音 " (on ? "ON" : "OFF"))
+}
+
+; H-020：死亡警報音 — 總開關與響的秒數（「0/1~秒數」）；總開關關掉時所有角色都不響
+WebSetAlarmGlobal(rawValue) {
+    global DeathAlarmEnableCB,DeathAlarmSecondsEdit,INI
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<2 || !IsInteger(parts[1]) || !IsInteger(parts[2])
+        return
+    DeathAlarmEnableCB.Value:=Integer(parts[1]) ? 1 : 0
+    DeathAlarmSecondsEdit.Value:=Max(5,Min(300,Integer(parts[2])))
+    IniWrite DeathAlarmEnableCB.Value,INI,"DeathAlert","SoundEnabled"
+    IniWrite DeathAlarmSecondsEdit.Value,INI,"DeathAlert","SoundSeconds"
+    if !DeathAlarmEnableCB.Value
+        StopDeathAlarm()
+    AddRecentEvent("死亡警報音：" (DeathAlarmEnableCB.Value ? "開啟，響 " DeathAlarmSecondsEdit.Value " 秒" : "關閉"))
 }
 
 WebSetRecoveryFirst(rawValue) {
@@ -6125,7 +6262,6 @@ PushWebState(*) {
     global coordDiagnosticText,serverDisconnectLast
     global invConfigured,invSetupMode,invSetupStep,invRunning,invCurrentProfile,invProcessed,invTotal,invStatus,invStartPage,invStartRow,invEndPage,invEndRow,invSpeed,invSetupHotkey
     global invPaused,invStartHotkey,invPauseHotkey,invStopHotkey
-    global netWatchEnabled,netGateway,netInternetTarget,netIntervalSec,netLastGateway,netLastInternet,netLastGameTcp,netLastGameRemote,netLastCheck,netLastAnomaly,netAnomalyCount,netOutageActive
     global layoutAutoRestore,layoutStatus,layoutRestored,layoutSkipped
     global autoSwitchRunning,autoSwitchCurrentIdx,autoSwitchNextAt,switchStopHotkey,autoSwitchRecoveryPaused,autoSwitchPausedRemainMs
 
@@ -6166,6 +6302,7 @@ PushWebState(*) {
             . ',"soft":' (p.softDetect ? "true":"false")
             . ',"softAutoRecover":' ((p.HasOwnProp("softAutoRecover") && p.softAutoRecover) ? "true":"false")
             . ',"recoveryFirst":' (ProfileRecoveryFirst(p) ? "true":"false")
+          . ',"deathAlarm":' ((p.HasOwnProp("deathAlarm") ? p.deathAlarm : 1) ? "true":"false")
             . ',"memHp":' (p.memHp+0)
             . ',"memHpMin":' (p.memHpMin+0)
             . ',"memHpMax":' (p.memHpMax+0)
@@ -6250,7 +6387,7 @@ PushWebState(*) {
         . ',"uptimeSec":' Floor((A_TickCount-appStartTick)/1000)
         . ',"launcher":"' JsonEscapeWeb(LauncherEdit.Value) '"'
         . ',"postKeys":"' JsonEscapeWeb(PostKeysEdit.Value) '"'
-        . ',"coordConfigured":' (PointsConfigured() ? "true":"false")
+        . ',"coordConfigured":' ((PointsConfigured() || LoginMemoryAvailable()) ? "true":"false") ',"loginMemory":' (LoginMemoryAvailable() ? "true":"false")
         . ',"coordSetup":' (setupMode ? "true":"false")
         . ',"coordIndex":' setupIndex
         . ',"coordTargetValid":' (setupMode && setupHwnd && WinExist("ahk_id " setupHwnd) ? "true":"false")
@@ -6270,6 +6407,8 @@ PushWebState(*) {
         . ReportsJson()
         . ',"discordHasWebhook":' (Trim(DiscordWebhookEdit.Value)!="" ? "true":"false")
         . ',"deathDiscordEnabled":' (DeathDiscordEnableCB.Value ? "true":"false")
+        . ',"alarmEnabled":' (DeathAlarmEnableCB.Value ? "true":"false")
+        . ',"alarmSeconds":' Max(5,Min(300,DeathAlarmSecondsEdit.Value+0))
         . ',"deathDiscordHasWebhook":' (Trim(DeathDiscordWebhookEdit.Value)!="" ? "true":"false")
         . ',"softEnabled":' (SoftEnableCB.Value ? "true":"false")
         . ',"softIdle":' (SoftIdleEdit.Value+0)
@@ -6307,17 +6446,6 @@ PushWebState(*) {
         . ',"inventoryEndRow":' invEndRow
         . ',"inventorySpeed":"' JsonEscapeWeb(invSpeed) '"'
         . ',"inventorySetupHotkey":"' JsonEscapeWeb(invSetupHotkey) '"'
-        . ',"networkWatchEnabled":' (netWatchEnabled ? "true":"false")
-        . ',"networkGateway":"' JsonEscapeWeb(netGateway) '"'
-        . ',"networkInternetTarget":"' JsonEscapeWeb(netInternetTarget) '"'
-        . ',"networkIntervalSec":' netIntervalSec
-        . ',"networkLastGateway":"' JsonEscapeWeb(netLastGateway) '"'
-        . ',"networkLastInternet":"' JsonEscapeWeb(netLastInternet) '"'
-        . ',"networkLastGameTcp":"' JsonEscapeWeb(netLastGameTcp) '"'
-        . ',"networkLastGameRemote":"' JsonEscapeWeb(netLastGameRemote) '"'
-        . ',"networkLastCheck":"' JsonEscapeWeb(netLastCheck) '"'
-        . ',"networkLastAnomaly":"' JsonEscapeWeb(netLastAnomaly) '"'
-        . ',"networkAnomalyCount":' netAnomalyCount
         . ',"inventoryBindings":' BuildInventoryBindingsJson()
         . ',"inventoryWindows":' BuildInventoryWindowsJson()
         . ',"inventoryProfileCandidates":' BuildInventoryProfileCandidatesJson()
@@ -6421,73 +6549,7 @@ InventoryPauseGate() {
 }
 
 
-LoadNetworkWatchConfig() {
-    global INI,netWatchEnabled,netGateway,netInternetTarget,netIntervalSec
-    netWatchEnabled:=(IniRead(INI,"NetworkWatch","Enabled","0")+0)=1
-    netGateway:=IniRead(INI,"NetworkWatch","Gateway","")
-    netInternetTarget:=IniRead(INI,"NetworkWatch","InternetTarget","1.1.1.1")
-    netIntervalSec:=Max(3,Min(60,IniRead(INI,"NetworkWatch","IntervalSec","5")+0))
-    ; 啟動階段不可同步執行 PowerShell，否則 WebView2 尚未完成導覽時 GUI 會白畫面。
-    ; Gateway 留空時，等 NetworkWatchTick / 手動測試再背景取得。
-}
-SetNetworkWatchEnabled(raw) {
-    global INI,netWatchEnabled
-    netWatchEnabled:=(raw+0)=1
-    IniWrite netWatchEnabled?1:0,INI,"NetworkWatch","Enabled"
-}
-
-SaveNetworkWatchSettings(raw) {
-    global INI,netWatchEnabled,netGateway,netInternetTarget,netIntervalSec
-    p:=StrSplit(raw,"~")
-    if p.Length<4
-        return
-    ; Enabled 以 UI 傳入值為準，避免儲存時被舊的 PushWebState 覆蓋。
-    enabledRaw:=Trim(p[1])
-    netWatchEnabled:=(enabledRaw+0)=1
-    netGateway:=Trim(p[2])
-    netInternetTarget:=Trim(p[3])
-    netIntervalSec:=Max(3,Min(60,p[4]+0))
-    ; 儲存動作不可同步做 Gateway 探測；留給 NetworkWatchTick。
-    IniWrite netWatchEnabled ? 1 : 0,INI,"NetworkWatch","Enabled"
-    IniWrite netGateway,INI,"NetworkWatch","Gateway"
-    IniWrite netInternetTarget,INI,"NetworkWatch","InternetTarget"
-    IniWrite netIntervalSec,INI,"NetworkWatch","IntervalSec"
-}
-RunHiddenCapture(command, timeoutMs:=3000) {
-    ; Network Watch 專用：完全隱藏 cmd/PowerShell 視窗。
-    ; 以 temp file 接 stdout/stderr，避免 WScript.Shell.Exec 反覆建立可見 console。
-    tmp:=A_Temp "\HIHIYONG_NW_" A_TickCount "_" Random(1000,9999) ".txt"
-    try {
-        full:=A_ComSpec ' /D /Q /C "' command ' > "' tmp '" 2>&1"'
-        exitCode:=RunWait(full,,"Hide")
-        out:=FileExist(tmp) ? FileRead(tmp,"UTF-8") : ""
-        try FileDelete tmp
-        return {ok:exitCode=0,text:out,exitCode:exitCode}
-    } catch {
-        try FileDelete tmp
-        return {ok:false,text:"",exitCode:-1}
-    }
-}
-
-DetectDefaultGateway() {
-    ; Native COM/WMI：不建立 cmd/PowerShell 視窗，也不阻塞 WebView 啟動。
-    try {
-        svc:=ComObjGet("winmgmts:{impersonationLevel=impersonate}!\\\\.\\root\\cimv2")
-        col:=svc.ExecQuery("SELECT DefaultIPGateway,IPEnabled FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled=True")
-        for nic in col {
-            try {
-                gws:=nic.DefaultIPGateway
-                if IsObject(gws) {
-                    for gw in gws
-                        if RegExMatch(gw,"^\\d{1,3}(\\.\\d{1,3}){3}$")
-                            return gw
-                }
-            }
-        }
-    }
-    return ""
-}
-
+; PowerShell -EncodedCommand 用的字串（桌面捷徑也會用到）：
 PowerShellEncodedCommand(text) {
     ; CryptBinaryToStringW: UTF-16LE bytes -> Base64, no CR/LF.
     ; v1.3.22.0：StrPut 回傳的是位元組數（含結尾 0），原本當成字元數會多編一倍的 0，較長的指令會執行失敗。
@@ -6502,146 +6564,6 @@ PowerShellEncodedCommand(text) {
     if !DllCall("Crypt32\CryptBinaryToStringW","Ptr",buf.Ptr,"UInt",bytes-2,"UInt",flags,"Ptr",out.Ptr,"UIntP",&size)
         return ""
     return StrGet(out,"UTF-16")
-}
-
-NetworkPing(target) {
-    if Trim(target)=""
-        return false
-    try {
-        svc:=ComObjGet("winmgmts:{impersonationLevel=impersonate}!\\\\.\\root\\cimv2")
-        q:="SELECT StatusCode FROM Win32_PingStatus WHERE Address='" StrReplace(target,"'","''") "' AND Timeout=700"
-        for r in svc.ExecQuery(q)
-            return r.StatusCode=0
-    }
-    return false
-}
-
-GetGameTcpSummary(forceRefresh:=false) {
-    global profiles
-    static lastAt:=0
-    static lastResult:=""
-
-    if !forceRefresh && lastAt && A_TickCount-lastAt<5000 && IsObject(lastResult)
-        return lastResult
-
-    pids:=[]
-    for p in profiles {
-        if ProfileGameAlive(p)
-            pids.Push(p.pid)
-    }
-
-    if pids.Length=0 {
-        lastAt:=A_TickCount
-        lastResult:={ok:false,text:"無在線 game.exe",remote:"-"}
-        return lastResult
-    }
-
-    list:=""
-    for pid in pids
-        list.=(list="" ? "" : ",") pid
-
-    ps:="$pids=@(" list ");$c=Get-NetTCPConnection -State Established -ErrorAction SilentlyContinue|Where-Object{$pids -contains $_.OwningProcess};if($c){$c|ForEach-Object{('{0}:{1}' -f $_.RemoteAddress,$_.RemotePort)}}"
-    enc:=PowerShellEncodedCommand(ps)
-    r:=RunHiddenCapture("powershell -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand " enc,4000)
-    out:=Trim(r.text)
-
-    lastAt:=A_TickCount
-    if out!=""
-        lastResult:={ok:true,text:"ESTABLISHED",remote:Trim(StrSplit(out,"`n")[1]," `r`n")}
-    else
-        lastResult:={ok:false,text:r.ok ? "無 ESTABLISHED TCP" : "TCP 查詢失敗",remote:"-"}
-
-    return lastResult
-}
-
-WindowsNetworkConnected() {
-    ; Windows 自身的網路連線狀態只作為第二層佐證，不把 ICMP/Ping TIMEOUT 當成斷網。
-    flags:=0
-    try return DllCall("Wininet\InternetGetConnectedState","UIntP",&flags,"UInt",0,"Int")!=0
-    catch
-        return false
-}
-
-NetworkWatchLog(line) {
-    d:=A_ScriptDir "\NetworkWatch"
-    if !DirExist(d)
-        DirCreate d
-    FileAppend FormatTime(A_Now,"yyyy-MM-dd HH:mm:ss") " | " line "`n",d "\Network_" FormatTime(A_Now,"yyyy-MM-dd") ".log","UTF-8"
-}
-NetworkWatchTick(force:=false) {
-    global fastLoginCritical
-    if fastLoginCritical && !force
-        return
-    global netWatchEnabled,netGateway,netInternetTarget,netIntervalSec,netLastGateway,netLastInternet,netLastGameTcp,netLastGameRemote,netLastCheck,netLastAnomaly,netAnomalyCount,netWatchBusy,netPrevGatewayOk,netPrevInternetOk,netPrevGameTcp
-    global netOutageActive,netDownStreak,netUpStreak
-    static lastTick:=0, firstResultLogged:=false
-    if (!netWatchEnabled&&!force)||netWatchBusy
-        return
-    if !force&&lastTick&&A_TickCount-lastTick<netIntervalSec*1000
-        return
-    lastTick:=A_TickCount,netWatchBusy:=true
-    try {
-        if netGateway=""
-            netGateway:=DetectDefaultGateway()
-
-        ; v1.3.10.9：game.exe 已建立 TCP 是最高優先的「網路仍正常」證據。
-        ; Gateway / 1.1.1.1 Ping 只保留診斷用途，避免路由器或 ISP 阻擋 ICMP 時誤判 NETWORK_DOWN。
-        tcp:=GetGameTcpSummary(true)
-        winNet:=WindowsNetworkConnected()
-        gw:=NetworkPing(netGateway)
-        inet:=NetworkPing(netInternetTarget)
-
-        netLastGameTcp:=tcp.text
-        netLastGameRemote:=tcp.remote
-        netPrevGameTcp:=tcp.ok
-        netLastGateway:=gw ? "OK" : "TIMEOUT（僅供參考）"
-        netLastInternet:=inet ? "OK" : (winNet ? "Ping TIMEOUT｜Windows 已連線" : "TIMEOUT")
-        netLastCheck:=FormatTime(A_Now,"yyyy-MM-dd HH:mm:ss")
-
-        ; 判定順序：
-        ; 1. game.exe TCP ESTABLISHED => 一定不判全域斷網。
-        ; 2. Windows 回報仍有網路 => 不因 Ping TIMEOUT 判斷斷網。
-        ; 3. 僅在「無遊戲 TCP + Windows 無網路 + Gateway/Internet 都失敗」連續兩次才 NETWORK_DOWN。
-        hardDown:=(!tcp.ok && !winNet && !gw && !inet)
-        networkHealthy:=(tcp.ok || winNet || gw || inet)
-
-        ; v1.3.10.11：第一次成功完成 Network Watch 檢查時留下主 Log，方便確認 Timer 確實有執行。
-        if !firstResultLogged && networkHealthy {
-            firstResultLogged:=true
-            NetworkWatchLog("NETWORK_OK | GameTCP=" netLastGameTcp " | WindowsNet=" (winNet?"UP":"DOWN") " | Gateway=" netLastGateway " | Internet=" netLastInternet)
-            EventLog("GLOBAL","NETWORK_OK","Network Watch 首次檢查正常｜GameTCP=" netLastGameTcp "｜WindowsNet=" (winNet?"UP":"DOWN"))
-        }
-
-        if hardDown {
-            netDownStreak+=1
-            netUpStreak:=0
-        } else if networkHealthy {
-            netUpStreak+=1
-            netDownStreak:=0
-        }
-
-        if !netOutageActive && netDownStreak>=2 {
-            netOutageActive:=true
-            netLastAnomaly:=netLastCheck
-            netAnomalyCount+=1
-            NetworkWatchLog("NETWORK_DOWN | GameTCP=" netLastGameTcp " | WindowsNet=DOWN | Gateway=" netLastGateway " | Internet=" netLastInternet)
-            EventLog("GLOBAL","NETWORK_DOWN","遊戲 TCP 不存在、Windows 網路離線且 Gateway/Internet 連續兩次無回應；暫停假在線/斷線視窗自動 Recovery")
-            AddRecentEvent("🌐 Network Watch：確認整體網路中斷｜暫停假在線 Recovery")
-            try SendDiscordMessage("🌐 HIHIYONG Network Watch`n確認電腦整體網路中斷。`n已暫停假在線/斷線視窗自動 Recovery，避免多帳號誤重啟。")
-            ResetSoftDisconnectRuntime()
-        } else if netOutageActive && netUpStreak>=2 {
-            netOutageActive:=false
-            NetworkWatchLog("NETWORK_RECOVERED | GameTCP=" netLastGameTcp " | WindowsNet=" (winNet?"UP":"DOWN"))
-            EventLog("GLOBAL","NETWORK_RECOVERED","網路連續兩次恢復；重新啟用遊戲異常判定")
-            AddRecentEvent("🌐 Network Watch：網路已恢復｜重新檢查遊戲狀態")
-            try SendDiscordMessage("✅ HIHIYONG Network Watch`n電腦網路已恢復。`n遊戲異常監控與自動 Recovery 已重新啟用。")
-        }
-
-        changed:=(netPrevGatewayOk!=""&&gw!=netPrevGatewayOk)||(netPrevInternetOk!=""&&inet!=netPrevInternetOk)
-        if hardDown||changed||force
-            NetworkWatchLog("GameTCP=" netLastGameTcp " | WindowsNet=" (winNet?"UP":"DOWN") " | Gateway=" netLastGateway " | Internet=" netLastInternet " | Remote=" netLastGameRemote)
-        netPrevGatewayOk:=gw,netPrevInternetOk:=inet
-    } finally netWatchBusy:=false
 }
 
 LoadInventoryBindings() {

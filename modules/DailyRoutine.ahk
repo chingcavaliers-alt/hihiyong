@@ -3,7 +3,7 @@
 ;
 ; 流程依 2026-10-21 豆奶的示範錄製建立：
 ;   Q 回城（過圖讓到期的一日道具消失）→ F6 → 開啟角色 / 道具視窗 → 銀行取出每日分享禮包 → 打開
-;   → 打開飾品禮盒、暗夜項鍊禮盒、M 箱 → 勳章貼紙 → 打開紀念造型服飾禮包 → 項鍊（念珠＋暗夜項鍊）
+;   → 打開飾品禮盒、暗夜項鍊禮盒、命運箱子 → 勳章貼紙 → 打開紀念造型服飾禮包 → 項鍊（念珠＋暗夜項鍊）
 ;   → 武器選擇盒選雙槍 → 頭 / 衣 / 褲 / 手套 / 鞋 / 武器：脫下 → 左鍵拿起造型 → 右鍵裝備（套上並穿回）
 ;   → 關閉視窗 → W 前點 → F6
 ;
@@ -25,6 +25,12 @@ global dailyPopupStart := 0
 ; 實體鍵鼠閒置毫秒數；測試可換成固定值，避免結果受「有人正在用電腦」影響
 global dailyIdleMs := () => A_TimeIdlePhysical
 global DAILY_WEAPON_KEYWORD := IniRead(INI,"DailyItems","WeaponKeyword","雙槍")
+; 武器造型貼選擇盒的道具編號（有人領到過就記住）：之後不用背包裡有盒子，也讀得到盒子裡有哪些武器可選
+global DAILY_WEAPON_BOX_KEY := IniRead(INI,"DailyItems","WeaponBoxKey","1-242")
+; H-028 / H-030 傳送卡按鍵：平常從道具快捷欄讀出卡在第幾格、改按那一格的鍵；讀不到快捷欄資料時才用這裡手動設定的鍵。
+; QuickKeys = 快捷欄每一格對應的鍵（由左到右，預設只知道前 3 格是 Q W E，後面的格子要自己填才會用）。
+global DAILY_START_KEY := Trim(IniRead(INI,"DailyItems","StartCardKey","q")), DAILY_PREV_KEY := Trim(IniRead(INI,"DailyItems","PrevCardKey","w"))
+global DAILY_QUICK_KEYS := Trim(IniRead(INI,"DailyItems","QuickKeys","q,w,e,a,s,d"))
 ; 讀不到選擇盒清單時改用的位置（10/21 示範錄製：GT 武器造型貼選擇盒的雙槍在第 5 個）
 global DAILY_WEAPON_CHOICE_INDEX := Integer(IniRead(INI,"DailyItems","WeaponChoiceIndex","5"))
 global DAILY_STEP_TIMEOUT_MS := 6000
@@ -39,6 +45,9 @@ global dailyTestDriver := 0
 ; 點擊位置：相對於模板左上角的位移（取自示範錄製，遊戲畫面 1024x768）
 global DAILY_INV_TAB_BAG := [-33,30], DAILY_INV_TAB_BANK := [49,29], DAILY_INV_CELL0 := [-41,80], DAILY_INV_STEP := 37
 global DAILY_INV_COLS := 6, DAILY_INV_VISIBLE_ROWS := 9
+; H-024 背包分頁：6 欄 × 50 列，視窗每次顯示 10 列 = 一頁（共 5 頁）。道具位置的列 y 對應第 y÷10+1 頁；
+; 同一頁內的第 (y mod 10) 列顯示在同樣的畫面位置。
+global DAILY_INV_ROWS_PER_PAGE := 10, DAILY_PAGE_WAIT_MS := 3000, DAILY_PAGE_CONFIRM_MS := 150
 ; 角色視窗的裝備欄（EMSLOT → 位移）；褲子 / 手套若位置互換，脫裝備時會依記憶體自動辨識
 global DAILY_CHAR_SLOTS := Map(0,[-163,127], 1,[-164,165], 2,[-163,239], 3,[-162,270], 4,[-159,312], 5,[-163,399], 19,[-48,393])
 global DAILY_CHOICE_ICON0 := [-63,65], DAILY_CHOICE_STEP := 36, DAILY_CHOICE_SELECT := [36,205], DAILY_CHOICE_VISIBLE := 6
@@ -59,7 +68,16 @@ DailyWants(p, opt) => InStr("," DailyItemsOf(p) ",","," opt ",")>0
 ; 裝備欄 slot 屬於哪個選項；不在清單內的欄位（其他一日道具）照舊計算 → true
 DailyWantsSlot(p, slot) => !DAILY_SLOT_OPTION.Has(slot) || DailyWants(p,DAILY_SLOT_OPTION[slot])
 ; "town" = 回城換（Q 回城、換完 W 回怪區）；"here" = 原地換（不過圖，換完留在原地）
-DailyModeOf(p) => p.HasOwnProp("dailyMode") && p.dailyMode="here" ? "here" : "town"
+DailyModeOf(p) => p.HasOwnProp("dailyMode") && (p.dailyMode="here" || p.dailyMode="auto") ? p.dailyMode : "town"
+
+; H-032 "auto" = 依道具快捷欄決定：起點卡和前點卡都放在快捷欄 → 回城換；有一張不在 → 原地換（不用人工設定每個角色）。
+; 讀不到快捷欄資料（舊位置檔）時當作回城換（維持原本行為與原本的安全停止）。
+DailyCanReturn(pid) {
+    s:=DailyQuickInfo(pid,"起點傳送卡"),p:=DailyQuickInfo(pid,"前點傳送卡")
+    if s="" || p=""
+        return true
+    return IsObject(s) && s.key!="" && IsObject(p) && p.key!=""
+}
 DailyWeaponOf(p) => p.HasOwnProp("dailyWeapon") ? p.dailyWeapon : ""
 DailyWeaponKw() => dailyCurWeaponKw!="" ? dailyCurWeaponKw : DAILY_WEAPON_KEYWORD
 ; 只留已知的項目、順序固定（INI 被手改過也不會壞掉）
@@ -84,6 +102,9 @@ DailyDoneAt(p) {
 ; 靠這個避免一直重跑：成功後 DAILY_REDO_SEC 內不再判定為到期。
 DailyRecentlyDone(p) => UnixNow()-DailyDoneAt(p)<DAILY_REDO_SEC
 global DAILY_REDO_SEC := 20*3600
+; 「未完成的更換」紀錄超過這麼久就不再接續（照原本設定重新開始，會回城）。2026-10-26 欸等等 / 小柯基留著幾小時前失敗的紀錄，
+; 後來的更換被當成接續而略過 Q，在戰鬥區原地更換。
+global DAILY_RESUME_SEC := 3*3600
 
 ; ---------------------------------------------------------------------------
 ; 排程：依序執行佇列中的角色
@@ -213,25 +234,28 @@ DailyRoutineSteps(ctx) {
     ; 讀不到目前地圖就不做（無法判斷該不該 Q / W，也無法確認結束時在怪區）
     if DailyWhere(pid)=""
         throw Error("讀不到目前所在地圖，為安全起見停止更換（還沒動任何東西）")
-    if inProgress {
+    resume:=inProgress && DailyProgressRecent(ctx.name)
+    if inProgress && !resume
+        DailyStep(ctx,"上次未完成的更換紀錄已經過期（超過 " Round(DAILY_RESUME_SEC/3600) " 小時），不接續，照設定從頭開始")
+    if resume {
         stay:=DailyInProgressStay(ctx.name)
         here:=InStr(DailyProgressValue(ctx.name),"here")=1
         DailyStep(ctx,"接續上次未完成的更換（略過 Q）")
     } else if (town:=DailyTownName(pid))!="" {
         stay:=true
         DailyStep(ctx,"角色已在城裡（" town "），略過 Q 回城，換完 W 前點到怪區")
-    } else if DailyModeOf(ctx.p)="here" {
+    } else if DailyModeOf(ctx.p)="here" || (DailyModeOf(ctx.p)="auto" && !DailyCanReturn(pid)) {
         stay:=true,here:=true
-        DailyStep(ctx,"原地更換（角色設定：不回城），換完留在原地")
+        DailyStep(ctx,DailyModeOf(ctx.p)="auto" ? "原地更換（道具快捷欄沒有起點卡 / 前點卡，自動改成不回城），換完留在原地" : "原地更換（角色設定：不回城），換完留在原地")
     } else {
         DailyStep(ctx,"Q 回城（過圖讓到期道具消失）")
-        DailyTeleport(ctx,"q")
+        DailyTeleport(ctx,DailyCardKey(ctx,"起點傳送卡",DAILY_START_KEY))
     }
     ; v1.3.24.0：換裝前一定要確認自動攻擊（F6）已關閉；讀不到狀態就停止，不盲按（F6 是開關，可能反而打開）。
     if !DailySetAutoAttack(ctx,false)
         throw Error("讀不到自動攻擊（F6）狀態，無法確認已關閉，停止更換（還沒動任何道具；角色可能已在城裡）")
     ; 進行中紀錄："1" = 回城換；"town" = 原本在城裡；"here1" / "here0" = 原地換（原本自動攻擊開 / 關）
-    if !inProgress
+    if !resume
         DailySetInProgress(ctx.name,true,here ? "here" (autoWas=1 ? 1 : 0) : stay ? "town" : "1")
     DailyStep(ctx,"開啟角色與道具視窗")
     DailyEnsureWindows(ctx)
@@ -276,7 +300,7 @@ DailyRoutineSteps(ctx) {
         DailyWaitUntil(ctx,"讀不到目前所在地圖",() => DailyWhere(pid)!="",5000)
         if DailyWhere(pid)="town" {
             DailyStep(ctx,"W 前點到怪物區")
-            DailyTeleport(ctx,"w")
+            DailyTeleport(ctx,DailyCardKey(ctx,"前點傳送卡",DAILY_PREV_KEY))
         }
         DailyWaitUntil(ctx,"角色不在怪物地圖（目前在 " (DailyTownName(pid)!="" ? DailyTownName(pid) : "無法辨識的地圖") "）",() => DailyWhere(pid)="field",5000)
         DailyStep(ctx,"F6 開啟自動攻擊並確認")
@@ -331,6 +355,16 @@ DailyProgressValue(name) {
     return IniRead(INI,"DailyItemsProgress",name,"0")
 }
 
+; 這筆「進行中」紀錄是不是剛才的（可以接續）。沒有時間的舊紀錄一律當作過期。
+DailyProgressRecent(name) {
+    global INI,dailyTestDriver,DAILY_RESUME_SEC
+    if IsObject(dailyTestDriver) && dailyTestDriver.HasOwnProp("inProgress")
+        return !(dailyTestDriver.HasOwnProp("staleProgress") && dailyTestDriver.staleProgress)
+    t:=0
+    try t:=Integer(IniRead(INI,"DailyItemsProgress",name "|t","0"))
+    return t>0 && UnixNow()-t<DAILY_RESUME_SEC
+}
+
 DailyInProgress(name) {
     v:=DailyProgressValue(name)
     return v="1" || v="town" || v="here1" || v="here0"
@@ -355,7 +389,10 @@ DailySetInProgress(name, on, mark:="1") {
         return
     }
     try IniWrite on ? mark : "0",INI,"DailyItemsProgress",name
+    if on
+        try IniWrite UnixNow(),INI,"DailyItemsProgress",name "|t"
     if !on {
+        try IniDelete INI,"DailyItemsProgress",name "|t"
         for pair in DAILY_COSTUME_SLOTS
             try IniDelete INI,"DailyItemsProgress",name "|" pair[1]
         try IniDelete INI,"DailyItemsProgress",name "|" DAILY_SLOT_MEDAL
@@ -423,6 +460,80 @@ DailyFindUnequipped(ctx, slot) {
     throw Error(GAME_EQUIP_SLOT_NAMES[slot+1] "欄是空的，"
         . (candidates.Count ? "背包裡有 " candidates.Count " 件可能是原本的裝備（" list "）" : "背包裡找不到原本的裝備")
         . "，請人工穿回後再執行")
+}
+
+; H-028 道具快捷欄（畫面下方 6 格）：每個角色起點卡 / 前點卡放的格子可能不同，所以從快捷欄讀出它實際在哪一格，
+; 再換成那一格對應的鍵。H-032：每一格的鍵直接讀遊戲目前的「快捷鍵設定」（玩家可能改成 Z X C…）；
+; 讀不到才用設定檔 [DailyItems] QuickKeys 的預設（q,w,e,a,s,d）。
+; 回傳 {slot, key}；快捷欄裡找不到回傳 0；讀不到快捷欄資料回傳 ""。
+DailyQuickInfo(pid, needle) {
+    global dailyTestDriver,DAILY_QUICK_KEYS
+    st:=""
+    if IsObject(dailyTestDriver) && HasMethod(dailyTestDriver,"ActionQuick")
+        st:=dailyTestDriver.ActionQuick()
+    else
+        try st:=ReadGameActionQuick(pid)
+    if !IsObject(st)
+        return ""
+    keys:=""
+    if IsObject(dailyTestDriver) && HasMethod(dailyTestDriver,"QuickKeys")
+        keys:=dailyTestDriver.QuickKeys()
+    else
+        try keys:=ReadGameQuickKeys(pid)
+    manual:=StrSplit(DAILY_QUICK_KEYS,",")
+    for i,s in st {
+        if s.key="" || !InStr(GameItemName(s.key,pid),needle)
+            continue
+        ; 遊戲設定的鍵優先；那一格認不得（例如數字鍵盤）才用設定檔填的備用鍵
+        k:=IsObject(keys) && i<=keys.Length ? keys[i] : ""
+        if k=""
+            k:=i<=manual.Length ? Trim(manual[i]) : ""
+        return {slot:i,key:k}
+    }
+    return 0
+}
+
+; 要按哪個鍵用卡：用快捷欄裡實際的位置。讀不到快捷欄資料（舊的位置檔）就照舊按 fallback（Q / W）並寫進日誌；
+; 讀得到、但快捷欄裡找不到這張卡就停止（不亂按：Q / W 那一格可能是別的道具）。
+DailyCardKey(ctx, needle, fallback) {
+    info:=DailyQuickInfo(ctx.pid,needle)
+    if info="" {
+        EventLog(ctx.name,"DAILY_WARN","讀不到道具快捷欄，照舊按 " StrUpper(fallback))
+        return fallback
+    }
+    if !IsObject(info)
+        throw Error("道具快捷欄裡找不到「" needle "」，請把它放到道具快捷欄（畫面下方 6 格）再執行")
+    if info.key=""
+        throw Error("「" needle "」放在道具快捷欄第 " info.slot " 格，但不知道這一格對應哪個鍵；請在設定檔 [DailyItems] QuickKeys 填入每一格的鍵")
+    if info.key!=fallback
+        DailyStep(ctx,"「" needle "」在快捷欄第 " info.slot " 格，改按 " StrUpper(info.key) "（不是 " StrUpper(fallback) "）")
+    return info.key
+}
+
+; 傳送卡按鍵設定（「起點卡鍵~前點卡鍵~快捷欄各格鍵」）。鍵只接受單一字母 / 數字 / F1～F12。
+DailyKeyOk(k) => RegExMatch(Trim(k),"i)^([a-z0-9]|F([1-9]|1[0-2]))$") ? true : false
+DailySetCardKeys(rawValue) {
+    global INI,DAILY_START_KEY,DAILY_PREV_KEY,DAILY_QUICK_KEYS
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<3
+        return false
+    s:=Trim(parts[1]),p:=Trim(parts[2]),quick:=""
+    if !DailyKeyOk(s) || !DailyKeyOk(p)
+        return false
+    for k in StrSplit(parts[3],",") {
+        k:=Trim(k)
+        if k="" || !DailyKeyOk(k)
+            return false
+        quick.=(quick="" ? "" : ",") StrLower(k)
+    }
+    DAILY_START_KEY:=StrLower(s),DAILY_PREV_KEY:=StrLower(p),DAILY_QUICK_KEYS:=quick
+    try {
+        IniWrite DAILY_START_KEY,INI,"DailyItems","StartCardKey"
+        IniWrite DAILY_PREV_KEY,INI,"DailyItems","PrevCardKey"
+        IniWrite DAILY_QUICK_KEYS,INI,"DailyItems","QuickKeys"
+    }
+    AddRecentEvent("每日道具傳送卡按鍵：起點卡 " StrUpper(DAILY_START_KEY) "、前點卡 " StrUpper(DAILY_PREV_KEY) "｜快捷欄各格 " StrUpper(DAILY_QUICK_KEYS))
+    return true
 }
 
 DailyTeleport(ctx, key, required:=true) {
@@ -552,7 +663,7 @@ DailyTakePackFromBank(ctx) {
     }
     DailyStep(ctx,"從銀行取出每日分享禮包（銀行格子 " bank.x "," bank.y "）")
     Sleep 300
-    DailyClickCell(ctx,bank,"Left")
+    DailyClickCell(ctx,bank,"Left",true,true)
     Sleep 500
     DailyClickRel(ctx,ctx.invAnchor,DAILY_INV_TAB_BAG,"Left")
     ; 若禮包被拿在滑鼠上，放到背包空格
@@ -649,6 +760,7 @@ DailyWeaponSticker(ctx) {
     box:=DailyFindItem(pid,"選擇盒",,"武器")
     if !box
         throw Error("背包裡找不到 GT 武器造型貼選擇盒")
+    DailyLearnWeaponBox(box.key)
     list:=GameBoxItems(pid,box.key)
     pick:=0
     for i,key in list
@@ -678,6 +790,34 @@ DailyWeaponSticker(ctx) {
     DailyWaitUntil(ctx,"領到的造型貼不是「" kw "」，請人工確認",() => DailyFindCostume(pid,"造型貼"))
 }
 
+DailyLearnWeaponBox(key) {
+    global INI,DAILY_WEAPON_BOX_KEY
+    if key=DAILY_WEAPON_BOX_KEY
+        return
+    DAILY_WEAPON_BOX_KEY:=key
+    try IniWrite key,INI,"DailyItems","WeaponBoxKey"
+}
+
+; 武器選擇盒裡的選項（遊戲資料，依盒內順序）：[{name,index,ok}]；沒有任何一個遊戲開著 / 還不知道盒子的編號時回傳空陣列。
+; ok = 在選擇視窗一次看得到的前幾個（後面的要捲動，目前不支援）。
+DailyWeaponChoices() {
+    global profiles,DAILY_WEAPON_BOX_KEY,DAILY_CHOICE_VISIBLE
+    if DAILY_WEAPON_BOX_KEY=""
+        return []
+    for p in profiles {
+        if !p.pid || !ProfileGameAlive(p) || !GameOffsetsReady(p.pid)
+            continue
+        out:=[]
+        try {
+            for i,key in GameBoxItems(p.pid,DAILY_WEAPON_BOX_KEY)
+                out.Push({name:GameItemName(key,p.pid),index:i,ok:i<=DAILY_CHOICE_VISIBLE})
+        }
+        if out.Length
+            return out
+    }
+    return []
+}
+
 DailyCostumes(ctx) {
     global DAILY_COSTUME_SLOTS,DAILY_CHAR_SLOTS
     pid:=ctx.pid
@@ -703,6 +843,12 @@ DailyCostumes(ctx) {
     ; 1) 脫下：依錄製的位置右鍵，用記憶體確認「有一件脫下」即可（不假設位置與欄位一一對應，
     ;    例如褲子 / 手套的位置若對調也能完成）。第二輪改點尚未用過的位置。
     DailyStep(ctx,"脫下 " todo.Length " 件裝備")
+    ; 先快速把每一欄各右鍵一次（不逐件等待），再一次確認；沒脫下的交給下面原本逐件確認的流程補做。
+    for t in todo {
+        if DailyEquip(pid)[t.slot+1]
+            DailyClickChar(ctx,t.slot,"Right",90)
+    }
+    try DailyWaitUntil(ctx,"",() => DailyCountEmpty(pid,todo)>=todo.Length,2500)
     used:=Map()
     Loop 2 {
         secondPass:=A_Index=2
@@ -746,15 +892,16 @@ DailyApplyCostume(ctx, slot, itemKey, costume, item:=0) {
         item:=DailyFindItem(pid,itemKey)
     if !item
         throw Error(GAME_EQUIP_SLOT_NAMES[slot+1] "：背包裡找不到 " GameItemName(itemKey,pid))
-    DailyClickCell(ctx,costume,"Left")
+    DailyClickCell(ctx,costume,"Left",true,false,120)
     DailyWaitUntil(ctx,"沒有拿起 " GameItemName(costume.key,pid),() => DailyHeldKey(pid)=costume.key)
-    DailyClickCell(ctx,item,"Right")
+    DailyClickCell(ctx,item,"Right",true,false,120)
     DailyWaitUntil(ctx,GAME_EQUIP_SLOT_NAMES[slot+1] "沒有套上 " GameItemName(costume.key,pid)
         ,() => (e:=DailyEquip(pid)[slot+1]) && e.key=itemKey && e.disguiseKey=costume.key)
 }
 
 DailyCloseWindows(ctx) {
     x:=0,y:=0
+    try DailyBackToFirstPage(ctx)
     Loop 4 {
         if !DailyFindTemplate(ctx,"inventory_title",&x,&y) && !DailyFindTemplate(ctx,"character_title",&x,&y)
             return
@@ -769,7 +916,8 @@ DailyReleaseHeld(ctx) {
     try {
         if DailyHeldName(pid)="" || !IsObject(ctx.invAnchor)
             return
-        cell:=DailyFreeCell(pid)
+        st:=DailyInvUi(pid)
+        cell:=DailyFreeCell(pid,IsObject(st) && st.page>0 ? st.page : 0)   ; 優先放在目前這一頁（F10 中止時不一定換得了頁）
         if IsObject(cell)
             DailyClickCell(ctx,cell,"Left",false)
     }
@@ -928,13 +1076,23 @@ DailyHeldName(pid) {
     return key="" ? "" : GameItemName(key,pid)
 }
 
-DailyFreeCell(pid) {
-    global DAILY_INV_COLS,DAILY_INV_VISIBLE_ROWS
+; 找第一個空格。prefPage > 0 時先找那一頁（目前停在哪一頁就放那頁，免得為了放東西還要換頁）；
+; 沒有再從第 1 頁找起（點的時候會自動換頁）。最下面打叉的列不算。
+DailyFreeCell(pid, prefPage:=0) {
+    global DAILY_INV_COLS,DAILY_INV_ROWS_PER_PAGE
     used:=Map()
     for s in DailyInventory(pid)
         used[s.x "," s.y]:=true
-    Loop DAILY_INV_VISIBLE_ROWS {
-        y:=A_Index-1
+    rows:=DailyUsableRows(pid)
+    order:=[]
+    if prefPage>0
+        Loop DAILY_INV_ROWS_PER_PAGE
+            order.Push((prefPage-1)*DAILY_INV_ROWS_PER_PAGE+A_Index-1)
+    Loop rows
+        order.Push(A_Index-1)
+    for y in order {
+        if y>=rows
+            continue
         Loop DAILY_INV_COLS {
             x:=A_Index-1
             if !used.Has(x "," y)
@@ -943,7 +1101,6 @@ DailyFreeCell(pid) {
     }
     return 0
 }
-
 ; ---------------------------------------------------------------------------
 ; 操作
 ; ---------------------------------------------------------------------------
@@ -960,17 +1117,18 @@ DailyCheckAbort() {
         throw Error("F10 / 停止監控：已中止")
 }
 
-DailyKey(ctx, key) {
+DailyKey(ctx, key, checkAbort:=true) {
     global dailyTestDriver
-    DailyCheckAbort()
+    if checkAbort
+        DailyCheckAbort()
     if IsObject(dailyTestDriver)
         return dailyTestDriver.Key(key)
+    ctx.pageOkAt:=0   ; 按鍵可能開關視窗 / 重設頁數：之前的分頁確認作廢
     EnsureRecoveryFocus(ctx.hwnd,ctx.name)
     SendOneKey(key)
     Sleep 300
 }
-
-DailyClickClient(ctx, x, y, button, checkAbort:=true) {
+DailyClickClient(ctx, x, y, button, checkAbort:=true, post:=350) {
     global dailyTestDriver
     if checkAbort
         DailyCheckAbort()
@@ -979,61 +1137,172 @@ DailyClickClient(ctx, x, y, button, checkAbort:=true) {
     EnsureRecoveryFocus(ctx.hwnd,ctx.name)
     WinGetClientPos(&cx,&cy,,,"ahk_id " ctx.hwnd)
     MouseMove cx+x,cy+y,2
-    Sleep 120
+    Sleep 90
     Click button
-    Sleep 350
+    Sleep post
 }
 
 DailyClickRel(ctx, anchor, offset, button) {
     DailyClickClient(ctx,anchor[1]+offset[1],anchor[2]+offset[2],button)
 }
 
-DailyClickCell(ctx, slot, button, checkAbort:=true) {
-    global DAILY_INV_CELL0,DAILY_INV_STEP,DAILY_INV_VISIBLE_ROWS
-    if slot.y>=DAILY_INV_VISIBLE_ROWS
-        throw Error("道具在背包第 " slot.y+1 " 列，超出可見範圍")
-    DailyEnsureInventoryVisible(ctx)
+; bank = true：銀行的格子（銀行分頁沒有背包的分頁，維持只能點第一頁的可見列）。
+DailyClickCell(ctx, slot, button, checkAbort:=true, bank:=false, post:=350) {
+    global DAILY_INV_CELL0,DAILY_INV_STEP,DAILY_INV_VISIBLE_ROWS,DAILY_INV_ROWS_PER_PAGE
+    if bank {
+        if slot.y>=DAILY_INV_VISIBLE_ROWS
+            throw Error("道具在銀行第 " slot.y+1 " 列，超出可見範圍")
+        DailyEnsureInventoryVisible(ctx,checkAbort)
+        row:=slot.y
+    } else {
+        st:=DailyInvUi(ctx.pid)
+        if !IsObject(st) {
+            ; 讀不到分頁資料：只能操作第 1 頁的可見列（跟以前一樣），其他一律停止並說明
+            if slot.y<0 || slot.y>=DAILY_INV_VISIBLE_ROWS
+                throw Error("道具在背包第 " slot.y+1 " 列，但讀不到背包分頁資料（遊戲位置檔需要更新），無法換頁")
+        } else if slot.y<0 || slot.y>=DailyUsableRows(ctx.pid)
+            throw Error("道具在背包第 " slot.y+1 " 列，超出可用範圍（最下面打叉的列不能放東西）")
+        DailyEnsureInventoryVisible(ctx,checkAbort)
+        DailyEnsurePage(ctx,DailyInvPageOf(slot.y),checkAbort,true)   ; 先叫回最上層、再換頁（重新開啟會重設頁數）
+        row:=Mod(slot.y,DAILY_INV_ROWS_PER_PAGE)
+    }
     DailyClickClient(ctx,ctx.invAnchor[1]+DAILY_INV_CELL0[1]+slot.x*DAILY_INV_STEP
-        ,ctx.invAnchor[2]+DAILY_INV_CELL0[2]+slot.y*DAILY_INV_STEP,button,checkAbort)
+        ,ctx.invAnchor[2]+DAILY_INV_CELL0[2]+row*DAILY_INV_STEP,button,checkAbort,post)
 }
 
+; 背包可以放東西的列數：讀得到就用遊戲說的（46：最後一頁最下面 4 列是打叉的）；
+; 讀得到分頁但沒有列數 = 保守算前 4 頁（40 列）；讀不到分頁資料 = 只有第 1 頁（跟以前一樣）。
+DailyUsableRows(pid) {
+    global DAILY_INV_ROWS_PER_PAGE,DAILY_INV_VISIBLE_ROWS
+    st:=DailyInvUi(pid)
+    if !IsObject(st)
+        return DAILY_INV_VISIBLE_ROWS
+    return st.rows>0 ? st.rows : 4*DAILY_INV_ROWS_PER_PAGE
+}
+
+DailyInvPageOf(y) {
+    global DAILY_INV_ROWS_PER_PAGE
+    return y//DAILY_INV_ROWS_PER_PAGE+1
+}
+
+; 背包分頁狀態（記憶體）：{open, page, count, rows, btns}；沒有這組位置資料 / 讀不到回傳 ""。
+DailyInvUi(pid) {
+    global dailyTestDriver
+    if IsObject(dailyTestDriver) && HasMethod(dailyTestDriver,"InvUi")
+        return dailyTestDriver.InvUi()
+    st:=""
+    try st:=ReadGameInvUi(pid)
+    return st
+}
+
+; 目前頁「連續兩次讀到一樣」才採信（遊戲換頁 / 重新開啟後記憶體要一下子才更新，只讀一次可能讀到舊的）。
+; 讀不到、兩次不一樣、沒有被選取的頁都回傳 0。
+DailyStablePage(pid) {
+    global DAILY_PAGE_CONFIRM_MS
+    a:=DailyInvUi(pid)
+    if !IsObject(a)
+        return 0
+    if DAILY_PAGE_CONFIRM_MS>0
+        Sleep DAILY_PAGE_CONFIRM_MS
+    b:=DailyInvUi(pid)
+    return IsObject(b) && a.page=b.page ? a.page : 0
+}
+
+; 背包切到第 page 頁：先確認道具視窗在最上層（visibleChecked 表示呼叫端剛確認過）、點頁籤（座標從記憶體讀，
+; 不靠畫面辨識），再讀記憶體確認真的換過去了（連續兩次一樣）。點了沒換就重試，最多 3 次。
+; checkAbort = false：失敗 / 中止後要把滑鼠上的道具放回去時用，不被 F10 打斷。
+; 第 1 頁讀不到分頁資料時照舊（以前就只能操作第 1 頁）；其他頁讀不到就停止，不亂點。
+DailyEnsurePage(ctx, page, checkAbort:=true, visibleChecked:=false) {
+    global DAILY_PAGE_WAIT_MS
+    st:=DailyInvUi(ctx.pid)
+    if !IsObject(st) {
+        if page=1
+            return
+        throw Error("道具在背包第 " page " 頁，但讀不到背包分頁資料（遊戲位置檔需要更新），無法換頁")
+    }
+    if page<1 || page>st.count
+        throw Error("背包沒有第 " page " 頁")
+    if !visibleChecked
+        DailyEnsureInventoryVisible(ctx,checkAbort)
+    ; 剛確認過就是這一頁、中間沒有按過鍵 / 換過頁：只再讀一次確認，不用每次都等 150ms 做「連續兩次一樣」
+    if ctx.HasOwnProp("pageOkAt") && ctx.pageOkAt && A_TickCount-ctx.pageOkAt<4000 && st.page=page
+        return
+    tries:=0
+    Loop {
+        if DailyStablePage(ctx.pid)=page {
+            ctx.pageOkAt:=A_TickCount
+            return
+        }
+        ctx.pageOkAt:=0
+        if tries>=3
+            throw Error("背包切不到第 " page " 頁（點了頁籤但沒有換過去）")
+        tries+=1
+        cur:=DailyInvUi(ctx.pid)
+        btn:=IsObject(cur) ? cur.btns[page] : 0
+        if !IsObject(btn)
+            throw Error("讀不到背包第 " page " 頁的頁籤位置")
+        DailyStep(ctx,"背包換到第 " page " 頁")
+        DailyClickClient(ctx,Round((btn.l+btn.r)/2),Round((btn.t+btn.b)/2),"Left",checkAbort)
+        start:=A_TickCount
+        while A_TickCount-start<DAILY_PAGE_WAIT_MS {
+            if DailyStablePage(ctx.pid)=page
+                return
+            Sleep 100
+        }
+    }
+}
+
+; 結束前回到第 1 頁（下次打開背包才不會停在別頁）；背包沒開、已在第 1 頁或讀不到都不動。失敗不影響結果。
+DailyBackToFirstPage(ctx) {
+    st:=DailyInvUi(ctx.pid)
+    if IsObject(st) && st.open && st.page>1
+        DailyEnsurePage(ctx,1)
+}
 ; 道具視窗與角色視窗重疊時，點了角色視窗後道具視窗會被蓋住（仍是開啟狀態）。
 ; 點背包格子前先確認看得到；看不到就按 I（關掉再打開會回到最上層），並重新定位。
-DailyEnsureInventoryVisible(ctx) {
+DailyEnsureInventoryVisible(ctx, checkAbort:=true) {
     global DAILY_INV_TAB_BAG
     x:=0,y:=0
-    if DailyFindTemplate(ctx,"inventory_title",&x,&y) {
+    ; 道具視窗上次在哪就先只找那附近（小範圍比整個畫面快很多）；附近沒有才找整個畫面
+    near:=""
+    if ctx.HasOwnProp("invAnchor") && IsObject(ctx.invAnchor)
+        near:=[ctx.invAnchor[1]-12,ctx.invAnchor[2]-12,ctx.invAnchor[1]+300,ctx.invAnchor[2]+70]
+    if (IsObject(near) && DailyFindTemplate(ctx,"inventory_title",&x,&y,near)) || DailyFindTemplate(ctx,"inventory_title",&x,&y) {
         ctx.invAnchor:=[x,y]
         return
     }
     key:=ctx.HasOwnProp("invKey") ? ctx.invKey : "i"
     Loop 3 {
-        DailyKey(ctx,key)
+        DailyKey(ctx,key,checkAbort)
         Sleep 400
         if DailyFindTemplate(ctx,"inventory_title",&x,&y) {
             ctx.invAnchor:=[x,y]
             EventLog(ctx.name,"DAILY_STEP","道具視窗被角色視窗蓋住，已重新叫到最上層")
             ; 重新開啟後可能停在銀行分頁，切回背包
-            DailyClickClient(ctx,x+DAILY_INV_TAB_BAG[1],y+DAILY_INV_TAB_BAG[2],"Left")
+            DailyClickClient(ctx,x+DAILY_INV_TAB_BAG[1],y+DAILY_INV_TAB_BAG[2],"Left",checkAbort)
             return
         }
     }
     throw Error("道具視窗被蓋住，無法叫回最上層")
 }
 
-DailyClickChar(ctx, slot, button) {
+DailyClickChar(ctx, slot, button, post:=350) {
     global DAILY_CHAR_SLOTS
-    DailyClickRel(ctx,ctx.charAnchor,DAILY_CHAR_SLOTS[slot],button)
+    DailyClickClient(ctx,ctx.charAnchor[1]+DAILY_CHAR_SLOTS[slot][1],ctx.charAnchor[2]+DAILY_CHAR_SLOTS[slot][2],button,true,post)
 }
 
 ; 在遊戲畫面中尋找辨識圖（遊戲視窗需在最上層）；找到時回傳 true 並寫入左上角座標。
-DailyFindTemplate(ctx, name, &x, &y) {
+DailyFindTemplate(ctx, name, &x, &y, region:="") {
     global DAILY_TPL_DIR,DAILY_CLIENT_W,DAILY_CLIENT_H,dailyTestDriver
     if IsObject(dailyTestDriver)
         return dailyTestDriver.Find(name,&x,&y)
     EnsureRecoveryFocus(ctx.hwnd,ctx.name)
     CoordMode "Pixel","Client"
-    try return ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*60 " DAILY_TPL_DIR "\" name ".bmp")
+    try {
+        if IsObject(region)
+            return ImageSearch(&x,&y,Max(0,region[1]),Max(0,region[2]),Min(DAILY_CLIENT_W,region[3]),Min(DAILY_CLIENT_H,region[4]),"*60 " DAILY_TPL_DIR "\" name ".bmp")
+        return ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*60 " DAILY_TPL_DIR "\" name ".bmp")
+    }
     catch
         return false
 }
@@ -1062,6 +1331,6 @@ DailyWaitUntil(ctx, failText, check, timeoutMs:=0) {
         }
         if A_TickCount-start>timeoutMs
             throw Error(failText)
-        Sleep 150
+        Sleep 60
     }
 }

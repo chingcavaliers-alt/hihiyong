@@ -25,7 +25,7 @@ TI_GET_CHILDRENCOUNT, TI_FINDCHILDREN = 13, 7
 LEA_RAX_RIP = bytes([0x48, 0x8D, 0x05])
 SYMBOL_INFOW_BASE_SIZE = 88  # sizeof(SYMBOL_INFOW) 不含名稱緩衝區（x64）
 # 輸出欄位有增加時遞增；管理器發現 INI 的版本較舊會自動重新解析。
-TOOL_VERSION = 13
+TOOL_VERSION = 20
 MAP_LIST_PAIR = "std::pair<unsigned long const ,SMAPNODE>"
 MAP_LIST_NODE = "std::_List_node<std::pair<unsigned long const ,SMAPNODE>,void *>"
 CROW_LIST = "CGLLIST<GLCrowClient *>"
@@ -167,6 +167,16 @@ class Pdb:
                     return (self._ti(child, TI_GET_OFFSET) or 0) + found[0], found[1]
         return None
 
+    def member_size(self, udt: str, member: str) -> int:
+        """成員本身的大小（陣列成員 = 總位元組數）。"""
+        type_id = self._symbol(udt, by_type=True).TypeIndex
+        found = self._find_member(type_id, member)
+        if not found:
+            raise LookupError(f"PDB 找不到成員：{udt}.{member}")
+        out = ctypes.c_uint64()
+        self.dbg.SymGetTypeInfo(self.proc, ctypes.c_uint64(self.base), found[1], TI_GET_LENGTH, ctypes.byref(out))
+        return out.value
+
     def size(self, udt: str) -> int:
         out = ctypes.c_uint64()
         type_id = self._symbol(udt, by_type=True).TypeIndex
@@ -207,6 +217,140 @@ def item_id_limit(image: PeImage, func_rva: int, func_size: int) -> int:
             if 0x40 <= value <= 0x10000 and value != 0xFFFF:
                 return value
     return 0x400
+
+
+def buff_fields(pdb: Pdb) -> dict[str, object]:
+    """v15：角色身上的效果清單（右下角狀態圖示的資料來源）。M 箱用它確認「效果有沒有在作用」。
+    選用：解析失敗只是沒有這組欄位，M 箱退回只看箱子數量。"""
+    count = pdb.member_size("GLCHARLOGIC", "m_sSKILLFACT") // pdb.size("SSKILLFACT")
+    return {
+        "SkillFactOffset": pdb.offset("GLCharacter", "m_sSKILLFACT"),
+        "SkillFactCount": count,
+        "SkillFactSize": pdb.size("SSKILLFACT"),
+        "SkillFactIdOffset": pdb.offset("SSKILLFACT", "sNATIVEID"),
+        "SkillFactAgeOffset": pdb.offset("SSKILLFACT", "fAGE"),
+        "SkillFactLevelOffset": pdb.offset("SSKILLFACT", "wLEVEL"),
+        # M 箱這類「問號道具」效果不在 SKILLFACT，在 m_sQITEMFACT {emType:int, fTime:float, ...}（實測）
+        "QItemFactOffset": pdb.offset("GLCharacter", "m_sQITEMFACT"),
+        "QItemFactTimeOffset": pdb.offset("SQITEM_FACT", "fTime"),
+    }
+
+
+def invpage_fields(pdb: Pdb) -> dict[str, object]:
+    """v17：背包視窗的分頁（H-024）。背包是 6 欄 × 50 列的長表格，視窗每次顯示 10 列 = 一頁，共 5 頁，
+    用視窗上方的 5 個圓形頁籤切換（實機確認 2026-10-26）。m_Button[i] = 未選取的圓點、m_ButtonSet[i] = 選取中的圓點，
+    「目前頁」= 哪一個 m_ButtonSet 可見。選用：解析失敗只是沒有這組欄位（每日道具退回只能操作第 1 頁）。"""
+    return {
+        "InnerInvWindowOffset": pdb.offset("CInnerInterface", "m_pInventoryWindow"),
+        "InvWindowPageOffset": pdb.offset("CInventoryWindow", "m_pPage"),
+        "InvPageButtonOffset": pdb.offset("CInventoryPage", "m_Button"),
+        "InvPageButtonSetOffset": pdb.offset("CInventoryPage", "m_ButtonSet"),
+        "InvPageButtonCount": pdb.member_size("CInventoryPage", "m_Button") // 8,
+        # 可用的列數（實機 2026-10-26：46；最後一頁最下面 4 列是打叉的、不能放東西）
+        "InvPageUsableRowsOffset": pdb.offset("CInventoryPage", "m_nONE_VIEW_SLOT"),
+    }
+
+def quick_fields(pdb: Pdb) -> dict[str, object]:
+    """v18：道具快捷欄（畫面下方 6 格，鍵 Q W E …）。每格 SACTION_SLOT {wACT(2), sNID(4)}。
+    每日道具用它找出「起點卡 / 前點卡」實際放在哪一格（角色放的位置不同時自動改按對的鍵）。選用。"""
+    return {
+        "ActionQuickOffset": pdb.offset("GLCharacter", "m_sACTIONQUICK"),
+        "ActionQuickCount": pdb.member_size("GLCharacter", "m_sACTIONQUICK") // pdb.size("SACTION_SLOT"),
+        "ActionQuickSize": pdb.size("SACTION_SLOT"),
+        "ActionSlotActOffset": pdb.offset("SACTION_SLOT", "wACT"),
+        "ActionSlotIdOffset": pdb.offset("SACTION_SLOT", "sNID"),
+    }
+
+
+def keypet_fields(pdb: Pdb) -> dict[str, object]:
+    """v19：道具快捷欄各格目前設定的鍵（遊戲「快捷鍵設定」可改，存在 RANPARAM::QuickSlot，DirectInput 掃描碼 int[6]）
+    與「寵物是否在外面」（GLGaeaClient.m_Pet.m_bValid）。登入後依快捷欄找寵物卡並只在寵物不在外面時按。選用。"""
+    rva, size = pdb.function("RANPARAM::QuickSlot")
+    return {
+        "QuickKeysRva": rva,
+        "QuickKeysCount": size // 4,
+        "PetValidOffset": pdb.offset("GLGaeaClient", "m_Pet.m_bValid"),
+    }
+
+
+def login_fields(image: PeImage, pdb: Pdb) -> dict[str, object]:
+    """v20：登入 / 選伺服器 / 選角畫面（COuterInterface）。各頁的控制項位置（rcGlobalPos）與可見狀態都在記憶體裡，
+    登入流程可以直接讀按鈕位置，不用先記 8 個點。進入遊戲後這些頁面會被遊戲釋放（指標 = 0）。選用。"""
+    out: dict[str, object] = {
+        "OuterInstanceRva": static_instance_rva(image, *pdb.function("COuterInterface::GetInstance")),
+        "OuterVftableRvas": "|".join(f"0x{v:X}" for v in pdb.data_symbols("COuterInterface::`vftable'")),
+        "UiNameOffset": pdb.offset("CUIControl", "m_strControlName"),
+        "UiRectOffset": pdb.offset("CUIControl", "m_rcGlobalPos"),
+        "UiVisibleOffset": pdb.offset("CUIControl", "m_bVisible"),
+        "UiChildListOffset": pdb.offset("CUIGroup", "m_ControlContainer") + pdb.offset("CUIControlContainer", "m_UIControlList"),
+    }
+    # 選角畫面的角色清單（DxGlobalStage.m_LobyStage）：數量、名稱、等級、目前選到哪一格
+    out.update({
+        "GlobalStageRva": static_instance_rva(image, *pdb.function("DxGlobalStage::GetInstance")),
+        "GlobalStageActiveOffset": pdb.offset("DxGlobalStage", "m_pActiveStage"),
+        "GlobalStageLobyOffset": pdb.offset("DxGlobalStage", "m_LobyStage"),
+        "LobyCharCountOffset": pdb.offset("DxLobyStage", "m_nChaSNum"),
+        "LobyCharSelectOffset": pdb.offset("DxLobyStage", "m_dwCharSelect"),
+        "LobyCharInfoOffset": pdb.offset("DxLobyStage", "m_CharInfo"),
+        "LobyCharInfoSize": pdb.size("SCHARINFO_LOBBY"),
+        "LobyCharIdOffset": pdb.offset("SCHARINFO_LOBBY", "m_dwCharID"),
+        "LobyCharNameOffset": pdb.offset("SCHARINFO_LOBBY", "m_szName"),
+        "LobyCharLevelOffset": pdb.offset("SCHARINFO_LOBBY", "m_wLevel"),
+    })
+    for key, member in (("Server", "m_pSelectServerPage"), ("Login", "m_pLoginPage"), ("Char", "m_pSelectCharacterPage"),
+                        ("CharLeft", "m_pSelectCharacterLeftPage"), ("SecPass", "m_pSecPassCheckPage"),
+                        ("Message", "m_pMessageWindow"), ("Modal", "m_pModalWindow"), ("Wait", "m_pWaitDisplay")):
+        out[f"Outer{key}PageOffset"] = pdb.offset("COuterInterface", member)
+    return out
+
+
+def party_fields(image: PeImage, pdb: Pdb) -> dict[str, object]:
+    """v14：自動組隊用（隊伍成員、好友名單、好友視窗 / 組隊確認視窗的位置）。
+    這些欄位是選用的：任何一個解析失敗就整組不輸出（只留 PartyError），不影響其他功能。"""
+    parts_text = "CBasicTextBox::STEXTPART"
+    line_text = "CBasicTextBox::STEXTLINE"
+    word_text = "CBasicTextBox::STEXTWORD"
+    entry = "std::pair<unsigned long,GLPARTY_CLIENT>"
+    return {
+        "PartyInstanceRva": static_instance_rva(image, *pdb.function("GLPartyClient::GetInstance")),
+        "PartyIdOffset": pdb.offset("GLPartyClient", "m_dwPartyID"),
+        "PartyMasterOffset": pdb.offset("GLPartyClient", "m_sMaster"),
+        "PartyMapOffset": pdb.offset("GLPartyClient", "m_mapParty"),
+        "PartyEntrySize": pdb.size(entry),
+        "PartyEntryDataOffset": pdb.offset(entry, "second"),
+        "PartyMemberGaeaOffset": pdb.offset("GLPARTY_CLIENT", "m_dwGaeaID"),
+        "PartyMemberNameOffset": pdb.offset("GLPARTY_CLIENT", "m_szName"),
+        "FriendInstanceRva": static_instance_rva(image, *pdb.function("GLFriendClient::GetInstance")),
+        "FriendMapOffset": pdb.offset("GLFriendClient", "m_mapFriend"),
+        "FriendCharIdOffset": pdb.offset("SFRIEND", "nCharID"),
+        "FriendNameOffset": pdb.offset("SFRIEND", "szCharName"),
+        "FriendOnlineOffset": pdb.offset("SFRIEND", "bONLINE"),
+        "InnerInterfaceRva": static_instance_rva(image, *pdb.function("CInnerInterface::GetInstance")),
+        "InnerInterfaceVftableRvas": "|".join(f"0x{v:X}" for v in pdb.data_symbols("CInnerInterface::`vftable'")),
+        "InnerFriendWindowOffset": pdb.offset("CInnerInterface", "m_pFriendWindow"),
+        "InnerPartyModalOffset": pdb.offset("CInnerInterface", "m_pPartyModalWindow"),
+        "FriendWindowPageOffset": pdb.offset("CFriendWindow", "m_pNormalPage"),
+        "FriendPageSelectOffset": pdb.offset("CFriendWindowNormalPage", "m_nSelectIndex"),
+        "FriendPageListOffset": pdb.offset("CFriendWindowNormalPage", "m_pListText"),
+        "FriendPagePartyBtnOffset": pdb.offset("CFriendWindowNormalPage", "m_pPARTY"),
+        "FriendPageCharIdOffset": pdb.offset("CFriendWindowNormalPage", "m_nCharID"),
+        "PartyModalTextOffset": pdb.offset("CPartyModalWindow", "m_pTextBox"),
+        "PartyModalOkOffset": pdb.offset("CPartyModalWindow", "m_pOK"),
+        "PartyModalCancelOffset": pdb.offset("CPartyModalWindow", "m_pCANCEL"),
+        "PartyModalYesOffset": pdb.offset("CPartyModalWindow", "m_pYES"),
+        "PartyModalNoOffset": pdb.offset("CPartyModalWindow", "m_pNO"),
+        "UiRectOffset": pdb.offset("CUIControl", "m_rcGlobalPos"),
+        "UiVisibleOffset": pdb.offset("CUIControl", "m_bVisible"),
+        "TextBoxPartsOffset": pdb.offset("CBasicTextBox", "m_TextBox"),
+        "TextBoxVisibleLineOffset": pdb.offset("CBasicTextBox", "m_nVisibleLine"),
+        "TextBoxCurLineOffset": pdb.offset("CBasicTextBox", "m_nCurLine"),
+        "TextPartLinesOffset": pdb.offset(parts_text, "dequeLine"),
+        "TextPartDataOffset": pdb.offset(parts_text, "m_dwData"),
+        "TextPartRectOffset": pdb.offset(parts_text, "m_rcPart"),
+        "TextLineWordsOffset": pdb.offset(line_text, "vectorWord"),
+        "TextWordStrOffset": pdb.offset(word_text, "strWord"),
+        "TextWordSize": pdb.size(word_text),
+    }
 
 
 def resolve(exe: Path) -> dict[str, str]:
@@ -323,6 +467,31 @@ def resolve(exe: Path) -> dict[str, str]:
             "CrowDataNameOffset": pdb.offset("SCROWDATA", "m_sBasic.m_szName"),
             "CrowStringMapOffset": pdb.offset("GLStringTable", "m_mapCrowStringTable"),
         }
+        try:
+            values.update(buff_fields(pdb))
+        except Exception as e:   # 效果清單的欄位找不到：只有 M 箱的輔助判斷停用
+            values["BuffError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(quick_fields(pdb))
+        except Exception as e:   # 道具快捷欄欄位找不到：每日道具退回固定按 Q / W
+            values["QuickError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(keypet_fields(pdb))
+        except Exception as e:   # 快捷鍵 / 寵物欄位找不到：登入後的寵物與傳送卡改按設定檔的鍵
+            values["KeyPetError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(login_fields(image, pdb))
+        except Exception as e:   # 登入畫面欄位找不到：登入照舊用 8 個預設點
+            values["LoginUiError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(invpage_fields(pdb))
+        except Exception as e:   # 背包分頁欄位找不到：只有「分頁背包」功能停用
+            values["InvPageError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(party_fields(image, pdb))
+        except Exception as e:   # 任何例外（含 struct.error）都只停用組隊，不能讓整個解析失敗
+            # 自動組隊的欄位找不到（例如遊戲改版改了類別）：其他功能照常，只有組隊功能停用
+            values["PartyError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
     finally:
         pdb.close()
     return {k: (f"0x{v:X}" if isinstance(v, int) else v) for k, v in values.items()}

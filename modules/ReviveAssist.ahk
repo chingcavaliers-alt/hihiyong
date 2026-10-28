@@ -73,6 +73,12 @@ ReviveAttempt(p) {
             result:="OK"
             EventLog(p.name,"REVIVE_CLICK_OK","死亡 " secs " 秒後自動點復活鍵成功｜" how)
             AddRecentEvent("♥ " p.name " 卡復活，已自動點復活鍵（" how "）")
+            if p.deathNotify {
+                msg:="✅ HIHIYONG 卡復活已自動處理`n角色：" p.name "`n死亡 " secs " 秒後自動使用歸魂珠，已復活"
+                    . "`n位置：" NotificationLocationText(p)
+                    . (p.reviveAttempts>1 ? "`n（第 " p.reviveAttempts " 次嘗試才成功）" : "")
+                try (shot!="" && REPORT_ERROR_SHOTS) ? SendDiscordImage(msg "`n（附上死亡當時畫面）",shot) : SendDiscordMessage(msg)
+            }
         } else {
             result:="已點復活鍵（" how "），但 HP 仍為 0"
         }

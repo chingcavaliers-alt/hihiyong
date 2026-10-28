@@ -17,6 +17,8 @@ global RG_POST_CHECK_ROUNDS := 3
 global RG_DEATH_WINDOW_MIN := Integer(IniRead(INI,"Recovery","DeathLoopWindowMinutes","10"))
 global RG_DEATH_COUNT := Integer(IniRead(INI,"Recovery","DeathLoopCount","3"))
 global RG_IDLE_SEC := 10
+; H-032：登入後依快捷欄找「寵物卡」，寵物不在外面才按（0 = 關閉，沿用設定檔 PostKeys 的鍵）
+global RG_AUTO_PET := Integer(IniRead(INI,"Recovery","AutoPet","1"))
 global RG_TICK_MS := 5000
 
 ; ---- 給登入流程用的記憶體判斷（讀不到資料時一律回傳空字串，維持原本的畫面判斷） ----
@@ -47,8 +49,97 @@ RecoveryTownName(hwnd) {
 RecoveryLeftTown(hwnd) {
     if !(pid:=RecoveryHwndPid(hwnd)) || !GameInWorld(pid) || DailyTownName(pid)!=""
         return ""
-    info:=GameMapInfo(pid,ReadGameMapId(pid))
-    return IsObject(info) ? info.name : ReadGameMapId(pid)
+    ; 查不到地圖資訊時不能當成「已離開城裡」（可能是資料讀不到，角色其實還在城裡）→ 回傳 ""，呼叫端改用畫面辨識
+    info:=0
+    try info:=GameMapInfo(pid,ReadGameMapId(pid))
+    return IsObject(info) ? info.name : ""
+}
+
+; ---- H-032 快捷欄（傳送卡 / 寵物卡）：位置與按鍵都讀遊戲，不假設放在哪一格、也不假設是哪個鍵 ----
+
+; 快捷欄上某張卡的資訊 {slot,key}；找不到 = 0；讀不到快捷欄 = ""。
+RecoveryQuick(hwnd, needle) {
+    pid:=RecoveryHwndPid(hwnd)
+    return pid ? DailyQuickInfo(pid,needle) : ""
+}
+
+; 前點卡要按的鍵：快捷欄上前點傳送卡實際的鍵；讀不到 / 沒放才用設定的 ReturnKey。
+; 快捷欄讀得到、但沒有前點傳送卡（沒放 / 用完）→ 回傳 ""，不盲按設定的鍵（那一格可能是寵物卡或消耗品）。
+RecoveryReturnKey(hwnd) {
+    global ReturnKeyEdit
+    info:=""
+    try info:=RecoveryQuick(hwnd,"前點傳送卡")
+    if IsObject(info)
+        return info.key
+    if info=0
+        return ""
+    return Trim(ReturnKeyEdit.Value)
+}
+
+; 前點卡：按鍵 → 等地圖換掉（最多 20 秒；讀不到地圖就固定等 8 秒）。回傳按的鍵。
+RecoveryUseReturnCard(hwnd, p) {
+    key:=RecoveryReturnKey(hwnd)
+    if key=""
+        throw Error("前點卡按鍵未設定，或快捷欄找不到前點傳送卡（沒放或已用完），沒有按任何鍵。")
+    pid:=RecoveryHwndPid(hwnd)
+    before:=pid ? ReadGameMapId(pid) : ""
+    ActivateGame(hwnd), SendOneKey(key)
+    if before!="" {
+        moved:=RecoveryGuardWaitMap(pid,before,20000)
+        EventLog(p.name,"RETURN_CARD","前點卡 " key (moved ? "：地圖已改變" : "：20 秒內地圖沒有改變"))
+        Sleep 1500
+    } else
+        WaitSeconds(8)
+    return key
+}
+
+; PostKeys 裡的這個鍵，是不是目前快捷欄「寵物卡」那一格，而且讀得到寵物狀態（是的話改由 RecoveryEnsurePet 判斷要不要按）。
+RecoveryPetKeyHandled(hwnd, key) {
+    global RG_AUTO_PET
+    try {
+        if !RG_AUTO_PET || !(pid:=RecoveryHwndPid(hwnd)) || ReadGamePetOut(pid)<0
+            return false
+        info:=DailyQuickInfo(pid,"寵物卡")
+        return IsObject(info) && info.key!="" && StrLower(info.key)=StrLower(Trim(key))
+    }
+    return false
+}
+
+; 登入後寵物沒有在外面就開啟：先等最多 3 秒（寵物可能晚一點才出現），還是不在才按寵物卡那一格的鍵，
+; 按完確認；寵物卡是開關，所以只在確認「不在外面」時才按，絕不盲按。回傳說明文字（沒做事回傳 ""）。
+RecoveryEnsurePet(hwnd, p) {
+    global RG_AUTO_PET
+    if !RG_AUTO_PET || !(pid:=RecoveryHwndPid(hwnd)) || ReadGamePetOut(pid)<0
+        return ""
+    ; 每個遊戲程序只自動按一次寵物卡（開關型：失敗也不重按，避免來回切換）
+    ; 同一個遊戲程序兩分鐘內不重按（開關型：失敗也不連續切換）；換地圖後寵物可能被收起來，兩分鐘後的檢查可以再補開
+    if p.HasOwnProp("petPressedPid") && p.petPressedPid=pid && p.HasOwnProp("petPressedAt") && A_TickCount-p.petPressedAt<120000
+        return ""
+    ; 連續 3 秒都確認「不在外面」才按（換地圖時寵物會暫時消失再出現；讀不到 / 不在遊戲世界一律不按）
+    Loop 6 {
+        if ReadGamePetOut(pid)!=0 || !GameInWorld(pid)
+            return ""
+        Sleep 500
+    }
+    if ReadGamePetOut(pid)!=0
+        return ""
+    info:=DailyQuickInfo(pid,"寵物卡")
+    if !IsObject(info) || info.key="" {
+        EventLog(p.name,"PET_SKIP",!IsObject(info) ? "寵物不在外面，但快捷欄找不到寵物卡" : "寵物卡在快捷欄第 " info.slot " 格，但不知道那一格是哪個鍵")
+        return ""
+    }
+    p.petPressedPid:=pid, p.petPressedAt:=A_TickCount
+    ActivateGame(hwnd)
+    SendOneKey(info.key)
+    Loop 16 {
+        Sleep 500
+        if ReadGamePetOut(pid)=1 {
+            EventLog(p.name,"PET_OUT","登入後寵物不在外面｜已按 " StrUpper(info.key) "（快捷欄第 " info.slot " 格）開啟")
+            return "開啟寵物（" StrUpper(info.key) "）"
+        }
+    }
+    EventLog(p.name,"PET_FAIL","已按 " StrUpper(info.key) "，8 秒後寵物仍不在外面")
+    return "按 " StrUpper(info.key) " 後寵物仍不在外面"
 }
 
 RecoveryAutoAttackOn(hwnd) {
@@ -124,6 +215,9 @@ RecoveryGuardPostCheck(p) {
         problems.Push("自動攻擊（F6）沒開")
     if p.rgUseKills && gained<=0
         problems.Push(mins " 分鐘內沒有擊殺")
+    ; 寵物不在外面（重新登入時換地圖可能把它收起來）：補開
+    if RG_AUTO_PET && ReadGamePetOut(p.pid)=0 && IsObject(DailyQuickInfo(p.pid,"寵物卡"))
+        problems.Push("寵物不在外面")
     if !problems.Length {
         EventLog(p.name,"RECOVERY_CHECK_OK","重新登入後檢查正常（第 " p.rgRound " 輪）｜擊殺 +" gained "｜" NotificationLocationText(p))
         p.rgDue:=0
@@ -157,7 +251,7 @@ RecoveryGuardFix(p, town) {
         DailyEnsureOnScreen(ctx)
         EnsureRecoveryFocus(p.hwnd,p.name)
         Sleep 300
-        if town!="" && (key:=Trim(ReturnKeyEdit.Value))!="" {
+        if town!="" && (key:=RecoveryReturnKey(p.hwnd))!="" {
             before:=ReadGameMapId(p.pid)
             SendOneKey(key)
             moved:=RecoveryGuardWaitMap(p.pid,before,20000)
@@ -174,12 +268,16 @@ RecoveryGuardFix(p, town) {
                 done.Push(RecoveryGuardAutoOn(p))
                 continue
             }
+            if RecoveryPetKeyHandled(p.hwnd,key)
+                continue   ; 寵物卡的鍵：下面依寵物狀態判斷，不盲按
             SendOneKey(key)
             Sleep 300
             done.Push("按 " key)
         }
         if !hasF6
             done.Push(RecoveryGuardAutoOn(p))
+        if (pet:=RecoveryEnsurePet(p.hwnd,p))!=""
+            done.Push(pet)
     } catch as e {
         done.Push("失敗：" e.Message)
     }

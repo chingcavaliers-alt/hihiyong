@@ -138,7 +138,7 @@ UpdateApply() {
         return UpdatePushWeb()
     }
     ver := updateInfo.version
-    updateRunning := true, foregroundOwner := "update"   ; 每日道具、M 箱等都會等它
+    updateRunning := true, foregroundOwner := "update"   ; 每日道具、命運箱子等都會等它
     zip := UpdateWorkDir() "\" ver ".zip"
     try {
         updateStatus := "下載 " ver " 中…"

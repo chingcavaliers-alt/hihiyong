@@ -204,6 +204,13 @@ DailyItemsCloseRemind(mode) {
         DailyRunEnqueue(due,"提醒視窗")
 }
 
+DailyWeaponChoicesJson() {
+    out:=""
+    for c in DailyWeaponChoices()
+        out.=(out="" ? "" : ",") '{"name":"' JsonEscapeWeb(c.name) '","index":' c.index ',"ok":' (c.ok ? "true" : "false") '}'
+    return out
+}
+
 DailyItemsPushWeb() {
     global webReady,WVCore,profiles,recorder,DAILY_DELAY_MIN
     if !webReady || !WVCore
@@ -225,7 +232,7 @@ DailyItemsPushWeb() {
     rec:=IsObject(recorder)
         ? '{"active":true,"name":"' JsonEscapeWeb(recorder.name) '","count":' recorder.count ',"seconds":' Floor((A_TickCount-recorder.start)/1000) ',"dir":"' JsonEscapeWeb(recorder.dir) '"}'
         : '{"active":false}'
-    global dailyRunning,dailyRunQueue,DAILY_AUTORUN,DAILY_IDLE_SEC,DAILY_OPTIONS,DAILY_WEAPON_KEYWORD
+    global dailyRunning,dailyRunQueue,DAILY_AUTORUN,DAILY_POPUP_TIMEOUT_SEC,DAILY_IDLE_SEC,DAILY_OPTIONS,DAILY_WEAPON_KEYWORD,DAILY_START_KEY,DAILY_PREV_KEY,DAILY_QUICK_KEYS
     opts:=""
     for o in DAILY_OPTIONS
         opts.=(opts="" ? "" : ",") '["' o[1] '","' JsonEscapeWeb(o[2]) '"]'
@@ -234,7 +241,8 @@ DailyItemsPushWeb() {
         queue.=(queue="" ? "" : "、") profiles[i].name
     try WVCore.PostWebMessageAsJson('{"type":"daily","data":{"delay":' DAILY_DELAY_MIN ',"autorun":' (DAILY_AUTORUN ? "true" : "false")
         . ',"idle":' DAILY_IDLE_SEC ',"running":"' JsonEscapeWeb(dailyRunning) '","queue":"' JsonEscapeWeb(queue) '"'
-        . ',"roles":[' roles '],"options":[' opts '],"weaponDefault":"' JsonEscapeWeb(DAILY_WEAPON_KEYWORD) '","recorder":' rec '}}')
+        . ',"popupTimeout":' DAILY_POPUP_TIMEOUT_SEC ',"weaponChoices":[' DailyWeaponChoicesJson() ']'
+        . ',"roles":[' roles '],"options":[' opts '],"weaponDefault":"' JsonEscapeWeb(DAILY_WEAPON_KEYWORD) '","cardKeys":{"start":"' JsonEscapeWeb(DAILY_START_KEY) '","prev":"' JsonEscapeWeb(DAILY_PREV_KEY) '","quick":"' JsonEscapeWeb(DAILY_QUICK_KEYS) '"},"recorder":' rec '}}')
 }
 
 ; time_t（UTC 秒）→ 本機時間文字；0 或負數顯示「—」。
