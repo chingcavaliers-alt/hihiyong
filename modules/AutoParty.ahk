@@ -16,6 +16,8 @@ global AP_IDLE_SEC := Max(0, Integer(IniRead(INI, "AutoParty", "IdleSec", "5")))
 global AP_SETTLE_SEC := Max(0, Integer(IniRead(INI, "AutoParty", "SettleSec", "30")))
 global AP_RETRY_SEC := 60, AP_GIVEUP_SEC := 600, AP_MAX_TRIES := 3, AP_STEP_MS := 2500, AP_INVITE_EXTRA_MS := 1500, AP_RECHECK_SEC := 15, AP_OWN_GRACE_MS := 150
 global apLastActive := 0, apManualAt := 0, AP_MANUAL_TTL_MS := 60000
+; 遠端隊員：送出邀請後最多等這麼久看對方有沒有加入；接受邀請失敗 / 不符合條件後，這麼久內不再試同一個角色
+global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
@@ -35,6 +37,39 @@ ApMemberNames(p) {
             out.Push(n)
     }
     return out
+}
+; 「遠端隊員」：在另一台電腦上的角色（遊戲內角色名稱）。隊長這台只負責送邀請，對方那台自己接受（見 ApAcceptTick）。
+ApSplitNames(raw) {
+    out := []
+    for n in StrSplit(raw, "|") {
+        n := Trim(n)
+        if n != ""
+            out.Push(n)
+    }
+    return out
+}
+ApRemoteNames(p) => p.HasOwnProp("partyRemote") ? ApSplitNames(p.partyRemote) : []
+ApAcceptFromNames(p) => p.HasOwnProp("partyAcceptFrom") ? ApSplitNames(p.partyAcceptFrom) : []
+ApHasName(list, name) {
+    for n in list
+        if n = name
+            return true
+    return false
+}
+; 這個遊戲內角色名稱是不是這台電腦上某個角色（記錄的角色名稱，或正在線上讀到的名稱）。
+ApIsLocalChar(name) {
+    global profiles
+    for q in profiles {
+        if q.HasOwnProp("charName") && q.charName = name
+            return true
+        if q.pid && ProfileGameAlive(q) {
+            cn := ""
+            try cn := ApCharName(q.pid)
+            if cn = name
+                return true
+        }
+    }
+    return false
 }
 ApProfileByName(name) {
     global profiles
@@ -561,6 +596,19 @@ ApPlan(leader) {
         }
         res.todo.Push(mp)
     }
+    ; 遠端隊員：不在這台電腦上，讀不到對方的資料；上線與否看隊長自己的好友名單，加入與否看隊長自己的隊伍名單。
+    for name in ApRemoteNames(leader) {
+        if name = own || ApProfileByName(name) || ApHasName(ApMemberNames(leader), name) || ApIsLocalChar(name) {
+            res.notes.Push({key: "remotedup|" name, text: "遠端隊員「" name "」和本機角色或隊長自己重複，跳過"})
+            continue
+        }
+        res.total += 1
+        if lp.id != -1 && ApHasName(lp.members, name) {
+            res.inParty += 1
+            continue
+        }
+        res.todo.Push({name: name, remote: true, pid: 0})
+    }
     return res
 }
 
@@ -571,7 +619,7 @@ ApTick() {
         return
     leaders := []
     for i, p in profiles
-        if p.enabled && ApIsLeader(p) && ApMemberNames(p).Length
+        if p.enabled && ApIsLeader(p) && (ApMemberNames(p).Length || ApRemoteNames(p).Length)
             leaders.Push(i)
     if !leaders.Length {
         apManual := 0
@@ -640,7 +688,7 @@ ApNote(p, k, text, discord := false) {
 
 ; 一位隊長做一輪：規劃 → 切視窗邀請每個人 → 切回原本的視窗。
 ApRun(idx, manual := false) {
-    global profiles, apBusy, foregroundOwner, apRunStart, apLastOwn, AP_RECHECK_SEC, AP_RETRY_SEC, AP_GIVEUP_SEC, AP_MAX_TRIES
+    global profiles, apBusy, foregroundOwner, apRunStart, apLastOwn, AP_RECHECK_SEC, AP_REMOTE_WAIT_MS
     p := profiles[idx]
     apBusy := true, foregroundOwner := "party", apRunStart := A_TickCount, apLastOwn := A_TickCount
     prev := 0, cursor := 0, opened := false, minimized := [], stopped := false
@@ -668,7 +716,7 @@ ApRun(idx, manual := false) {
         cursor := ApCursor()
         if ApIsMinimized(p)
             minimized.Push(p)   ; 隊長視窗原本是最小化的：做完縮回去
-        done := 0, failed := 0
+        done := 0, failed := 0, sent := []
         for mp in todo {
             try {
                 r := ApInviteOne(p, mp, &opened, &minimized)
@@ -677,36 +725,55 @@ ApRun(idx, manual := false) {
                     stopped := true
                     p.partyStatus := "⏸ " e.Message "（稍後再試）", p.partyCheckAt := A_TickCount + 20000
                     EventLog(p.name, "PARTY_STOP", e.Message)
+                    if mp.HasOwnProp("sentAt")
+                        sent.Push(mp)
+                    ApHoldSent(p, sent)
                     return
                 }
                 r := "fail|" e.Message
             }
-            if r = "" {
+            if r = "sent" {
+                sent.Push(mp)   ; 遠端隊員：邀請已送出，等對方那台接受，最後一起確認
+                continue
+            }
+            k := ApApplyResult(p, mp, r)
+            if k = 1
                 done += 1
-                ApMapDel(p.partyTries, mp.name), ApMapDel(p.partyWait, mp.name)
-                EventLog(p.name, "PARTY_JOIN", mp.name " 加入隊伍")
-                AddRecentEvent("🤝 " p.name " 邀請 " mp.name "：已加入隊伍")
-                if p.HasOwnProp("partyNoted")
-                    ApMapDel(p.partyNoted, "fail|" mp.name)
-            } else if SubStr(r, 1, 9) = "skiplong|" {
-                ; 會一直這樣的狀況（例如名單太長要捲動）：不要每分鐘開關好友視窗，隔很久再看
-                ApNote(p, "skip|" mp.name, mp.name "：" SubStr(r, 10))
-                p.partyWait[mp.name] := A_TickCount + AP_GIVEUP_SEC * 1000
-            } else if SubStr(r, 1, 5) = "skip|" {
-                ApNote(p, "skip|" mp.name, mp.name "：" SubStr(r, 6))
-                p.partyWait[mp.name] := A_TickCount + AP_RETRY_SEC * 1000
-            } else {
+            else if k = 2
                 failed += 1
-                why := SubStr(r, 6)
-                n := p.partyTries.Get(mp.name, 0) + 1
-                p.partyTries[mp.name] := n
-                EventLog(p.name, "PARTY_FAIL", mp.name "｜第 " n " 次｜" why)
-                if n >= AP_MAX_TRIES {
-                    ApMapDel(p.partyTries, mp.name)
-                    p.partyWait[mp.name] := A_TickCount + AP_GIVEUP_SEC * 1000
-                    ApNote(p, "fail|" mp.name, mp.name " 連續 " n " 次沒邀請成功：" why "（" Round(AP_GIVEUP_SEC / 60) " 分鐘後再試；可能隊伍滿了或遊戲畫面有別的視窗擋住）", true)
-                } else
-                    p.partyWait[mp.name] := A_TickCount + AP_RETRY_SEC * 1000
+        }
+        if sent.Length {
+            try {
+                ; 等的時候也要照守門規則：使用者開始操作 / 其他功能開始 / 按停止就中止
+                ApWait(() => (ApGuardAny(), ApAllInParty(p, sent)), AP_REMOTE_WAIT_MS)
+            } catch as e {
+                if e.Extra != "stop"
+                    throw e
+                stopped := true
+                p.partyStatus := "⏸ " e.Message "（稍後再試）", p.partyCheckAt := A_TickCount + 20000
+                EventLog(p.name, "PARTY_STOP", e.Message)
+                ApHoldSent(p, sent)
+                return
+            }
+            lp := ApParty(p.pid)
+            if !IsObject(lp) {
+                Sleep 300
+                lp := ApParty(p.pid)   ; 剛好讀失敗一次不能算所有人都沒加入
+            }
+            if !IsObject(lp) {
+                for mp in sent
+                    ApApplyResult(p, mp, "skip|讀不到隊伍資料，稍後再確認")
+                p.partyCheckAt := A_TickCount + AP_RECHECK_SEC * 1000
+                p.partyStatus := "⚠ 讀不到隊伍資料"
+                return
+            }
+            for mp in sent {
+                joined := IsObject(lp) && ApHasName(lp.members, mp.name)
+                k := ApApplyResult(p, mp, joined ? "" : "fail|邀請已送出，" Round(AP_REMOTE_WAIT_MS / 1000) " 秒內對方沒有加入（對方那台要開著管理程式並勾選「自動接受邀請」，或手動按 Enter）")
+                if k = 1
+                    done += 1
+                else if k = 2
+                    failed += 1
             }
         }
         p.partyCheckAt := A_TickCount + AP_RECHECK_SEC * 1000
@@ -718,6 +785,66 @@ ApRun(idx, manual := false) {
         ApCleanup(p, opened, minimized, prev, cursor, stopped)
         foregroundOwner := "", apBusy := false, apRunStart := 0
     }
+}
+
+; 處理一個隊員的邀請結果。回傳 1＝已加入、2＝失敗（會重試）、0＝跳過。
+ApApplyResult(p, mp, r) {
+    global AP_RETRY_SEC, AP_GIVEUP_SEC, AP_MAX_TRIES
+    if r = "" {
+        ApMapDel(p.partyTries, mp.name), ApMapDel(p.partyWait, mp.name)
+        if p.HasOwnProp("partyGaveUp")
+            ApMapDel(p.partyGaveUp, mp.name)
+        EventLog(p.name, "PARTY_JOIN", mp.name " 加入隊伍")
+        AddRecentEvent("🤝 " p.name " 邀請 " mp.name "：已加入隊伍")
+        if p.HasOwnProp("partyNoted")
+            ApMapDel(p.partyNoted, "fail|" mp.name)
+        return 1
+    }
+    if SubStr(r, 1, 9) = "skiplong|" {
+        ; 會一直這樣的狀況（例如名單太長要捲動）：不要每分鐘開關好友視窗，隔很久再看
+        ApNote(p, "skip|" mp.name, mp.name "：" SubStr(r, 10))
+        p.partyWait[mp.name] := A_TickCount + AP_GIVEUP_SEC * 1000
+        return 0
+    }
+    if SubStr(r, 1, 5) = "skip|" {
+        ApNote(p, "skip|" mp.name, mp.name "：" SubStr(r, 6))
+        p.partyWait[mp.name] := A_TickCount + AP_RETRY_SEC * 1000
+        return 0
+    }
+    why := SubStr(r, 6)
+    n := p.partyTries.Get(mp.name, 0) + 1
+    p.partyTries[mp.name] := n
+    EventLog(p.name, "PARTY_FAIL", mp.name "｜第 " n " 次｜" why)
+    if n >= AP_MAX_TRIES {
+        ApMapDel(p.partyTries, mp.name)
+        ; 放棄之後休息的時間一次比一次長（最長 6 倍）：遠端隊員的隊伍狀態讀不到，對方一直接受不了時不要無限循環打擾
+        if !p.HasOwnProp("partyGaveUp")
+            p.partyGaveUp := Map()
+        g := Min(6, p.partyGaveUp.Get(mp.name, 0) + 1)
+        p.partyGaveUp[mp.name] := g
+        p.partyWait[mp.name] := A_TickCount + AP_GIVEUP_SEC * 1000 * g
+        ApNote(p, "fail|" mp.name, mp.name " 連續 " n " 次沒邀請成功：" why "（" Round(AP_GIVEUP_SEC * g / 60) " 分鐘後再試；可能隊伍滿了、對方已在別的隊伍或遊戲畫面有別的視窗擋住）", true)
+    } else
+        p.partyWait[mp.name] := A_TickCount + AP_RETRY_SEC * 1000
+    return 2
+}
+
+; 已經送出邀請的遠端隊員：中途中止時也記下冷卻，不要稍後馬上又送一次。
+ApHoldSent(p, sent) {
+    global AP_RETRY_SEC
+    for mp in sent
+        p.partyWait[mp.name] := A_TickCount + AP_RETRY_SEC * 1000
+}
+
+; 遠端隊員是否都已經在隊長的隊伍裡。
+ApAllInParty(p, list) {
+    lp := ApParty(p.pid)
+    if !IsObject(lp)
+        return false
+    for mp in list
+        if !ApHasName(lp.members, mp.name)
+            return false
+    return true
 }
 
 ApSummary(plan) {
@@ -772,7 +899,8 @@ ApIsGameWindow(hwnd) {
 ; 中途遇到停止 / 其他功能開始 / 使用者操作會丟出 stop 錯誤。
 ApInviteOne(L, M, &opened, &minimized) {
     global AP_STEP_MS
-    name := ApCharName(M.pid)
+    remote := M.HasOwnProp("remote") && M.remote   ; 遠端隊員：只做隊長這一半
+    name := remote ? M.name : ApCharName(M.pid)
     if name = ""
         return "fail|讀不到隊員的角色名稱"
     f := ApFriendFind(L.pid, name)
@@ -784,9 +912,11 @@ ApInviteOne(L, M, &opened, &minimized) {
         return "skip|好友名單顯示離線"
     ; 隊員畫面上如果還留著舊的 / 別人的邀請，按 Enter 會加入別人的隊伍：有就先不動。
     ; 一定要在動任何視窗之前檢查：等到隊長的確認視窗都打開了才發現，就會把確認視窗留在畫面上卡死。
-    um := ApUi(M.pid)
-    if IsObject(um) && um.modalOpen
-        return "fail|" M.name " 畫面上已經有別的組隊視窗，先不動"
+    if !remote {
+        um := ApUi(M.pid)
+        if IsObject(um) && um.modalOpen
+            return "fail|" M.name " 畫面上已經有別的組隊視窗，先不動"
+    }
 
     ; --- 隊長視窗：好友名單 → 選人 → 組隊 → 確認 ---
     ul := ApUi(L.pid)   ; 先唯讀看一眼：確認視窗還留著就不要又去搶前景
@@ -827,8 +957,12 @@ ApInviteOne(L, M, &opened, &minimized) {
     if !InStr(ui.modalText, name)
         EventLog(L.name, "PARTY_TEXT", "確認視窗文字與角色名不同（遊戲字型），以角色 ID 為準｜" ui.modalText)
     ApClick(L, ui.okBtn.x, ui.okBtn.y)
+    if remote
+        M.sentAt := A_TickCount   ; 邀請已經送出：之後任何地方中止都要記下冷卻
     if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && !u.modalOpen))
         return "fail|按了確認但確認視窗沒有關"
+    if remote
+        return "sent"   ; 對方在另一台電腦：由那台的「自動接受邀請」按 Enter，這裡不碰它的視窗
 
     ; --- 隊員視窗：邀請視窗 → Enter ---
     if ApIsMinimized(M) {
@@ -858,6 +992,129 @@ ApFindRow(ui, id) {
         if r.id = id
             return r
     return 0
+}
+
+; ---------------------------------------------------------------- 隊員這一半：自動接受邀請（給「隊長在另一台電腦」用）
+; 這個角色勾了「自動接受邀請」、而且畫面上跳出組隊邀請時，把視窗切到前面按 Enter。
+; 條件（每一項不符就不按鍵）：登入完成且在遊戲世界裡、自己目前沒有隊伍、視窗上是組隊邀請（不是離開隊伍之類的視窗）、
+; 如果有填「只接受這些隊長」，邀請文字裡要有其中一位的名字；使用者正在操作、重新登入中等同組隊邀請的規則。
+; 回傳空字串＝可以按 Enter；否則是不按的原因。
+ApAcceptCheck(p, ui) {
+    if !IsObject(ui) || !ui.modalOpen
+        return "畫面上沒有邀請視窗"
+    t := ui.modalText
+    if !InStr(t, "組隊") || RegExMatch(t, "離開|解散|退出|踢")
+        return "視窗不是組隊邀請（" SubStr(t, 1, 30) "）"
+    if ApIsLeader(p)
+        return "這個角色是隊長（它的組隊確認視窗和邀請長得很像），不自動接受"
+    from := ApAcceptFromNames(p)
+    if !from.Length
+        return "還沒填「只接受這些隊長」（一定要填，避免被陌生人拉進隊伍）"
+    ; 邀請文字像「您要與'名字'組隊嗎?」：抓出引號裡的名字完全比對；文字裡沒有引號時才退回「文字裡含有名字」
+    if RegExMatch(t, "['’‘「]([^'’‘」]+)['’」]", &m) {
+        if !ApHasName(from, Trim(m[1]))
+            return "邀請人「" m[1] "」不在設定的隊長名單裡"
+    } else {
+        found := false
+        for n in from
+            if InStr(t, n) {
+                found := true
+                break
+            }
+        if !found
+            return "邀請文字裡沒有設定的隊長名字（" SubStr(t, 1, 30) "）"
+    }
+    mine := ApParty(p.pid)
+    if !IsObject(mine)
+        return "讀不到自己的隊伍資料"
+    if mine.id != -1
+        return "自己已經在隊伍裡"
+    return ""
+}
+
+ApAcceptTick() {
+    global profiles, AP_ENABLED, apBusy
+    if !AP_ENABLED || apBusy
+        return
+    anyOn := false
+    for p in profiles
+        if p.enabled && p.HasOwnProp("partyAccept") && p.partyAccept && p.pid {
+            anyOn := true
+            break
+        }
+    if !anyOn || ApBlocker() != ""   ; 先做便宜的檢查：現在本來就不能動的話，不必每秒去讀遊戲記憶體
+        return
+    for p in profiles {
+        if !p.enabled || !p.HasOwnProp("partyAccept") || !p.partyAccept || !p.pid
+            continue
+        if p.HasOwnProp("acceptNextAt") && p.acceptNextAt > A_TickCount
+            continue
+        if !ApAcceptFromNames(p).Length || ApIsLeader(p) {
+            p.acceptStatus := ApIsLeader(p) ? "隊長不自動接受邀請" : "請先填「只接受這些隊長」"
+            continue
+        }
+        ; 先唯讀看一眼有沒有邀請視窗：沒有就什麼都不動、不切視窗
+        if !ApReady(p) || !ApReadable(p.pid)
+            continue
+        if ApIsMinimized(p) {
+            p.acceptStatus := "視窗最小化，收不到邀請（請不要縮小）"
+            continue
+        }
+        ui := ApUi(p.pid)
+        if !IsObject(ui) || !ui.modalOpen || !InStr(ui.modalText, "組隊")
+            continue
+        ApAcceptRun(p)
+        return   ; 一次只處理一個角色
+    }
+}
+
+ApAcceptRun(p) {
+    global apBusy, foregroundOwner, apRunStart, apLastOwn, AP_ACCEPT_BACKOFF_MS, AP_STEP_MS, AP_INVITE_EXTRA_MS
+    why := ApBlocker()
+    if why != "" {
+        p.acceptStatus := "等待中：" why
+        return
+    }
+    why := ApAcceptCheck(p, ApUi(p.pid))
+    if why != "" {
+        p.acceptStatus := "沒有接受：" why, p.acceptNextAt := A_TickCount + AP_ACCEPT_BACKOFF_MS
+        ApNote(p, "accept", "沒有自動接受邀請：" why)
+        return
+    }
+    apBusy := true, foregroundOwner := "party", apRunStart := A_TickCount, apLastOwn := A_TickCount
+    prev := ApForeground(), stopped := false
+    try {
+        if !ApActivate(p) {
+            p.acceptStatus := "⚠ 無法把視窗切到前面", p.acceptNextAt := A_TickCount + AP_ACCEPT_BACKOFF_MS
+            return
+        }
+        why := ApAcceptCheck(p, ApUi(p.pid))   ; 切過去之後再確認一次，才按鍵
+        if why != "" {
+            p.acceptStatus := "沒有接受：" why, p.acceptNextAt := A_TickCount + AP_ACCEPT_BACKOFF_MS
+            return
+        }
+        ApKey(p, "Enter")
+        if ApWait(() => (m := ApParty(p.pid), IsObject(m) && m.id != -1), AP_STEP_MS + AP_INVITE_EXTRA_MS) {
+            p.acceptStatus := "✓ " FormatTime(, "HH:mm:ss") " 已接受邀請"
+            EventLog(p.name, "PARTY_ACCEPT", "接受組隊邀請")
+            AddRecentEvent("🤝 " p.name " 已接受組隊邀請")
+        } else {
+            p.acceptStatus := "⚠ 按了 Enter 但沒有進到隊伍", p.acceptNextAt := A_TickCount + AP_ACCEPT_BACKOFF_MS
+            EventLog(p.name, "PARTY_ACCEPT_FAIL", "按了 Enter 但沒有進到隊伍")
+        }
+    } catch as e {
+        if e.Extra = "stop" {
+            stopped := true
+            p.acceptStatus := "⏸ " e.Message, p.acceptNextAt := A_TickCount + 20000
+            EventLog(p.name, "PARTY_STOP", e.Message)
+        } else {
+            p.acceptStatus := "⚠ " e.Message, p.acceptNextAt := A_TickCount + AP_ACCEPT_BACKOFF_MS
+            EventLog(p.name, "PARTY_ERROR", e.Message)
+        }
+    } finally {
+        ApCleanup(p, false, [], prev, 0, stopped)
+        foregroundOwner := "", apBusy := false, apRunStart := 0
+    }
 }
 
 ; ---------------------------------------------------------------- 設定 / 網頁
@@ -905,6 +1162,66 @@ ApSetRole(rawValue) {
     AddRecentEvent(p.name " → 自動組隊 " (p.partyLeader ? "隊長｜隊員：" (keep = "" ? "（無）" : StrReplace(keep, "|", "、")) : "不是隊長"))
 }
 
+; 「編號~遠端隊員（| 分隔）~角色名稱」
+ApSetRemote(rawValue) {
+    global profiles
+    parts := StrSplit(rawValue, "~")
+    if parts.Length < 3 || !IsInteger(parts[1])
+        return
+    idx := Integer(parts[1])
+    if idx < 1 || idx > profiles.Length
+        return
+    name := parts[3]
+    Loop parts.Length - 3
+        name .= "~" parts[3 + A_Index]
+    p := profiles[idx]
+    if name != p.name
+        return AddRecentEvent("⚠ 遠端隊員沒有儲存：角色清單已變動，請重新整理畫面")
+    seen := Map(), keep := ""
+    for n in ApSplitNames(parts[2]) {
+        if seen.Has(n)
+            continue
+        seen[n] := 1
+        keep .= (keep = "" ? "" : "|") n
+    }
+    p.partyRemote := keep
+    p.partyCheckAt := 0, p.partyTries := Map(), p.partyWait := Map(), p.partyNoted := Map()
+    SaveProfiles()
+    AddRecentEvent(p.name " → 遠端隊員：" (keep = "" ? "（無）" : StrReplace(keep, "|", "、")))
+}
+
+; 「編號~是否自動接受~只接受這些隊長（| 分隔，空白＝任何人）~角色名稱」
+ApSetAccept(rawValue) {
+    global profiles
+    parts := StrSplit(rawValue, "~")
+    if parts.Length < 4 || !IsInteger(parts[1])
+        return
+    idx := Integer(parts[1])
+    if idx < 1 || idx > profiles.Length
+        return
+    name := parts[4]
+    Loop parts.Length - 4
+        name .= "~" parts[4 + A_Index]
+    p := profiles[idx]
+    if name != p.name
+        return AddRecentEvent("⚠ 自動接受設定沒有儲存：角色清單已變動，請重新整理畫面")
+    keep := ""
+    for n in ApSplitNames(parts[3])
+        keep .= (keep = "" ? "" : "|") n
+    if parts[2] = "1" && keep = "" {
+        p.partyAccept := 0
+        SaveProfiles()
+        return AddRecentEvent("⚠ " p.name "：要先填「只接受這些隊長」才能開啟自動接受邀請（避免被陌生人拉進隊伍）")
+    }
+    p.partyAccept := Integer(parts[2] = "1")
+    p.partyAcceptFrom := keep
+    p.acceptNextAt := 0, p.acceptStatus := ""
+    if p.HasOwnProp("partyNoted")
+        ApMapDel(p.partyNoted, "accept")
+    SaveProfiles()
+    AddRecentEvent(p.name " → 自動接受邀請 " (p.partyAccept ? "開啟｜" (keep = "" ? "接受任何人的邀請" : "只接受：" StrReplace(keep, "|", "、")) : "關閉"))
+}
+
 ; 「立即組隊」：下一次檢查就做，不等 SETTLE 與使用者閒置（按按鈕的人當然在用電腦），其他保護照舊。
 ApRequestNow(idx) {
     global profiles, apManual, apManualAt
@@ -930,6 +1247,10 @@ ApPushWeb() {
             mem .= (mem = "" ? "" : ",") '"' JsonEscapeWeb(n) '"'
         roles .= (roles = "" ? "" : ",") '{"index":' i ',"name":"' JsonEscapeWeb(p.name) '","alive":' (p.pid && ProfileGameAlive(p) ? "true" : "false")
             . ',"leader":' (ApIsLeader(p) ? "true" : "false") ',"members":[' mem ']'
+            . ',"remote":"' JsonEscapeWeb(p.HasOwnProp("partyRemote") ? p.partyRemote : "") '"'
+            . ',"accept":' (p.HasOwnProp("partyAccept") && p.partyAccept ? "true" : "false")
+            . ',"acceptFrom":"' JsonEscapeWeb(p.HasOwnProp("partyAcceptFrom") ? p.partyAcceptFrom : "") '"'
+            . ',"acceptStatus":"' JsonEscapeWeb(p.HasOwnProp("acceptStatus") ? p.acceptStatus : "") '"'
             . ',"status":"' JsonEscapeWeb(p.HasOwnProp("partyStatus") ? p.partyStatus : "") '"}'
     }
     try WVCore.PostWebMessageAsJson('{"type":"party","data":{"enabled":' (AP_ENABLED ? "true" : "false") ',"settle":' AP_SETTLE_SEC

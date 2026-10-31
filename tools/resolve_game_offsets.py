@@ -3,7 +3,7 @@
 只讀取檔案（PE header、機器碼、PDB 符號），不碰執行中的遊戲。
 每次維修更新後由管理器自動呼叫；也可手動執行：
 
-    py -3 resolve_game_offsets.py --exe F:\\HiHiYong2.0\\game.exe --out ..\\HIHIYONG_GameOffsets.ini
+    py -3 resolve_game_offsets.py --exe D:\\HiHiYong2.0\\game.exe --out ..\\HIHIYONG_GameOffsets.ini
 
 只使用 Python 標準函式庫與 Windows 內建的 dbghelp.dll。
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import re
 import struct
 import sys
 from ctypes import wintypes
@@ -510,6 +511,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--exe", type=Path, required=True, help="game.exe 路徑（同資料夾需有 Game.pdb）")
     parser.add_argument("--out", type=Path, required=True, help="輸出的 INI 路徑")
+    parser.add_argument("--db", type=Path, help="已知版本資料夾；解析成功時另存一份 <Build>.ini，沒有 Game.pdb 的電腦可直接使用")
     args = parser.parse_args()
     try:
         values = resolve(args.exe)
@@ -523,6 +525,14 @@ def main() -> int:
         print(f"FAIL {exc}", file=sys.stderr)
         return 1
     write_ini(args.out, values, "OK")
+    build = values.get("Build", "")
+    # 版本戳的影像大小為 0 代表遊戲還沒載完，不是正式版本，不存
+    if args.db and re.fullmatch(r"[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*", build):
+        try:
+            args.db.mkdir(parents=True, exist_ok=True)
+            write_ini(args.db / f"{build}.ini", values, "OK")
+        except OSError as exc:   # 唯讀資料夾等：不影響主要結果
+            print(f"WARN 無法寫入已知版本資料夾：{exc}", file=sys.stderr)
     for k, v in values.items():
         print(f"{k}={v}")
     return 0

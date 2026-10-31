@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.39.0"
+global APP_VERSION := "v1.3.41.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -425,7 +425,7 @@ g.AddText("x50 y692 w980","安靜時段內的一般通知先收起來，早上�
 MainTabs.UseTab(4)
 g.AddGroupBox("x30 y273 w1010 h250","遊戲程式啟動設定")
 g.AddText("x50 y308 w80","Launcher")
-global LauncherEdit := g.AddEdit("x135 y303 w650",IniRead(INI,"General","Launcher","F:\HiHiYong\Launcher.exe"))
+global LauncherEdit := g.AddEdit("x135 y303 w650",IniRead(INI,"General","Launcher","D:\HiHiYong\Launcher.exe"))
 global BrowseLauncherBtn := g.AddButton("x800 y302 w100 h30","選擇檔案")
 g.AddText("x50 y358 w80","登入後按鍵")
 global PostKeysEdit := g.AddEdit("x135 y353 w220",IniRead(INI,"General","PostKeys","F5,F6,A"))
@@ -653,6 +653,9 @@ LoadProfiles() {
             mboxKey: IniRead(PROFILE_INI,sec,"MBoxKey","e"),
             partyLeader: Integer(IniRead(PROFILE_INI,sec,"PartyLeader","0")),
             partyMembers: IniRead(PROFILE_INI,sec,"PartyMembers",""),
+            partyRemote: IniRead(PROFILE_INI,sec,"PartyRemote",""),
+            partyAccept: Integer(IniRead(PROFILE_INI,sec,"PartyAccept","0")),
+            partyAcceptFrom: IniRead(PROFILE_INI,sec,"PartyAcceptFrom",""),
             switchEnabled: Integer(IniRead(PROFILE_INI,sec,"SwitchEnabled","1")),
             switchSeconds: Max(1,Integer(IniRead(PROFILE_INI,sec,"SwitchSeconds","10"))),
             switchKeys: IniRead(PROFILE_INI,sec,"SwitchKeys",""),
@@ -697,6 +700,9 @@ SaveProfiles() {
         IniWrite MBoxKeyOf(p), PROFILE_INI, sec, "MBoxKey"
         IniWrite (ApIsLeader(p) ? 1 : 0), PROFILE_INI, sec, "PartyLeader"
         IniWrite (p.HasOwnProp("partyMembers") ? p.partyMembers : ""), PROFILE_INI, sec, "PartyMembers"
+        IniWrite (p.HasOwnProp("partyRemote") ? p.partyRemote : ""), PROFILE_INI, sec, "PartyRemote"
+        IniWrite (p.HasOwnProp("partyAccept") && p.partyAccept ? 1 : 0), PROFILE_INI, sec, "PartyAccept"
+        IniWrite (p.HasOwnProp("partyAcceptFrom") ? p.partyAcceptFrom : ""), PROFILE_INI, sec, "PartyAcceptFrom"
         IniWrite p.switchEnabled, PROFILE_INI, sec, "SwitchEnabled"
         IniWrite p.switchSeconds, PROFILE_INI, sec, "SwitchSeconds"
         IniWrite p.switchKeys, PROFILE_INI, sec, "SwitchKeys"
@@ -1277,6 +1283,11 @@ ShowSelectedGame(*) {
     if !gi
         return
     hwnd:=gameRows[gi].hwnd
+    ; 清單是舊的：那個遊戲視窗已經關閉時不要丟錯誤視窗
+    if !hwnd || !WinExist("ahk_id " hwnd) {
+        MsgBox "這個遊戲視窗已經不存在（可能已關閉或重新啟動），請稍候清單更新後再選。",APP_TITLE,"Icon!"
+        return
+    }
     if WinGetMinMax("ahk_id " hwnd)=-1
         WinRestore "ahk_id " hwnd
     WinActivate "ahk_id " hwnd
@@ -1781,7 +1792,8 @@ GetGameModuleBase(pid, hProc:=0) {
         DllCall("CloseHandle","Ptr",snap)
     }
 
-    if moduleBase
+    ; 影像大小 0 = game.exe 剛啟動、模組資訊還沒填好：不快取，下次重新取得（否則版本會一直是 XXXXXXXX-0）
+    if moduleBase && memoryHpModuleSizes.Get(pid,0)
         memoryHpModuleBases[pid]:=moduleBase
     return moduleBase
 }
@@ -3960,6 +3972,15 @@ WaitScreenReady(hwnd,key,profileName,timeoutSec:=60) {
     throw Error(stage " Timeout：" timeoutSec " 秒內未確認畫面 Ready。")
 }
 
+; 送按鍵 / 文字前確認遊戲視窗在前景；被搶走時重新切回一次，還是不行就停止（不把帳密打到別的視窗）。
+EnsureActiveForInput(hwnd, label) {
+    if WinActive("ahk_id " hwnd)
+        return
+    ActivateGame(hwnd)
+    if !WinWaitActive("ahk_id " hwnd,,1)
+        throw Error("輸入" label "前遊戲視窗不在前景（被其他視窗搶走），已停止輸入。")
+}
+
 FillLoginField(hwnd, pointKey, value, label, profileName) {
     global abortRequested
 
@@ -3967,6 +3988,8 @@ FillLoginField(hwnd, pointKey, value, label, profileName) {
         throw Error("Recovery 已被中止。")
     if !hwnd || !WinExist("ahk_id " hwnd)
         throw Error("遊戲視窗已消失。")
+    if LoginGuardInWorld(hwnd,profileName,"輸入" label)
+        throw Error("角色已經在遊戲世界中，已停止輸入" label "（不打字）。")
 
     ; 每個欄位都重新確認 Recovery 視窗在前景，並避免其他電腦的 IME 狀態干擾帳密。
     ActivateGame(hwnd)
@@ -3978,6 +4001,10 @@ FillLoginField(hwnd, pointKey, value, label, profileName) {
     ClickPoint(hwnd, pointKey)
     Sleep 300
 
+    ; 按鍵與 SendText 都是送給「目前的前景視窗」：前景被別的視窗（例如凌晨搶焦點的程式、別的遊戲視窗）搶走時
+    ; 絕不能送，否則帳密會打到別的地方。
+    EnsureActiveForInput(hwnd,label)
+
     ; 明確清空欄位。Ctrl+A 與 Backspace 分開送，避免遊戲漏掉組合鍵。
     SendEvent "{Ctrl down}a{Ctrl up}"
     Sleep 120
@@ -3985,6 +4012,7 @@ FillLoginField(hwnd, pointKey, value, label, profileName) {
     Sleep 120
 
     ; SendText 對特殊字元較安全；輸入後再等待，避免下一個 Click 吃掉尾字。
+    EnsureActiveForInput(hwnd,label)
     SendText value
     Sleep 350
 
@@ -4007,6 +4035,13 @@ RecoverProfile(idx, &asyncLoading:=false) {
     global profiles,LauncherEdit,PostKeysEdit,ReturnKeyEdit,ConfEdit,Status,GAME_TITLE,UPDATE_TITLE,abortRequested,activeRecoveryHwnd,activeRecoveryPid,activeRecoveryCommitted,recoveryUserPauseLogged,recoveryStage,fastLoginCritical
     asyncLoading:=false
     p:=profiles[idx]
+    ; 原本綁定的遊戲視窗還在、PID 沒變、角色已在遊戲世界（只是標題暫時不同等原因被判成綁定失效）：
+    ; 不啟動 Launcher 開第二個遊戲（同一組帳密會被拒絕，或把好好的角色踢下線），直接重新綁定。
+    if (live:=LoginExistingWorldHwnd(p.pid,p.hwnd)) {
+        activeRecoveryHwnd:=live, activeRecoveryPid:=p.pid, activeRecoveryCommitted:=true
+        EventLog(p.name,"RECOVERY_REUSE_EXISTING","原綁定的遊戲視窗還在、角色已在遊戲世界（視窗標題暫時不同等原因被判成綁定失效）｜不啟動 Launcher，直接重新綁定")
+        return RecoverProfileEnterGame(idx,live,90)
+    }
     launcher:=Trim(LauncherEdit.Value)
     if !FileExist(launcher)
         throw Error("找不到 Launcher：" launcher)
@@ -4033,6 +4068,21 @@ RecoverProfile(idx, &asyncLoading:=false) {
     activeRecoveryCommitted:=false
     recoveryUserPauseLogged:=false
     EventLog(p.name, "STEP", "新 game.exe PID " activeRecoveryPid " / HWND " hwnd)
+
+    ; 找到的遊戲其實已經在遊戲裡（例如視窗標題暫時變了而被誤判為新視窗）：不走登入流程，不點擊、不打字，
+    ; 直接做登入後的確認 / 按鍵 / 視窗位置。
+    if LoginGuardInWorld(hwnd,p.name,"登入流程") {
+        ; 先確認這是這個帳號的遊戲：沒有被別的帳號綁定、角色名稱相符；否則停下來（game.exe 已標成保留，不會被關）
+        otherName:=""
+        for qi,q in profiles
+            if qi!=idx && q.pid && q.pid=activeRecoveryPid
+                otherName:=q.name
+        charNow:=ReadGameCharName(activeRecoveryPid)
+        if otherName!="" || !CharNameCompatible(p,charNow)
+            throw Error("找到的遊戲視窗已在遊戲世界中，但不是這個帳號的角色（" (otherName!="" ? "已綁定給 " otherName : "角色「" charNow "」與記住的不同") "）；已停止並保留遊戲，請手動確認。")
+        EventLog(p.name,"RECOVERY_ALREADY_IN_GAME","找到的遊戲視窗已在遊戲世界中｜略過登入，直接做登入後確認")
+        return RecoverProfileEnterGame(idx,hwnd,90)
+    }
 
     ; v1.3.9.4 ServerReady：game.exe 出現不等於伺服器畫面 Ready。
     ; Loading 階段禁止八點座標；此階段任何 Gate 失敗也必須保留 game.exe。
@@ -4835,12 +4885,11 @@ ExtractRecognitionFeatures(hwnd) {
 
 
 SnapshotGamePids() {
-    global GAME_TITLE
     old := Map()
+    ; 標題不論：視窗標題暫時改變（對話框、更新中）的既有遊戲程序也要算「舊的」，
+    ; 否則標題改回來後會被當成這次新開的遊戲，在已經登入的遊戲上跑登入流程。
     for hwnd in WinGetList("ahk_exe game.exe") {
         try {
-            if WinGetTitle("ahk_id " hwnd) != GAME_TITLE
-                continue
             pid := WinGetPID("ahk_id " hwnd)
             old[String(pid)] := true
         }
@@ -4983,6 +5032,8 @@ ClickPoint(hwnd,key,ov:="") {
     global points, abortRequested, profiles, activeRecoveryHwnd, recoveryStage
     if abortRequested
         throw Error("使用者停止測試。")
+    if hwnd && LoginGuardInWorld(hwnd,"Recovery","點擊登入座標 " key)
+        throw Error("角色已經在遊戲世界中，已停止登入點擊（不盲點）：" key)
     ; H-033：能從遊戲記憶體找到這個登入步驟的位置就直接用（ov = 呼叫端指定的位置，例如選角的第 N 隻）；找不到才用預設點。
     mem:=IsObject(ov) ? ov : LoginUiClickPoint(hwnd,key)
     if !IsObject(mem) && !points.Has(key)
@@ -5440,6 +5491,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer UpdateCleanupOld, -30000
     SetTimer MBoxTick, 1000
     SetTimer ApTick, 2000
+    SetTimer ApAcceptTick, 1000   ; 隊長在另一台電腦時，邀請視窗有時效：比 ApTick 看得勤一點
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
     SetTimer KillStatsTick, KILL_TICK_MS
@@ -5611,6 +5663,12 @@ WebRunAction(action,value:=0,rawValue:="") {
         ApPushWeb()
     } else if action="partyrole" {
         ApSetRole(WebUrlDecode(rawValue))
+        ApPushWeb()
+    } else if action="partyremote" {
+        ApSetRemote(WebUrlDecode(rawValue))
+        ApPushWeb()
+    } else if action="partyaccept" {
+        ApSetAccept(WebUrlDecode(rawValue))
         ApPushWeb()
     } else if action="partynow" {
         if IsInteger(WebUrlDecode(rawValue))
@@ -7123,5 +7181,8 @@ JsonEscapeWeb(value) {
     value:=StrReplace(value,'"','\"')
     value:=StrReplace(value,"`r","\r")
     value:=StrReplace(value,"`n","\n")
+    if RegExMatch(value, "[\x00-\x1f]")   ; 其他控制字元（Tab、遊戲文字裡的色碼…）在 JSON 裡不合法，會讓整則訊息被丟掉
+        Loop 31   ; Chr(0) 不能當搜尋字串（會被當成空字串），字串裡本來也不會有
+            value:=StrReplace(value,Chr(A_Index),Format("\u{:04x}",A_Index))
     return value
 }

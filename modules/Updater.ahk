@@ -15,7 +15,7 @@ global UPDATE_KEEP_DIRS := ["Logs", "Stats", "WebView2UserData", "NetworkWatch",
 global UPDATE_KEEP_FILES := ["HIHIYONG_AutoRecovery.ini", "HIHIYONG_Recovery_Profiles.ini", "HIHIYONG_GameOffsets.ini"
     , "HIHIYONG_Recovery_Events.log", "HiHiyong.ico"]
 global updateInfo := 0, updateReq := 0, updateReqStart := 0, updateStatus := "", updateManual := false, updateRunning := false
-; 發佈者的公鑰（私鑰只在穩定版電腦 F:\HIHIYONG\publish_key，不在任何倉庫裡）。下載的新版必須用它驗證簽章才會安裝。
+; 發佈者的公鑰（私鑰只在穩定版電腦 D:\HIHIYONG\publish_key，不在任何倉庫裡）。下載的新版必須用它驗證簽章才會安裝。
 global UPDATE_PUBKEY := '<RSAKeyValue><Modulus>xG3ugNaSp46Lx0o3wwOqjwwB5QfWwmpwC7cc8EhPVS/GMCkZKiZXr978FIoavUAPOb0kY2MzLckxN6eRDALdgy2qPIJmhHPNmf01GIH+w7njptEdVhxG64I7psQqTw9WA8+j3zHKYwBanKOvlDlAxEqsMiYD6AawZdYoRgK5s1zqeOY0MwIT2ZCQQWoVexvy/36sE5qtjoLERZ3kGuYqqdjVkEJwChswI0cSOLqgeGRkNO6XvLYI+W0Sus36dNwqGfHc1gD4v4q9ke+ET6jMkqK/0eMYMqL7+eyWDay7okAi/5dIRgJfAChqr6+/kN09n2JrOoaiCftBo0XmwQPA1UecYubCamwTA0e5vPdwrmnaApNHUHzdF+zk7HSAK17l8zb4Wwz+3//zqJw+UBm6j/wLHtgWtul1qeCyOCMpLL2h/PMBHvmu8t4w41gvcpXAPvuBp8FpkEr+IcKtb2UvxyJ3k5OLM7vYbjMgDcwvUlYFvX3z0b/GsKSCTLxAfEON</Modulus><Exponent>AQAB</Exponent></RSAKeyValue>'
 
 ; "v1.3.24.0" 與 "v1.3.23.0" 比較：a 比 b 新回傳 true。

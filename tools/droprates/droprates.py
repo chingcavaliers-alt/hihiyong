@@ -1,7 +1,7 @@
 """HiHiYong2.0 怪物掉落率：從遊戲資料夾（唯讀）計算每張地圖每隻怪的掉落機率，輸出成管理程式讀的 JSON。
 
 用法：
-  python droprates.py --game F:\\HiHiYong2.0 --out <Stats\\DropRates>      # 有改版才重算（比對指紋）
+  python droprates.py --game D:\\HiHiYong2.0 --out <Stats\\DropRates>      # 有改版才重算（比對指紋）
   python droprates.py ... --force                                          # 強制重算
 結束碼：0 = 已是最新或重算完成；1 = 失敗（訊息寫在 <out>\\last_error.txt）。
 

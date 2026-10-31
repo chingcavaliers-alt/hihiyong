@@ -9,6 +9,8 @@
 global GAME_OFFSETS_INI := A_ScriptDir "\HIHIYONG_GameOffsets.ini"
 global STATS_DIR := A_ScriptDir "\Stats"
 global ITEM_NAMES_INI := STATS_DIR "\ItemNames.ini"
+global GAME_OFFSETS_DB_DIR := A_ScriptDir "\offsets_db"
+global gameOffsetsKnownTried := Map()   ; build → 已找過已知版本資料夾
 global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
 ; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
 global GAME_OFFSETS_TOOL_VERSION := 20
@@ -72,8 +74,10 @@ GameBuildOf(pid) {
     if (build:=gameBuildByPid.Get(pid,""))!=""
         return build
     build:=GetGameBuildStamp(pid)
-    if build!=""
-        gameBuildByPid[pid]:=build
+    ; 影像大小為 0 = game.exe 剛啟動、模組還沒載完：不是正式版本，不快取、當作還讀不到
+    if build="" || RegExMatch(build,"-0$")
+        return ""
+    gameBuildByPid[pid]:=build
     return build
 }
 
@@ -87,8 +91,55 @@ GameOffsetsReady(pid) {
         return false
     if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build
         return true
+    ; 沒有 Game.pdb 的電腦：先找隨程式附上的「已知版本」位置資料
+    if GameOffsetsUseKnownBuild(build)
+        return true
     StartGameOffsetsResolve(pid,build)
     return false
+}
+
+; 已知版本資料夾 offsets_db\<Build>.ini：由有 Game.pdb 的電腦解析後隨發佈包 / 更新一起發出。
+; 命中就複製成目前使用的位置檔並載入；回傳是否已可用。每個版本只試一次，失敗不重複。
+GameOffsetsUseKnownBuild(build) {
+    ; 版本字串會變成檔名：只接受「十六進位-十六進位」，且影像大小不是 0（遊戲還沒載完）
+    if !RegExMatch(build,"^[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*\z")
+        return false
+    ; 多個計時器同時查同一版本時，不讓另一個在標記與套用之間插隊；Critical 是整個執行緒的設定，結束時一定要還原
+    prevCritical:=Critical("On")
+    try return GameOffsetsApplyKnownBuild(build)
+    finally Critical(prevCritical)
+}
+
+GameOffsetsApplyKnownBuild(build) {
+    global gameOffsets,gameOffsetsKnownTried,GAME_OFFSETS_INI,GAME_OFFSETS_DB_DIR,GAME_OFFSETS_TOOL_VERSION
+    if gameOffsetsKnownTried.Has(build)
+        return false
+    gameOffsetsKnownTried[build]:=1
+    src:=GAME_OFFSETS_DB_DIR "\" build ".ini"
+    if !FileExist(src)
+        return false
+    ; 先在暫存裡驗證，通過才覆寫使用中的位置檔，避免壞檔蓋掉原本可用的
+    cand:=Map()
+    try {
+        for line in StrSplit(IniRead(src,"GameOffsets"),"`n","`r") {
+            pos:=InStr(line,"=")
+            if pos
+                cand[SubStr(line,1,pos-1)]:=SubStr(line,pos+1)
+        }
+    }
+    if cand.Get("Status","")!="OK" || cand.Get("Build","")!=build
+        || !IsInteger(cand.Get("ToolVersion","")) || Integer(cand["ToolVersion"])<GAME_OFFSETS_TOOL_VERSION {
+        EventLog("GLOBAL","GAME_OFFSETS_DB_FAIL","已知版本 " build " 的位置資料版本過舊或內容不符，改由 Game.pdb 解析")
+        return false
+    }
+    try FileCopy(src,GAME_OFFSETS_INI,true)
+    catch as err {
+        EventLog("GLOBAL","GAME_OFFSETS_DB_FAIL","無法套用已知版本 " build "：" err.Message)
+        return false
+    }
+    gameOffsets:=cand
+    EventLog("GLOBAL","GAME_OFFSETS_DB","使用隨程式附上的已知版本位置資料 " build "（不需要 Game.pdb）")
+    return true
 }
 
 GameOffsetsResolving() {
@@ -118,7 +169,7 @@ StartGameOffsetsResolve(pid,build) {
     try exe:=ProcessGetPath(pid)
     pdb:=RegExReplace(exe,"[^\\]+$","Game.pdb")
     if exe="" || !FileExist(pdb) {
-        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 game.exe 或 Game.pdb（" exe "）｜HP 改用動態校正")
+        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 Game.pdb，也沒有這個版本（" build "）的已知位置資料（" exe "）｜HP 改用動態校正；快捷欄 / 寵物 / 前點卡自動判別停用")
         return
     }
     python:=FindPythonLauncher()
@@ -127,7 +178,7 @@ StartGameOffsetsResolve(pid,build) {
         AddRecentEvent("⚠ 找不到 Python，無法自動解析新版遊戲資料位置")
         return
     }
-    cmd:=python ' -I "' A_ScriptDir '\tools\resolve_game_offsets.py" --exe "' exe '" --out "' GAME_OFFSETS_INI '"'
+    cmd:=python ' -I "' A_ScriptDir '\tools\resolve_game_offsets.py" --exe "' exe '" --out "' GAME_OFFSETS_INI '" --db "' GAME_OFFSETS_DB_DIR '"'
     newPid:=0
     try Run(cmd,A_ScriptDir,"Hide",&newPid)
     catch as err {

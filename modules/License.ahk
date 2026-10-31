@@ -68,7 +68,8 @@ Lic_AcctHash(machineId, account) => Lic_Sha256Hex("acct|" machineId "|" StrLower
 ; 作者端用：組出要簽的內容。expires = "forever" 或 yyyyMMdd。
 Lic_BuildPayload(user, machineId, issued, expires, mode, count := 0, accounts := "") {
     t := "HIHIYONG-LICENSE 1`n"
-    t .= "id=" issued "-" SubStr(StrReplace(machineId, "-"), 1, 6) "`n"
+    ; 授權編號每次簽發都不同（含時間），撤銷名單才能只撤這一份、不影響之後重新簽發的
+    t .= "id=" A_Now A_MSec "-" SubStr(StrReplace(machineId, "-"), 1, 6) "`n"
     t .= "user=" RegExReplace(user, "[\r\n=]", " ") "`n"
     t .= "machine=" machineId "`n"
     t .= "issued=" issued "`n"
@@ -175,6 +176,8 @@ Lic_Evaluate(path := "", machineId := "", today := "") {
     seen := ""
     try seen := Trim(FileRead(LIC_SEEN_FILE, "UTF-8"))
     st := Lic_Status(lic, machineId, today, seen)
+    if st.ok && Lic_IsRevoked(lic.id)
+        return {state: "revoked", lic: lic, daysLeft: st.daysLeft, machineId: machineId}
     return {state: st.ok ? "ok" : st.reason, lic: lic, daysLeft: st.daysLeft, machineId: machineId}
 }
 
@@ -195,7 +198,10 @@ Lic_Recheck() {
     seen := ""
     try seen := Trim(FileRead(LIC_SEEN_FILE, "UTF-8"))
     st := Lic_Status(licInfoCache, licState.machineId, SubStr(A_Now, 1, 8), seen)
-    licState := {state: st.ok ? "ok" : st.reason, lic: licInfoCache, daysLeft: st.daysLeft, machineId: licState.machineId}
+    state := st.ok ? "ok" : st.reason
+    if st.ok && Lic_IsRevoked(licInfoCache.id)   ; 名單檔變了才會重驗（看修改時間）
+        state := "revoked"
+    licState := {state: state, lic: licInfoCache, daysLeft: st.daysLeft, machineId: licState.machineId}
     if licState.state = "ok"
         Lic_TouchSeen()
     return licState
@@ -244,6 +250,8 @@ Lic_ReasonText(st) {
         return "🖥️ 這份授權不是給這台電腦的。"
     if s = "expired"
         return "⏰ 授權已在 " Lic_DateText(st.lic.expires) " 到期。請聯絡作者續期。"
+    if s = "revoked"
+        return "⛔ 這份授權已被作者撤銷，無法繼續使用。請聯絡作者重新申請。"
     if s = "clock"
         return "🕒 這台電腦的日期比上次使用時還早，請先把系統時間調正確。"
     return "📄 授權檔已損毀或被修改過，請向作者重新索取。"
@@ -300,6 +308,158 @@ Lic_ShareNow() {
     return Lic_ShareText(n, licState.machineId)
 }
 
+; ---------- 撤銷名單 ----------
+; 作者可以撤銷某一份授權（依授權編號，不影響之後重新簽發的）。名單是用同一把私鑰簽名的文字檔：
+;   license\revoked.txt（本機快取）；程式啟動時與每 2 小時從 GitHub 取最新一份，驗簽通過才採用。
+; 連不上網路就沿用本機那份（撤銷最慢要等下次連得上網才生效）；名單被竄改驗不過就當沒有。
+global LIC_REVOKE_FILE := IsSet(LIC_REVOKE_FILE) ? LIC_REVOKE_FILE : A_ScriptDir "\license\revoked.txt"
+global LIC_REVOKE_URL := IsSet(LIC_REVOKE_URL) ? LIC_REVOKE_URL : ""
+global LIC_REVOKE_CHECK_MS := 2 * 3600000
+global licRevoked := 0, licRevokeStamp := "", licRevReq := 0, licRevReqStart := 0, licRevNext := 0
+
+Lic_RevokeUrl() {
+    global LIC_REVOKE_URL
+    if LIC_REVOKE_URL != ""
+        return LIC_REVOKE_URL
+    repo := (IsSet(UPDATE_REPO) && UPDATE_REPO != "") ? UPDATE_REPO : "chingcavaliers-alt/hihiyong"
+    return "https://raw.githubusercontent.com/" repo "/main/revoked.txt"
+}
+
+; 作者端用：組出要簽的名單內容。updated 為 yyyyMMddHHmmss（越新越優先，舊名單不能蓋掉新名單）
+Lic_RevokeBuild(updated, ids) {
+    t := "HIHIYONG-REVOKE 1`nupdated=" updated "`n"
+    for id in ids
+        if RegExMatch(id, "^[0-9A-Za-z-]+$")
+            t .= "id=" id "`n"
+    return t
+}
+
+Lic_RevokeParse(text) {
+    lines := StrSplit(StrReplace(text, "`r`n", "`n"), "`n")
+    if !lines.Length || !RegExMatch(lines[1], "^HIHIYONG-REVOKE 1\s*$")
+        return 0
+    r := {updated: "", ids: Map()}
+    for line in lines {
+        p := InStr(line, "=")
+        if !p
+            continue
+        k := SubStr(line, 1, p - 1), v := Trim(SubStr(line, p + 1))
+        if k = "id"
+            r.ids[v] := 1
+        else if k = "updated"
+            r.updated := v
+    }
+    return RegExMatch(r.updated, "^\d{14}$") ? r : 0
+}
+
+; 讀本機名單（驗簽）。檔案沒變就用記憶體裡的，不重驗
+Lic_RevokeLoad() {
+    global LIC_REVOKE_FILE, licRevoked, licRevokeStamp
+    stamp := ""
+    try stamp := FileGetTime(LIC_REVOKE_FILE, "M") "|" FileGetSize(LIC_REVOKE_FILE)
+    if stamp = licRevokeStamp
+        return licRevoked
+    licRevokeStamp := stamp, licRevoked := 0
+    if stamp = ""
+        return 0
+    v := Lic_VerifyFile(LIC_REVOKE_FILE)
+    if v.ok {
+        r := Lic_RevokeParse(v.text)
+        if r
+            licRevoked := r
+    }
+    return licRevoked
+}
+
+Lic_RevokeForget() {
+    global licRevokeStamp
+    licRevokeStamp := "?"
+}
+
+Lic_IsRevoked(id) {
+    r := Lic_RevokeLoad()
+    return IsObject(r) && id != "" && r.ids.Has(id)
+}
+
+; 收到一份名單檔（tmp）：簽章對、而且不比本機的舊才採用。回傳 new | same | old | bad
+Lic_RevokeAccept(tmp) {
+    global LIC_REVOKE_FILE
+    v := Lic_VerifyFile(tmp)
+    n := v.ok ? Lic_RevokeParse(v.text) : 0
+    if !n
+        return "bad"
+    cur := Lic_RevokeLoad()
+    if IsObject(cur) && n.updated < cur.updated
+        return "old"
+    if IsObject(cur) && n.updated = cur.updated
+        return "same"
+    try {
+        SplitPath LIC_REVOKE_FILE, , &dir
+        DirCreate dir
+        FileCopy tmp, LIC_REVOKE_FILE, 1
+    } catch
+        return "bad"
+    Lic_RevokeForget()
+    return "new"
+}
+
+Lic_RevokeHandleText(text) {
+    tmp := A_Temp "\hihiyong_revoke_" A_TickCount ".txt"
+    try FileDelete tmp
+    f := FileOpen(tmp, "w", "UTF-8-RAW"), f.Write(text), f.Close()
+    r := Lic_RevokeAccept(tmp)
+    try FileDelete tmp
+    if r = "new"
+        try EventLog("GLOBAL", "LICENSE", "收到新的撤銷名單")
+    return r
+}
+
+; 啟動時用：最多等 ms 毫秒。連不上就算了（沿用本機名單）
+Lic_RevokeFetchSync(ms := 3000) {
+    try {
+        req := ComObject("WinHttp.WinHttpRequest.5.1")
+        req.SetTimeouts(ms, ms, ms, ms)
+        req.Open("GET", Lic_RevokeUrl() "?t=" A_TickCount, false)
+        req.SetRequestHeader("Cache-Control", "no-cache")
+        req.Send()
+        if req.Status = 200
+            return Lic_RevokeHandleText(req.ResponseText)
+        return "http" req.Status
+    }
+    return "offline"
+}
+
+; 執行中用：非同步，不卡住管理程式
+Lic_RevokeFetchStart() {
+    global licRevReq, licRevReqStart
+    if IsObject(licRevReq)
+        return
+    try {
+        licRevReq := ComObject("WinHttp.WinHttpRequest.5.1")
+        licRevReq.SetTimeouts(5000, 5000, 8000, 8000)
+        licRevReq.Open("GET", Lic_RevokeUrl() "?t=" A_TickCount, true)
+        licRevReq.SetRequestHeader("Cache-Control", "no-cache")
+        licRevReq.Send()
+        licRevReqStart := A_TickCount
+        SetTimer Lic_RevokePoll, 300
+    } catch
+        licRevReq := 0
+}
+
+Lic_RevokePoll() {
+    global licRevReq, licRevReqStart
+    done := false
+    try done := licRevReq.WaitForResponse(0)
+    if !done && A_TickCount - licRevReqStart < 20000
+        return
+    SetTimer Lic_RevokePoll, 0
+    code := 0, text := ""
+    try code := licRevReq.Status, text := licRevReq.ResponseText
+    licRevReq := 0
+    if code = 200
+        Lic_RevokeHandleText(text)
+}
+
 ; ---------- 套用到帳號 ----------
 ; 沒授權的帳號：不監控、不啟動（記憶體內），原本的設定另外記著，授權補上就恢復，也不會被 SaveProfiles 洗掉。
 ; 回傳沒授權的帳號數。
@@ -339,6 +499,7 @@ Lic_LaunchToSave(p) => p.HasOwnProp("licLaunch0") ? p.licLaunch0 : p.launchEnabl
 ; ---------- 畫面 ----------
 ; 啟動時呼叫：有授權就直接回傳；沒有就顯示授權視窗，直到成功或離開（離開 = 結束程式）
 Lic_Gate() {
+    Lic_RevokeFetchSync(3000)   ; 先看有沒有新的撤銷名單（連不上就沿用本機的）
     st := Lic_Load()
     if st.state = "ok"
         return st
@@ -396,7 +557,11 @@ global licWarnedDate := ""
 
 ; 每 5 秒：重算期限、把沒授權的帳號關掉（含使用者在介面硬開的）、狀態變了就記錄並通知介面
 Lic_Tick() {
-    global licState, profiles, licLastKey, licWarnedDate, INI
+    global licState, profiles, licLastKey, licWarnedDate, INI, licRevNext, LIC_REVOKE_CHECK_MS
+    if A_TickCount >= licRevNext {
+        licRevNext := A_TickCount + LIC_REVOKE_CHECK_MS
+        Lic_RevokeFetchStart()
+    }
     st := Lic_Recheck()
     blocked := Lic_ApplyToProfiles(profiles, st)
     key := st.state "|" blocked "|" st.daysLeft

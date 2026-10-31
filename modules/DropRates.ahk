@@ -21,7 +21,7 @@ DropRatesPython() {
 ; 遊戲資料夾 = 「遊戲啟動程式」所在的資料夾（裡面要有 game.exe）。
 DropRatesGameDir(launcher) {
     SplitPath Trim(launcher), , &dir
-    if dir != "" && SubStr(dir, -1) = ":"   ; 遊戲在磁碟根目錄（F:）→ F:\
+    if dir != "" && SubStr(dir, -1) = ":"   ; 遊戲在磁碟根目錄（F:）→ D:\
         dir .= "\"
     return dir != "" && FileExist(RTrim(dir, "\") "\game.exe") ? dir : ""
 }
@@ -59,7 +59,7 @@ DropRatesCheck(force := false) {
     }
     try DirCreate DROP_DIR
     dropLatestBefore := DropRatesLatest(DropRatesReadIndex())
-    ; 結尾的 \ 會把引號吃掉：根目錄寫成 "F:\."
+    ; 結尾的 \ 會把引號吃掉：根目錄寫成 "D:\."
     gameArg := SubStr(game, -1) = "\" ? game "." : game
     cmd := '"' DropRatesPython() '" -I -X utf8 "' DROP_TOOL '" --game "' gameArg '" --out "' DROP_DIR '"' (force ? " --force" : "")
     try {

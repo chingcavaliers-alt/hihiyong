@@ -16,6 +16,8 @@ global LOGIN_CHANNEL_NAME := Trim(IniRead(INI,"Login","ChannelName",""))
 ; 選角畫面：第 1 隻角色模型的點擊位置（沒有預設點時用）與每隻之間的間距（實測：第 1 隻 x≈153、第 2 隻 x≈345～400）
 global LOGIN_CHAR_X0 := 153, LOGIN_CHAR_Y := 479, LOGIN_CHAR_DX := 222
 global loginUiTestDriver := 0
+global LOGIN_MEM_WAIT_MAX_MS := 20000   ; 每個遊戲程序等「遊戲資料就緒」的累計上限
+global loginMemWaitMs := Map()           ; pid → 已等待毫秒數
 
 ; 目前的位置資料有登入畫面欄位（資料就緒才算；沒有 = 照舊用 8 個預設點）
 LoginMemoryAvailable() {
@@ -27,6 +29,38 @@ LoginUiPid(hwnd) {
     pid:=0
     try pid:=WinGetPID("ahk_id " hwnd)
     return pid && GameOffsetsReady(pid) && GameOffset("OuterInstanceRva") ? pid : 0
+}
+
+; 這個遊戲視窗的角色是不是已經在遊戲世界裡（記憶體：有角色資料而且有地圖）。
+; 是的話登入流程不能再點座標、打帳號密碼（會點到遊戲畫面、或把帳密打進聊天）。
+; 同時把本輪恢復標成「已確認」，失敗清理就不會關掉這個正在遊戲中的 game.exe。讀不到記憶體時回傳 false（不擋）。
+LoginGuardInWorld(hwnd, profileName, what) {
+    global activeRecoveryCommitted
+    pid:=0
+    try pid:=WinGetPID("ahk_id " hwnd)
+    if !pid
+        return false
+    inWorld:=false
+    try inWorld:=GameInWorld(pid)
+    if !inWorld
+        return false
+    activeRecoveryCommitted:=true
+    EventLog(profileName,"LOGIN_BLIND_BLOCKED","角色已在遊戲世界中｜停止" what "（不點擊、不打字）")
+    return true
+}
+
+; 這個帳號原本綁定的遊戲視窗還在、PID 沒變、角色已在遊戲世界，只是被判成「綁定失效」
+; （例如視窗標題暫時不同）：回傳 hwnd，呼叫端應直接重新綁定，不能再開一個新的遊戲重新登入
+; （同一組帳密重複登入會被拒絕，或把原本好好的角色踢下線）。其他情況回傳 0。
+LoginExistingWorldHwnd(pid, hwnd, procName := "game.exe") {
+    if !pid || !hwnd || !ProcessExist(pid) || !WinExist("ahk_id " hwnd)
+        return 0
+    try {
+        if WinGetPID("ahk_id " hwnd) != pid || WinGetProcessName("ahk_id " hwnd) != procName
+            return 0
+        return GameInWorld(pid) ? hwnd : 0
+    }
+    return 0
 }
 
 ; 目前登入畫面的快照：{pages, labels:[{page,text,l,r,t,b}], edits:Map("id"/"pw"), servers:[{text,x,y}], channels:[…]}；讀不到回傳 ""。
@@ -151,19 +185,58 @@ LoginUiKeyReady(snap, pid, key) {
 ; 逾時（畫面讀得到卻一直沒到這一步）丟錯，和畫面樣板逾時一樣。連續 2 次都到才算（避免畫面轉場中途誤判）。
 LoginMemoryGate(hwnd, key, profileName, timeoutSec:=60) {
     global abortRequested,Status,LOGIN_MEM_UI
-    if !LOGIN_MEM_UI || !(pid:=LoginUiPid(hwnd))
+    if !LOGIN_MEM_UI
         return false
+    ; 剛啟動的 game.exe 模組還沒載完（讀不到版本）或位置資料正在解析時，等它就緒再用記憶體，
+    ; 不要馬上放棄、退回要多等十幾秒的畫面樣板。每個遊戲程序累計最多等 20 秒（之後的關卡不再等）；
+    ; 版本讀得到卻沒有位置資料（也不在解析）就照舊立刻退回。
+    pid:=LoginUiPid(hwnd)
+    gpid:=0
+    try gpid:=WinGetPID("ahk_id " hwnd)
+    waited:=loginMemWaitMs.Get(gpid,0)
+    waitStart:=A_TickCount
+    while !pid && gpid && waited+(A_TickCount-waitStart)<LOGIN_MEM_WAIT_MAX_MS {
+        if abortRequested
+            throw Error("使用者停止測試。")
+        ; 解析工具結束後還要等 GameOffsetsResolveTick 載入結果（gameOffsetsResolvePid 歸零）才算處理完
+        if GameBuildOf(gpid)!="" && !GameOffsetsResolving() && !gameOffsetsResolvePid {
+            pid:=LoginUiPid(hwnd)
+            break
+        }
+        Sleep 250
+        pid:=LoginUiPid(hwnd)
+    }
+    if gpid
+        loginMemWaitMs[gpid]:=waited+(A_TickCount-waitStart)
+    if !pid
+        return false
+    if A_TickCount-waitStart>=500
+        EventLog(profileName,"LOGIN_MEMORY_WAIT","遊戲資料就緒才開始用記憶體判斷畫面｜" Round((A_TickCount-waitStart)/1000,1) " 秒")
     stageNames:=Map("server","等待伺服器畫面","channel","等待分流畫面","connect","等待連線畫面","account","等待登入畫面","password","等待密碼欄","login","等待登入按鈕","char","等待角色畫面","startgame","等待開始遊戲")
     stage:=stageNames.Has(key) ? stageNames[key] : "等待畫面 " key
-    start:=A_TickCount, stable:=0, sawPage:=false
+    start:=A_TickCount, stable:=0, sawPage:=false, unreadable:=0
+    ; 剛啟動的遊戲登入物件還沒建立時讀不到畫面：在剩餘的等待額度內繼續讀，額度用完才退回畫面樣板
+    graceMs:=Min(timeoutSec*1000,Max(0,LOGIN_MEM_WAIT_MAX_MS-loginMemWaitMs.Get(gpid,0)))
     while A_TickCount-start < timeoutSec*1000 {
         if abortRequested
             throw Error("使用者停止測試。")
         if !hwnd || !WinExist("ahk_id " hwnd)
             throw Error(stage "期間遊戲視窗已消失。")
         snap:=LoginUiSnap(pid)
-        if !IsObject(snap)
-            return false
+        if !IsObject(snap) {
+            if A_TickCount-start >= graceMs {
+                loginMemWaitMs[gpid]:=loginMemWaitMs.Get(gpid,0)+(A_TickCount-start)
+                return false
+            }
+            unreadable:=A_TickCount-start, stable:=0
+            Sleep 250
+            continue
+        }
+        if unreadable>=500 {
+            EventLog(profileName,"LOGIN_MEMORY_WAIT","遊戲畫面資料就緒才開始用記憶體判斷畫面｜" Round(unreadable/1000,1) " 秒")
+            loginMemWaitMs[gpid]:=loginMemWaitMs.Get(gpid,0)+unreadable
+        }
+        unreadable:=0
         if snap.pages.Count
             sawPage:=true
         if LoginUiKeyReady(snap,pid,key) {
