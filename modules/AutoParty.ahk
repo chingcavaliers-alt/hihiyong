@@ -17,7 +17,7 @@ global AP_SETTLE_SEC := Max(0, Integer(IniRead(INI, "AutoParty", "SettleSec", "3
 global AP_RETRY_SEC := 60, AP_GIVEUP_SEC := 600, AP_MAX_TRIES := 3, AP_STEP_MS := 2500, AP_INVITE_EXTRA_MS := 1500, AP_RECHECK_SEC := 15, AP_OWN_GRACE_MS := 150
 global apLastActive := 0, apManualAt := 0, AP_MANUAL_TTL_MS := 60000
 ; 遠端隊員：送出邀請後最多等這麼久看對方有沒有加入；接受邀請失敗 / 不符合條件後，這麼久內不再試同一個角色
-global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000
+global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000, apAcceptPeekAt := 0
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
@@ -39,9 +39,10 @@ ApMemberNames(p) {
     return out
 }
 ; 「遠端隊員」：在另一台電腦上的角色（遊戲內角色名稱）。隊長這台只負責送邀請，對方那台自己接受（見 ApAcceptTick）。
+; 名單的分隔符號：| , ， 、 ; ； 或換行都可以（存檔時統一成 |）。名字裡的空白不當分隔，避免名字被切開。
 ApSplitNames(raw) {
     out := []
-    for n in StrSplit(raw, "|") {
+    for n in StrSplit(RegExReplace(raw, "[,，、;；`r`n]", "|"), "|") {
         n := Trim(n)
         if n != ""
             out.Push(n)
@@ -56,13 +57,13 @@ ApHasName(list, name) {
             return true
     return false
 }
-; 這個遊戲內角色名稱是不是這台電腦上某個角色（記錄的角色名稱，或正在線上讀到的名稱）。
+; 這個角色是不是正在這台電腦上執行（有遊戲視窗）。兩台電腦共用同一份角色清單時，另一台跑的角色在這台只是「沒開」。
+ApRunsLocally(q) => q.enabled && q.pid && ProfileGameAlive(q)
+; 這個遊戲內角色名稱是不是這台電腦上正在執行的角色（線上讀到的名稱；記錄的舊名稱可能是別台電腦留下的，不算）。
 ApIsLocalChar(name) {
     global profiles
     for q in profiles {
-        if q.HasOwnProp("charName") && q.charName = name
-            return true
-        if q.pid && ProfileGameAlive(q) {
+        if ApRunsLocally(q) {
             cn := ""
             try cn := ApCharName(q.pid)
             if cn = name
@@ -571,8 +572,12 @@ ApPlan(leader) {
         res.err := leader.name " 目前在「" lp.leader "」的隊伍裡，不能邀請別人"
         return res
     }
+    remoteNames := ApRemoteNames(leader)
     for name in ApMemberNames(leader) {
         mp := ApProfileByName(name)
+        ; 同一個名字也填在「另一台電腦的角色」、而且它不在這台電腦上執行：交給遠端那段處理，這裡不當成沒登入完成
+        if mp && mp != leader && ApHasName(remoteNames, name) && !ApRunsLocally(mp)
+            continue
         if !mp || mp = leader {
             res.notes.Push({key: "missing|" name, text: "設定的隊員「" name "」不在角色清單裡"})
             continue
@@ -597,8 +602,9 @@ ApPlan(leader) {
         res.todo.Push(mp)
     }
     ; 遠端隊員：不在這台電腦上，讀不到對方的資料；上線與否看隊長自己的好友名單，加入與否看隊長自己的隊伍名單。
-    for name in ApRemoteNames(leader) {
-        if name = own || ApProfileByName(name) || ApHasName(ApMemberNames(leader), name) || ApIsLocalChar(name) {
+    for name in remoteNames {
+        lq := ApProfileByName(name)
+        if name = own || (lq && ApRunsLocally(lq)) || ApIsLocalChar(name) {
             res.notes.Push({key: "remotedup|" name, text: "遠端隊員「" name "」和本機角色或隊長自己重複，跳過"})
             continue
         }
@@ -947,9 +953,21 @@ ApInviteOne(L, M, &opened, &minimized) {
     ui := ApUi(L.pid)
     if !IsObject(ui.partyBtn)
         return "fail|讀不到「組隊」按鈕的位置"
+    Sleep 300   ; 剛選完人，「組隊」按鈕要一下子才會啟用（實測：一輪裡的第一個人常在這裡被吃掉）
+    ui := ApUi(L.pid)
+    if !IsObject(ui) || !IsObject(ui.partyBtn) || ui.selId != f.id
+        return "fail|讀不到「組隊」按鈕的位置"
     ApClick(L, ui.partyBtn.x, ui.partyBtn.y)
-    if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.modalOpen && IsObject(u.okBtn)))
-        return "fail|按了「組隊」但沒有跳出確認視窗"
+    if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.modalOpen && IsObject(u.okBtn))) {
+        ; 第一下常被遊戲吃掉：確認視窗沒開、名單還開著、選的還是這個人，才重讀按鈕位置再按一次（只補一次）
+        ui := ApUi(L.pid)
+        if !(IsObject(ui) && !ui.modalOpen && ui.friendOpen && ui.selId = f.id && IsObject(ui.partyBtn))
+            return "fail|按了「組隊」但沒有跳出確認視窗"
+        EventLog(L.name, "PARTY_RETRY_CLICK", "按了「組隊」沒有反應，再按一次｜" name)
+        ApClick(L, ui.partyBtn.x, ui.partyBtn.y)
+        if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.modalOpen && IsObject(u.okBtn)))
+            return "fail|按了「組隊」但沒有跳出確認視窗（按了兩次）"
+    }
     ui := ApUi(L.pid)
     if !InStr(ui.modalText, "組隊")
         return "fail|跳出來的視窗不是組隊確認（" SubStr(ui.modalText, 1, 30) "）"
@@ -1033,19 +1051,27 @@ ApAcceptCheck(p, ui) {
 }
 
 ApAcceptTick() {
-    global profiles, AP_ENABLED, apBusy
+    global profiles, AP_ENABLED, apBusy, apAcceptPeekAt
     if !AP_ENABLED || apBusy
         return
     anyOn := false
     for p in profiles
-        if p.enabled && p.HasOwnProp("partyAccept") && p.partyAccept && p.pid {
+        if p.enabled && p.HasOwnProp("partyAccept") && p.partyAccept {
             anyOn := true
-            break
+            if !p.pid || !ProfileGameAlive(p)
+                p.acceptStatus := "這個角色還沒綁定到遊戲視窗（要先登入進遊戲並由管理程式綁定）"
         }
-    if !anyOn || ApBlocker() != ""   ; 先做便宜的檢查：現在本來就不能動的話，不必每秒去讀遊戲記憶體
+    if !anyOn
         return
+    ; 現在本來就不能動（使用者在操作、重新登入中…）：每 3 秒才看一次有沒有邀請，只為了把原因記下來，不必每秒讀遊戲記憶體
+    blocker := ApBlocker()
+    if blocker != "" {
+        if A_TickCount - apAcceptPeekAt < 3000
+            return
+        apAcceptPeekAt := A_TickCount
+    }
     for p in profiles {
-        if !p.enabled || !p.HasOwnProp("partyAccept") || !p.partyAccept || !p.pid
+        if !p.enabled || !p.HasOwnProp("partyAccept") || !p.partyAccept || !p.pid || !ProfileGameAlive(p)
             continue
         if p.HasOwnProp("acceptNextAt") && p.acceptNextAt > A_TickCount
             continue
@@ -1054,15 +1080,35 @@ ApAcceptTick() {
             continue
         }
         ; 先唯讀看一眼有沒有邀請視窗：沒有就什麼都不動、不切視窗
-        if !ApReady(p) || !ApReadable(p.pid)
+        if !ApReady(p) {
+            p.acceptStatus := "角色還沒進到遊戲世界、已死亡或視窗標題不對，暫時不能接受"
             continue
+        }
+        if !ApReadable(p.pid) {
+            p.acceptStatus := "讀不到這個遊戲版本的隊伍 / 介面位置（沒有 Game.pdb 又不在已知版本表裡？）"
+            continue
+        }
         if ApIsMinimized(p) {
             p.acceptStatus := "視窗最小化，收不到邀請（請不要縮小）"
             continue
         }
         ui := ApUi(p.pid)
-        if !IsObject(ui) || !ui.modalOpen || !InStr(ui.modalText, "組隊")
+        if !IsObject(ui) {
+            p.acceptStatus := "讀不到遊戲畫面資料"
             continue
+        }
+        if p.HasOwnProp("acceptStatus") && RegExMatch(p.acceptStatus, "還沒綁定|還沒進到遊戲世界|讀不到這個遊戲版本|視窗最小化|讀不到遊戲畫面|^等待中")   ; 暫時性的診斷訊息：現在一切正常就清掉
+            p.acceptStatus := "待命中：有組隊邀請會自動接受"
+        if !ui.modalOpen || !InStr(ui.modalText, "組隊")
+            continue
+        if !p.HasOwnProp("acceptSeenAt") || A_TickCount - p.acceptSeenAt > 20000 {
+            p.acceptSeenAt := A_TickCount
+            EventLog(p.name, "PARTY_ACCEPT_SEEN", "看到組隊邀請視窗｜" SubStr(ui.modalText, 1, 40) (blocker != "" ? "｜目前不能動：" blocker : ""))
+        }
+        if blocker != "" {
+            p.acceptStatus := "等待中：" blocker
+            return
+        }
         ApAcceptRun(p)
         return   ; 一次只處理一個角色
     }
@@ -1182,12 +1228,12 @@ ApSetRemote(rawValue) {
         if seen.Has(n)
             continue
         seen[n] := 1
-        keep .= (keep = "" ? "" : "|") n
+        keep .= (keep = "" ? "" : ",") n   ; 使用者看得到的名單統一用半形逗號（讀入時各種分隔符號都認得，含舊的 |）
     }
     p.partyRemote := keep
     p.partyCheckAt := 0, p.partyTries := Map(), p.partyWait := Map(), p.partyNoted := Map()
     SaveProfiles()
-    AddRecentEvent(p.name " → 遠端隊員：" (keep = "" ? "（無）" : StrReplace(keep, "|", "、")))
+    AddRecentEvent(p.name " → 遠端隊員：" (keep = "" ? "（無）" : keep))
 }
 
 ; 「編號~是否自動接受~只接受這些隊長（| 分隔，空白＝任何人）~角色名稱」
@@ -1207,7 +1253,7 @@ ApSetAccept(rawValue) {
         return AddRecentEvent("⚠ 自動接受設定沒有儲存：角色清單已變動，請重新整理畫面")
     keep := ""
     for n in ApSplitNames(parts[3])
-        keep .= (keep = "" ? "" : "|") n
+        keep .= (keep = "" ? "" : ",") n
     if parts[2] = "1" && keep = "" {
         p.partyAccept := 0
         SaveProfiles()
@@ -1219,7 +1265,7 @@ ApSetAccept(rawValue) {
     if p.HasOwnProp("partyNoted")
         ApMapDel(p.partyNoted, "accept")
     SaveProfiles()
-    AddRecentEvent(p.name " → 自動接受邀請 " (p.partyAccept ? "開啟｜" (keep = "" ? "接受任何人的邀請" : "只接受：" StrReplace(keep, "|", "、")) : "關閉"))
+    AddRecentEvent(p.name " → 自動接受邀請 " (p.partyAccept ? "開啟｜" (keep = "" ? "接受任何人的邀請" : "只接受：" keep) : "關閉"))
 }
 
 ; 「立即組隊」：下一次檢查就做，不等 SETTLE 與使用者閒置（按按鈕的人當然在用電腦），其他保護照舊。

@@ -368,7 +368,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.41.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.42.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -526,7 +526,7 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="table-wrap"><table><thead><tr><th>隊長</th><th>角色</th><th>要邀請的隊員</th><th>狀態</th><th></th></tr></thead><tbody id="partyRows"><tr><td colspan="5" class="hint">讀取中…</td></tr></tbody></table></div>
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📨</span></span>自動接受邀請（隊長在另一台電腦時用）</div>
- <div class="hint">勾選的角色，畫面跳出組隊邀請時會自動切到遊戲視窗按 Enter。「只接受這些隊長」一定要填（隊長的遊戲內名稱，用 | 分隔）：邀請裡的邀請人名字要完全相同才會按，避免被陌生人拉進隊伍；沒填就不能開啟。隊長角色、視窗被縮小的角色不會自動接受。需要上方「啟用自動組隊」也開著。</div>
+ <div class="hint">勾選的角色，畫面跳出組隊邀請時會自動切到遊戲視窗按 Enter。「只接受這些隊長」一定要填（隊長的遊戲內名稱，用半形逗號 , 分隔）：邀請裡的邀請人名字要完全相同才會按，避免被陌生人拉進隊伍；沒填就不能開啟。隊長角色、視窗被縮小的角色不會自動接受。需要上方「啟用自動組隊」也開著。</div>
  <div class="table-wrap"><table><thead><tr><th>接受</th><th>角色</th><th>只接受這些隊長</th><th>狀態</th></tr></thead><tbody id="partyAcceptRows"><tr><td colspan="4" class="hint">讀取中…</td></tr></tbody></table></div>
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>兩台電腦組隊：</b>隊長那台在「另一台電腦的角色」填對方的遊戲內名稱（對方要先是隊長的遊戲好友，而且在線上）；對方那台勾選該角色的「自動接受邀請」。兩台各自開著管理程式、各自啟用自動組隊即可，不需要網路連線。</div><div class="hint"><b>怎麼設定：</b>先勾「隊長」，再勾這位隊長要帶的隊員。隊員必須已經是隊長的遊戲好友（程式不會幫你加好友）。每位隊長各自設定，同一個角色可以同時是別人的隊員。</div><div class="hint"><b>什麼時候組隊：</b>重新登入、載入全部做完，再等上面設定的秒數，才由隊長開始邀請；之後隊員掉線重登回來，會自動補邀。也可以按「立即組隊」馬上做一次。</div><div class="hint"><b>會跳過並通知：</b>隊員已經在別人的隊伍裡（不會叫對方退隊）、離線、不在好友名單、還沒登入完成；同一件事只通知一次。邀請失敗會每分鐘重試，連續 3 次失敗會通知你並休息 10 分鐘。</div><div class="hint"><b>不打擾你：</b>遊戲不接受背景按鍵與滑鼠，所以需要把視窗切到前面操作，做完切回原本的視窗與滑鼠位置；你正在用鍵盤滑鼠時（停 5 秒後才開始）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 示範錄製 / 輪流切換視窗執行中、按下緊急停止時都不會動作，進行到一半遇到也會停手。</div></div></details>
@@ -1550,7 +1550,7 @@ function renderParty(d){
   partySig=sig;
   box.innerHTML=(d.roles||[]).length?d.roles.map(r=>{
    const others=names.filter(n=>n!==r.name);
-   const remoteBox=`<div style="margin-top:6px"><span class="account-sub">另一台電腦的角色（遊戲內名稱，用 | 分隔）：</span><input class="party-remote" style="width:100%;max-width:340px" value="${esc(r.remote||'')}" placeholder="例如 角色甲|角色乙" onchange="savePartyRemote(this)"></div>`;
+   const remoteBox=`<div style="margin-top:6px"><span class="account-sub">另一台電腦的角色（遊戲內名稱，用半形逗號 , 分隔）：</span><input class="party-remote" style="width:100%;max-width:340px" value="${esc(r.remote||'')}" placeholder="例如 角色甲,角色乙" onchange="savePartyRemote(this)"></div>`;
    const mem=r.leader?(others.length?others.map(n=>`<label style="display:inline-block;margin:2px 10px 2px 0"><input type="checkbox" class="party-mem" value="${esc(n)}" ${(r.members||[]).includes(n)?'checked':''} onchange="savePartyRole(this)"> ${esc(n)}</label>`).join(''):'<span class="account-sub">沒有其他角色</span>')+remoteBox:'<span class="account-sub">勾選「隊長」後才能選隊員</span>';
    const hidden=(r.members||[]).filter(n=>!names.includes(n));   // 沒開啟監控所以沒列出來的既有隊員：存檔時要保留
    return `<tr data-idx="${r.index}" data-name="${esc(r.name)}" data-hidden="${esc(hidden.join('|'))}"><td><input type="checkbox" class="party-leader" ${r.leader?'checked':''} onchange="savePartyRole(this)"></td>`
