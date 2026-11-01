@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.42.0"
+global APP_VERSION := "v1.3.43.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -46,6 +46,7 @@ global HP_REVIVE_CONFIRM_MS:=250
 global MEMORY_HP_SAMPLE_MS:=50
 global MEMORY_HP_ZERO_CONFIRM_SAMPLES:=5
 global MEMORY_HP_ALIVE_CONFIRM_SAMPLES:=5
+global DEATH_NOTIFY_MIN_SEC:=6   ; 死亡不到這麼多秒就復活（HP 短暫歸零 / 立刻被復活）只記錄，不發結案通知
 global MEMORY_HP_RECOVERY_GRACE_MS:=30000
 ; v1.3.11.1: read-only Memory HP is the primary HP/death source. Screen ROI remains fallback only.
 global MEMORY_HP_OFFSET:=0xED4880 ; 2026-10-04 dynamic validation: 76 changes / single candidate
@@ -3398,6 +3399,11 @@ NotificationLocationText(p) {
 
 
 SendDeathClosedDiscord(p,dur) {
+    global DEATH_NOTIFY_MIN_SEC
+    if dur<DEATH_NOTIFY_MIN_SEC {
+        EventLog(p.name,"DEATH_SHORT","死亡事件 #" p.hpEventNo " 只持續 " dur " 秒（少於 " DEATH_NOTIFY_MIN_SEC " 秒）｜不發結案通知")
+        return
+    }
     loc:=NotificationLocationText(p)
     deathTime:=p.hpDeathTime!="" ? p.hpDeathTime : "-"
     msg:="☠️ HIHIYONG 死亡事件 #" DeathStatsEventNo(p) " 已結案"

@@ -18,6 +18,7 @@ global AP_RETRY_SEC := 60, AP_GIVEUP_SEC := 600, AP_MAX_TRIES := 3, AP_STEP_MS :
 global apLastActive := 0, apManualAt := 0, AP_MANUAL_TTL_MS := 60000
 ; 遠端隊員：送出邀請後最多等這麼久看對方有沒有加入；接受邀請失敗 / 不符合條件後，這麼久內不再試同一個角色
 global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000, apAcceptPeekAt := 0
+global AP_SCROLL_MAX := 40   ; 目標在好友名單畫面外時，最多滾幾次滾輪（每次確認真的捲動了才繼續）
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
@@ -326,7 +327,8 @@ ApRealUi(pid) {
     vf := GameReadNum(h, inner, "Ptr")
     if vf = "" || !ApVftableOk(vf - m.addr)
         return 0
-    ui := {friendOpen: false, selIndex: -1, selId: 0, rows: [], partyBtn: 0, modalOpen: false, modalText: "", okBtn: 0}
+    ui := {friendOpen: false, selIndex: -1, selId: 0, rows: [], partyBtn: 0, modalOpen: false, modalText: "", okBtn: 0
+        , listPos: 0, listTop: 0, listVisible: 0}
     fw := ApPtr(h, inner + GameOffset("InnerFriendWindowOffset"))
     if fw && GameReadNum(h, fw + GameOffset("UiVisibleOffset"), "UInt") = 1 {
         page := ApPtr(h, fw + GameOffset("FriendWindowPageOffset"))
@@ -338,6 +340,7 @@ ApRealUi(pid) {
         ui.selIndex := ApI32(h, page + GameOffset("FriendPageSelectOffset"))
         ui.selId := GameReadNum(h, page + GameOffset("FriendPageCharIdOffset"), "UInt")   ; 無號 32 位元（和好友 ID 同型別）
         area := ApRectAt(h, lst + GameOffset("UiRectOffset"))
+        ui.listPos := IsObject(area) ? ApCenter(area) : 0, ui.listTop := tb.cur, ui.listVisible := tb.visible   ; 捲動用：名單中央、目前最上面是第幾列、一頁幾列
         for i, part in tb.parts {
             r := part.rect
             vis := IsObject(r) && IsObject(area) && i - 1 >= tb.cur && i - 1 < tb.cur + tb.visible
@@ -516,6 +519,42 @@ ApClick(p, x, y) {
             DllCall("mouse_event", "UInt", 0x0002, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)
             Sleep 90
             DllCall("mouse_event", "UInt", 0x0004, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)
+        }
+    } finally {
+        Critical "Off"
+    }
+    apLastOwn := A_TickCount
+}
+
+; 把游標移到遊戲畫面（Client）座標 x,y，滾一格滾輪（dir = 1 往下、-1 往上）。檢查和 ApClick 一樣：視窗在前面、游標下面是這個遊戲視窗。
+ApScroll(p, x, y, dir) {
+    global apTestDriver, apLastOwn, AP_DESIGN_W, AP_DESIGN_H
+    Critical "On"
+    try {
+        ApGuard(p)
+        if IsObject(apTestDriver)
+            apTestDriver.Scroll(p, x, y, dir)
+        else {
+            if !IsNumber(x) || !IsNumber(y)
+                ApStop("要捲動的座標不是數字")
+            WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
+            sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
+            dpi := A_ScreenDPI / 96
+            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
+                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
+                ApStop("要捲動的座標超出遊戲畫面（" x "," y "）")
+            px := cx + Round(x * sx), py := cy + Round(y * sy)
+            DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
+            apLastOwn := A_TickCount
+            Sleep 80
+            DllCall("SetCursorPos", "Int", px, "Int", py)
+            apLastOwn := A_TickCount
+            Sleep 150
+            ApGuard(p)
+            if !ApCursorOn(p, px, py)
+                ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
+            DllCall("mouse_event", "UInt", 0x0800, "Int", 0, "Int", 0, "UInt", (dir > 0 ? -120 : 120) & 0xFFFFFFFF, "UPtr", 0)   ; MOUSEEVENTF_WHEEL
         }
     } finally {
         Critical "Off"
@@ -945,8 +984,12 @@ ApInviteOne(L, M, &opened, &minimized) {
     row := ApFindRow(ui, f.id)
     if !IsObject(row)
         return "fail|好友名單裡找不到那一列"
-    if !row.vis
-        return "skiplong|" name " 在好友名單的下方，要捲動才看得到（尚未支援；先不一直試）"
+    if !row.vis {
+        ; 目標在名單畫面外：在名單上滾滾輪，每次都讀遊戲記憶體確認真的捲動了、那一列進到可見範圍才點
+        row := ApScrollToRow(L, f.id, &ui)
+        if !IsObject(row) || !row.vis
+            return "skiplong|" name " 在好友名單的下方，要捲動才看得到，但捲動後還是看不到那一列（先不一直試）"
+    }
     ApClick(L, row.x, row.y)
     if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.selId = f.id))
         return "fail|點選後選到的不是 " name
@@ -1003,6 +1046,56 @@ ApInviteOne(L, M, &opened, &minimized) {
 ApMapDel(m, k) {
     if m.Has(k)
         m.Delete(k)
+}
+
+; 回傳目標那一列（捲動後的位置）；捲不動 / 名單讀不到 / 超過次數回傳 0。ui 會換成最新讀到的畫面。
+; 每次只滾一小段，滾完讀 listTop（名單最上面是第幾列）確認有變；連續兩次沒變就是到底了或捲不動，不再試。
+ApScrollToRow(L, id, &ui) {
+    global AP_SCROLL_MAX
+    row := ApFindRow(ui, id), step := 0, stuck := 0, used := 0, lastUp := "", settled := false
+    Loop AP_SCROLL_MAX {
+        if !IsObject(row) || !IsObject(ui.listPos) || ui.listVisible <= 0
+            return 0
+        if row.vis
+            break
+        before := ui.listTop, up := row.index < before
+        dist := up ? before - row.index : row.index - (before + ui.listVisible - 1)
+        if dist <= 0 && !settled {
+            ; 列號已經在這一頁內，只是位置還沒更新（或被名單邊緣裁掉一點）：先等一下重讀，不急著滾
+            settled := true
+            Sleep 250
+            nu := ApUi(L.pid)
+            if !IsObject(nu) || !nu.friendOpen
+                return 0
+            ui := nu, row := ApFindRow(ui, id)
+            continue
+        }
+        if lastUp != "" && up != lastUp
+            return 0   ; 方向反過來了（滾過頭）：不來回滾，放棄
+        lastUp := up
+        n := step > 0 ? Max(1, Min(5, Floor(dist / step))) : 1
+        Loop n
+            ApScroll(L, ui.listPos.x, ui.listPos.y, up ? -1 : 1)
+        used += n
+        moved := ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.friendOpen && u.listTop != before), 800)
+        Sleep 150   ; 捲動後各列的位置要一下子才會更新
+        nu := ApUi(L.pid)
+        if !IsObject(nu) || !nu.friendOpen
+            return 0
+        ui := nu
+        if !moved {
+            stuck += 1
+            if stuck >= 2
+                return 0
+        } else {
+            stuck := 0
+            step := Max(1, Floor(Abs(ui.listTop - before) / n))
+        }
+        row := ApFindRow(ui, id)
+    }
+    if IsObject(row) && row.vis
+        EventLog(L.name, "PARTY_SCROLL", "好友名單捲動 " used " 格，找到第 " (row.index + 1) " 列")
+    return row
 }
 
 ApFindRow(ui, id) {
