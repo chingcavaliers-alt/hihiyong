@@ -151,6 +151,11 @@ body{margin:0;font-family:var(--font);font-size:14px;line-height:1.5;background:
 .page>.card+.card,.page>.card+.table-card,.page>.table-card+.card{margin-top:14px}
 .section-title{font-size:15px;font-weight:700;font-family:var(--font-head);margin-bottom:12px;display:flex;align-items:center;gap:8px}
 .pill{margin-left:auto;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;background:var(--surface-2);color:var(--text-2);border:1px solid var(--line)}
+.mchip{display:inline-block;white-space:nowrap;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;background:var(--surface-2);color:var(--text-2);border:1px solid var(--line)}
+.mchip.ok{background:var(--green-soft);color:var(--green);border-color:var(--green)}
+.mchip.info{background:var(--accent-soft);color:var(--accent-ink);border-color:var(--accent)}
+.mchip.warn{background:var(--amber-soft);color:var(--amber);border-color:var(--amber)}
+.mchip.bad{background:var(--red-soft);color:var(--red);border-color:var(--red)}
 .grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
 .stat{display:flex;align-items:center;gap:12px;padding:14px 16px}
 .ico{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px;flex:none}
@@ -368,7 +373,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.43.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.52.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -481,7 +486,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="companion">🐾 寵物雇傭兵</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="lagtab">📉 量測與過圖</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -512,6 +517,20 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="inv-toolbar" style="margin-top:10px"><button class="btn soft" onclick="scAdd()">＋ 新增組合</button><span class="account-sub">最多 12 組。改完會自動儲存。</span></div>
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
+</div><div class="subpage" id="companion">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐾</span></span>寵物 / 雇傭兵監測 <span class="pill" id="cwPill">—</span></div>
+ <div class="hint">掛機中發現寵物或雇傭兵不在外面，就按道具快捷欄裡那一張卡的鍵叫出來。兩種卡都是「開關」，在外面再按會收起來，所以<b>只在遊戲資料確認「不在外面」時才按</b>：連續確認 10 秒才算（換地圖時它們會暫時消失）、按之前再確認、按完確認真的出現、同一種兩分鐘內不重按、失敗的休息時間越來越長。快捷欄找不到那張卡就不按。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="cwEnabled" onchange="saveCompanion()"> 啟用監測</label>
+  <label class="toggle"><input type="checkbox" id="cwPet" onchange="saveCompanion()"> 寵物</label>
+  <label class="toggle"><input type="checkbox" id="cwMerc" onchange="saveCompanion()"> 雇傭兵</label>
+ </div>
+ <div class="account-sub" id="cwBlocker" style="margin-top:8px"></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>各角色狀態</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th></tr></thead><tbody id="cwRows"><tr><td colspan="3" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>不打擾你：</b>需要把遊戲視窗切到前面按鍵，做完切回原本的視窗；你正在用鍵盤滑鼠時（停 5 秒後才動作）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 組隊 / 示範錄製 / 輪流切換視窗執行中、死亡中、按下緊急停止時都不會動作。</div><div class="hint"><b>注意：</b>遊戲的聊天框正在輸入時按鍵會打進聊天框，請不要把聊天框一直開著輸入狀態。雇傭兵卡如果是限時（例如 [1D]）道具，過期消失後快捷欄就找不到，程式不會亂按。</div></div></details>
 </div><div class="subpage" id="party">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🤝</span></span>自動組隊 <span class="pill" id="partyPill">—</span></div>
@@ -519,11 +538,17 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="inv-toolbar" style="margin-top:12px">
   <label class="toggle"><input type="checkbox" id="partyEnabled" onchange="savePartyCfg()"> 啟用自動組隊</label>
   <label>全部登入完成後再等 <input id="partySettle" type="number" min="0" max="600" value="30" style="width:80px" onchange="savePartyCfg()"> 秒才開始</label>
+  <label class="toggle" title="遊戲在隊長斷線時會把隊長交給下一位。開啟後，原隊長重連、發現隊員都在別人的隊伍時，由現任隊長（隊員之一）把他邀回隊伍；原隊長那邊自動接受自己這組隊員的邀請。不會叫任何人退隊。"><input type="checkbox" id="partyRejoin" onchange="savePartyCfg()"> 隊長斷線重連後由現任隊長邀回</label>
+  <label class="toggle" title="原隊長被邀回隊伍後，由現任隊長打開隊伍視窗，按原隊長那一格的「委任」把隊長交還。需要先開啟上面的邀回。第一次使用時，如果委任後遊戲跳出確認視窗，程式只會記錄視窗文字、不會替你按確定。"><input type="checkbox" id="partyHandback" onchange="savePartyCfg()"> 邀回後把隊長交還（委任隊長）</label>
  </div>
  <div class="account-sub" id="partyBlocker" style="margin-top:8px"></div>
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👑</span></span>隊長與隊員</div>
  <div class="table-wrap"><table><thead><tr><th>隊長</th><th>角色</th><th>要邀請的隊員</th><th>狀態</th><th></th></tr></thead><tbody id="partyRows"><tr><td colspan="5" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>隊員狀態</div>
+ <div class="hint">每位隊員現在為什麼在隊伍裡、或為什麼還沒進隊（不用翻日誌）。狀態每次檢查隊伍時更新。</div>
+ <div class="table-wrap"><table><thead><tr><th>隊長</th><th>隊員</th><th>狀態</th><th>說明</th><th>下次嘗試</th></tr></thead><tbody id="partyMemRows"><tr><td colspan="5" class="hint">沒有設定隊員</td></tr></tbody></table></div>
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📨</span></span>自動接受邀請（隊長在另一台電腦時用）</div>
  <div class="hint">勾選的角色，畫面跳出組隊邀請時會自動切到遊戲視窗按 Enter。「只接受這些隊長」一定要填（隊長的遊戲內名稱，用半形逗號 , 分隔）：邀請裡的邀請人名字要完全相同才會按，避免被陌生人拉進隊伍；沒填就不能開啟。隊長角色、視窗被縮小的角色不會自動接受。需要上方「啟用自動組隊」也開著。</div>
@@ -546,6 +571,17 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card table-card" style="margin-top:14px">
  <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
  <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
+</div>
+</div>
+<div class="subpage" id="lagtab">
+<div class="card">
+<div class="section-title"><span class="ni"><span class="emo">📉</span></span>量測與過圖</div>
+ <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>久掛延遲量測：</b>只讀，不碰遊戲。每個視窗約每 30 秒記一次記憶體、CPU、視窗回應時間、登入至今多久，存成 <code>Logs\LagProbe_日期.csv</code>。看到動作變慢、寵物撿東西變慢時，按「標記 Lag」，方便之後比對過圖前後的資料（診斷包會一起收）。</div>
+ <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lagOn" onchange="send('lagset',{value:this.checked?1:0})"> 啟用量測</label><button class="btn soft" onclick="send('lagmark',{value:0});showToast('已標記 Lag（全部視窗）')">標記 Lag（全部視窗）</button><span id="lagMarkInfo" class="hint"></span></div>
+ <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>登入至今</th><th>記憶體</th><th>CPU</th><th>視窗回應</th><th>前景</th><th>最後量測</th><th></th></tr></thead><tbody id="lagRows"><tr><td colspan="8" class="hint">還沒有資料</td></tr></tbody></table></div>
+ <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>變慢自動過圖：</b>視窗回應連續偏慢時，自動按起點傳送卡 → 等冷卻 → 前點傳送卡，回到原本的野外地圖。<b>會操作遊戲（按鍵）</b>，預設關閉。一次一個視窗、視窗之間隔 60 秒、同一視窗每小時最多一次；前點沒回去會重試、通知，並列入救援。需要道具快捷欄同時有起點卡和前點卡。</div>
+ <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lfOn" onchange="saveLagFix()"> 變慢時自動過圖</label><label class="toggle">視窗回應 ≥ <input type="number" id="lfMs" min="30" max="2000" step="10" value="100" style="width:70px" onchange="saveLagFix()"> ms 視為變慢（連續 6 次量測的中位數）</label></div>
+ <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>目前回應</th><th>過圖次數</th><th>狀態</th><th></th></tr></thead><tbody id="lfRows"><tr><td colspan="5" class="hint">還沒有資料</td></tr></tbody></table></div>
 </div>
 </div>
 <div class="subpage" id="devzone">
@@ -648,7 +684,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="formgrid" style="margin-top:12px">
 <div class="field"><label>啟用假在線偵測</label><label class="toggle"><input id="softOn" type="checkbox"> 啟用</label></div>
 <div class="field"><label>多視窗輔助判定</label><label class="toggle"><input id="softMultiAssist" type="checkbox"> 啟用（建議）</label></div>
-<div class="field"><label>至少幾個角色同時異常</label><input id="softVotes" type="number" min="2" value="2"></div>
+<div class="field"><label title="填 1 = 單開也能判定：一個角色血量 60 秒沒變，而且伺服器時間也停住（讀不到伺服器時間時要靜止 3 分鐘）才算。填 2 以上 = 要有這麼多個角色同時 60 秒沒變。">至少幾個角色同時異常</label><input id="softVotes" type="number" min="1" value="2"></div>
 
 <div class="field"><label>多少秒沒有任何變化就提醒（秒）</label><input id="softIdle" type="number" min="30" value="90"></div>
 <div class="field"><label>提醒後再等多久才確認（秒）</label><input id="softConfirm" type="number" min="5" value="30"></div>
@@ -675,6 +711,9 @@ tbody tr:hover td{background:var(--surface-2)}
   <button class="btn soft" onclick="send('calibrateHP')" title="只有血量讀不到時才需要">重新校正血量讀取</button>
  </div>
  <div id="selfCheckResult" class="hint" style="display:none;margin-top:10px;line-height:1.8"></div>
+ <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>診斷包：</b>別台電腦出問題時，按一下把版本、環境、最近 3 天的日誌和失敗截圖打成一個 zip 給開發者。<b>不會包含帳號密碼、通知網址和授權檔。</b></div>
+ <div class="actions" style="margin-top:8px"><button class="btn soft" id="diagBtn" onclick="this.disabled=true;this.textContent='匯出中…';send('diagexport')">匯出診斷包</button><button class="btn soft" id="diagOpenBtn" style="display:none" onclick="send('diagopen')">開啟所在資料夾</button><button class="btn soft" onclick="send('effectsdump');showToast('正在匯出效果清單…')" title="只讀。列出每隻已連接角色的右下角效果清單、寵物狀態、道具快捷欄">匯出效果清單</button></div>
+ <div id="diagResult" class="hint" style="margin-top:8px;line-height:1.7;word-break:break-all"></div>
  <div class="hint" style="margin-top:9px">換電腦後如果自動登入點錯位置，先確認遊戲視窗大小和 Windows 顯示縮放比例跟原本一樣。</div>
 </div>
 <div id="settingsLauncher">
@@ -686,9 +725,9 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🧑‍🤝‍🧑</span></span>登入後選擇角色 <span class="pill" id="lcPill">—</span></div>
 <div class="hint">一個遊戲帳號底下有多隻角色時，選這個帳號重新登入後要進哪一隻：可以選<b>順序</b>（第 1～4 隻，照選角畫面由左到右）或<b>角色名稱</b>。選項是從遊戲的選角清單讀出來的：<b>帳號的遊戲開著時才讀得到</b>，讀過一次後會記住。登入畫面的所有位置都是直接讀遊戲，不需要先記點。</div>
 <div id="lcRows" style="margin-top:8px"></div></div>
-<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>自動登入點擊位置</div><div id="coordSummary" class="status-pill">讀取中…</div><div id="coordPoints" class="hint" style="margin-top:10px;line-height:1.8"></div>
- <div class="actions" style="margin-top:12px"><button class="btn soft" onclick="send('coordStart')">重新設定 8 個位置</button><button class="btn soft" onclick="send('coordRecord')">記錄目前位置</button><button class="btn soft" onclick="send('coordTest')">測試</button><button class="btn danger" onclick="if(confirm('確定清除全部登入位置？清除後自動登入無法使用，需要重新設定。'))send('coordClear')">清除</button></div>
-</div></div>
+<div class="card" style="margin-top:14px"><details id="coordDetails"><summary class="section-title" style="margin:0"><span class="ni"><span class="emo">🎯</span></span>備用：自動登入點擊位置（8 點）</summary><div class="hint" style="margin-top:10px">這是備用方案：遊戲的登入畫面位置讀得到時，自動登入不需要這 8 點。只有下面顯示「還沒設定完成」時才需要設定。</div><div id="coordSummary" class="status-pill" style="margin-top:10px">讀取中…</div><div id="coordPoints" class="hint" style="margin-top:10px;line-height:1.8"></div>
+ <div class="actions" style="margin-top:12px"><button class="btn soft" id="coordCancelBtn" style="display:none" onclick="send('coordCancel')">取消設定（舊座標保持不變）</button><button class="btn soft" onclick="if(window.__loginMemory&&!confirm('這台已經可以直接讀遊戲畫面登入，不需要設 8 點。確定要重新設定嗎？'))return;send('coordStart')">重新設定 8 個位置</button><button class="btn soft" onclick="send('coordRecord')">記錄目前位置</button><button class="btn soft" onclick="send('coordTest')">測試</button><button class="btn danger" onclick="if(confirm('確定清除全部登入位置？清除後自動登入無法使用，需要重新設定。'))send('coordClear')">清除</button></div>
+</details></div></div>
 <div id="settingsMap">
 <div class="card" style="margin-top:14px"><details><summary class="section-title" style="margin:0"><span class="ni"><span class="emo">🔬</span></span>進階：登入後位置確認（一般不需要調整）</summary><div class="hint" style="margin-top:10px">自動重新登入後，用畫面辨識確認角色是不是在復活點；在復活點就按前點鍵回到打怪區。</div><div class="formgrid" style="margin-top:12px"><div class="field"><label>測試帳號</label><select id="webMapProfile" onchange="send('mapProfile',{value:Number(this.value)})"></select></div><div class="field"><label>辨識門檻（%，越高越嚴格）</label><input id="webMapConf" type="number" min="1" max="99"></div><div class="field"><label>辨識前拉近鏡頭次數</label><input id="webMapZoom" type="number" min="1" max="30"></div><div class="field"><label>在復活點時按的前點鍵</label><input id="webMapReturn" placeholder="例如 W"></div></div>
  <div class="actions" style="margin-top:10px"><button class="btn blue" onclick="send('mapConf',{value:Number(document.getElementById('webMapConf').value)});send('mapZoom',{value:Number(document.getElementById('webMapZoom').value)});send('mapReturn',{value:document.getElementById('webMapReturn').value});setDirty(false);showToast('✓ 辨識設定已儲存')">儲存辨識設定</button><button class="btn soft" onclick="send('mapTest')">測試辨識</button></div><div id="webMapResult" class="status-pill" style="margin-top:10px">辨識結果：尚未測試</div>
@@ -878,7 +917,9 @@ function onSubShown(sub){
  if(sub==='recovery')send('recstats');
  if(sub==='dropRates')send('dropindex');
  if(sub==='mbox')send('mboxstate');
+ if(sub==='lagtab')send('lagstate');
  if(sub==='party')send('partystate');
+ if(sub==='companion')send('companionstate');
  if(sub==='skillcombo')send('skillcombostate');
  if(sub==='settings')send('loginchars');
  if(sub==='invMain')requestInvStats();
@@ -1110,7 +1151,10 @@ const pk=document.getElementById('webPostKeys'); if(pk && !isEditing('webPostKey
 const rt=document.getElementById('repTime'); if(rt && !isEditing('repTime'))rt.value=s.reportDailyTime??'08:00';
 const rs=document.getElementById('repShot'); if(rs && !isEditing('repShot'))rs.value=String(s.reportSnapshotMin??60);
 const re=document.getElementById('repErr'); if(re && !isEditing('repErr'))re.checked=s.reportErrorShots!==false;
-const cs=document.getElementById('coordSummary'); if(cs)cs.textContent=s.coordSetup?`設定中：第 ${s.coordIndex||1}/8 個位置${s.coordTargetValid?'':'｜⚠ 原本的遊戲視窗已關閉'}`:(s.loginMemory?'✓ 直接讀遊戲畫面登入，不需要記位置（8 個預設點只在讀不到時備用）':s.coordConfigured?'✓ 8 個位置都已設定，自動登入可以使用':'⚠ 還沒設定完成，自動登入無法使用');
+window.__loginMemory=!!s.loginMemory;
+const cs=document.getElementById('coordSummary'); if(cs)cs.textContent=s.coordSetup?`設定中：第 ${s.coordIndex||1}/8 個位置${s.coordTargetValid?'':'｜⚠ 原本的遊戲視窗已關閉'}｜設定沒做完時自動組隊等功能會暫停；不需要的話請按「取消設定」`:(s.loginMemory?'✓ 這台直接讀遊戲畫面登入，不需要設 8 點（請不要按「重新設定」）':s.coordConfigured?'✓ 8 個位置都已設定，自動登入可以使用':'⚠ 還沒設定完成，這台讀不到遊戲的登入畫面位置，自動登入無法使用');
+const cd=document.getElementById('coordDetails'); if(cd){const need=(s.coordSetup||(!s.loginMemory&&!s.coordConfigured))?'1':'0'; if(cd.dataset.need!==need){cd.dataset.need=need;cd.open=need==='1';}}
+const ccb=document.getElementById('coordCancelBtn'); if(ccb)ccb.style.display=s.coordSetup?'':'none';
 
 
 const sd=document.getElementById('serverDisconnectState'); if(sd)sd.textContent=`伺服器斷線偵測：開啟｜最近一次：${s.serverDisconnectLast||'沒有發生過'}`;
@@ -1540,6 +1584,8 @@ function renderParty(d){
  const en=document.getElementById('partyEnabled'),st=document.getElementById('partySettle'),bl=document.getElementById('partyBlocker'),pill=document.getElementById('partyPill');
  if(en&&document.activeElement!==en)en.checked=!!d.enabled;
  if(st&&document.activeElement!==st)st.value=d.settle;
+ const rj=document.getElementById('partyRejoin');if(rj&&document.activeElement!==rj)rj.checked=!!d.rejoin;
+ const hb=document.getElementById('partyHandback');if(hb&&document.activeElement!==hb)hb.checked=!!d.handback;
  const leaders=(d.roles||[]).filter(r=>r.leader).length;
  if(pill)pill.textContent=d.enabled?`啟用中｜${leaders} 位隊長`:'未啟用';
  if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
@@ -1559,6 +1605,15 @@ function renderParty(d){
    :'<tr><td colspan="5" class="hint">沒有開啟監控的角色</td></tr>';
  }
  (d.roles||[]).forEach(r=>{const tr=box.querySelector(`tr[data-idx="${r.index}"]`);const c=tr&&tr.querySelector('.party-status');if(c)c.textContent=r.leader?(r.status||''):'';});
+ const mbox=document.getElementById('partyMemRows');
+ if(mbox){   // 沒有輸入框，每次直接重畫
+  const chip={ok:['在隊中','ok'],wait:['進行中','info'],warn:['要注意','warn'],bad:['失敗 / 設定有問題','bad'],mute:['暫時不用管',''],pending:['待邀請','info'],none:['還沒檢查','']};
+  const rows=[];
+  (d.roles||[]).filter(r=>r.leader).forEach(r=>(r.memberStat||[]).forEach(m=>{
+   const c=chip[m.st]||chip.none;
+   rows.push(`<tr><td class="account-name">${esc(r.name)}</td><td>${esc(m.name)}${m.remote?' <span class="account-sub">（另一台電腦）</span>':''}</td><td><span class="mchip ${c[1]}">${c[0]}</span></td><td class="account-sub">${esc(m.text||'')}</td><td class="account-sub">${m.next>0?(m.next>=90?Math.ceil(m.next/60)+' 分鐘後':m.next+' 秒後'):'—'}</td></tr>`);}));
+  mbox.innerHTML=rows.length?rows.join(''):'<tr><td colspan="5" class="hint">沒有設定隊員</td></tr>';
+ }
  const abox=document.getElementById('partyAcceptRows');if(!abox)return;
  const asig=JSON.stringify((d.roles||[]).map(r=>[r.index,r.name,r.accept,r.acceptFrom]));
  if(asig!==partyAcceptSig){
@@ -1567,10 +1622,20 @@ function renderParty(d){
  }
  (d.roles||[]).forEach(r=>{const tr=abox.querySelector(`tr[data-idx="${r.index}"]`);const c=tr&&tr.querySelector('.party-accept-status');if(c)c.textContent=r.accept?(r.acceptStatus||''):'';});
 }
+function renderCompanion(d){
+ const en=document.getElementById('cwEnabled'),pe=document.getElementById('cwPet'),me=document.getElementById('cwMerc'),pill=document.getElementById('cwPill'),bl=document.getElementById('cwBlocker'),box=document.getElementById('cwRows');
+ if(en&&document.activeElement!==en)en.checked=!!d.enabled;
+ if(pe&&document.activeElement!==pe)pe.checked=!!d.pet;
+ if(me&&document.activeElement!==me)me.checked=!!d.merc;
+ if(pill)pill.textContent=d.enabled?'監測中':'未啟用';
+ if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
+ if(box)box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td class="account-sub">${d.pet?esc(r.pet||'—'):'不監測'}</td><td class="account-sub">${d.merc?esc(r.merc||'—'):'不監測'}</td></tr>`).join(''):'<tr><td colspan="3" class="hint">沒有開啟監控的角色</td></tr>';
+}
+function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;send('companionset',{value:`${v('cwEnabled')}~${v('cwPet')}~${v('cwMerc')}`});}
 let partyAcceptSig='';
 function savePartyRemote(el){const tr=el.closest('tr');el.value=el.value.replace(/~/g,'');send('partyremote',{value:`${tr.dataset.idx}~${el.value.trim()}~${tr.dataset.name}`});}
 function savePartyAccept(el){const tr=el.closest('tr');const f=tr.querySelector('.party-from');f.value=f.value.replace(/~/g,'');send('partyaccept',{value:`${tr.dataset.idx}~${tr.querySelector('.party-accept').checked?1:0}~${tr.querySelector('.party-from').value.trim()}~${tr.dataset.name}`});}
-function savePartyCfg(){send('partycfg',{value:`${document.getElementById('partyEnabled').checked?1:0}~${Math.max(0,Math.min(600,Number(document.getElementById('partySettle').value)||0))}`});}
+function savePartyCfg(){send('partycfg',{value:`${document.getElementById('partyEnabled').checked?1:0}~${Math.max(0,Math.min(600,Number(document.getElementById('partySettle').value)||0))}~${document.getElementById('partyRejoin').checked?1:0}~${document.getElementById('partyHandback').checked?1:0}`});}
 function savePartyRole(el){const tr=el.closest('tr');const lead=tr.querySelector('.party-leader').checked?1:0;
  const mem=[...[...tr.querySelectorAll('.party-mem:checked')].map(x=>x.value),...(tr.dataset.hidden?tr.dataset.hidden.split('|'):[])].join('|');
  send('partyrole',{value:`${tr.dataset.idx}~${lead}~${mem}~${tr.dataset.name}`});}
@@ -1753,11 +1818,35 @@ function saveDailyCfg(el){
  row.classList.toggle('daily-cfg-off',!items);dailyCfgSig='';
  send('dailycfg',{value:`${row.dataset.idx}~${items}~${mode}~${weapon}~${row.dataset.name}`});
 }
+function renderDiag(d){
+ const b=document.getElementById('diagBtn'),o=document.getElementById('diagOpenBtn'),r=document.getElementById('diagResult');
+ if(b){b.disabled=!!d.busy;b.textContent=d.busy?'匯出中…':'匯出診斷包';}
+ if(o)o.style.display=d.path?'':'none';
+ if(r)r.textContent=d.err?('⚠ 匯出失敗：'+d.err):(d.path?`✓ 已匯出（${d.at}，${(d.size/1048576).toFixed(1)} MB）：${d.path}`:'');
+}
+function renderLag(d){
+ const on=document.getElementById('lagOn');if(on&&document.activeElement!==on)on.checked=!!d.enabled;
+ const mi=document.getElementById('lagMarkInfo');if(mi)mi.textContent=d.marks?`　已標記 ${d.marks} 筆（最後一次 ${d.markAt}）`:'';
+ const rows=document.getElementById('lagRows');if(!rows)return;
+ const fmtUp=m=>m>=120?(m/60).toFixed(1)+' 小時':Math.round(m)+' 分';
+ rows.innerHTML=(d.rows||[]).length?d.rows.map(r=>{
+  if(r.t===undefined)return `<tr><td class="account-name">${esc(r.name)}</td><td colspan="6" class="hint">等待第一次量測…</td><td></td></tr>`;
+  const slow=r.ping!==null&&r.ping>=100;
+  return `<tr><td class="account-name">${esc(r.name)}</td><td>${fmtUp(r.up)}</td><td>${Math.round(r.priv)} MB</td><td>${r.cpu===null?'—':r.cpu+'%'}</td><td class="${slow?'warn':''}">${r.min?'（最小化）':(r.ping===null?'—':r.ping+' ms（最大 '+r.pingMax+'）')}</td><td>${r.fg?'是':'否'}</td><td>${esc(r.t)}</td><td><button class="btn soft" onclick="send('lagmark',{value:${r.index}});showToast('已標記 ${esc(r.name)}')">標記這個</button></td></tr>`}).join(''):'<tr><td colspan="8" class="hint">沒有已連接的遊戲視窗</td></tr>';
+}
+function saveLagFix(){const on=document.getElementById('lfOn').checked?1:0;const ms=Math.max(30,Math.min(2000,parseInt(document.getElementById('lfMs').value,10)||100));send('lfset',{value:`${on}~${ms}`});}
+function renderLagFix(d){
+ const on=document.getElementById('lfOn');if(on&&document.activeElement!==on)on.checked=!!d.enabled;
+ const ms=document.getElementById('lfMs');if(ms&&document.activeElement!==ms)ms.value=d.pingMs;
+ const rows=document.getElementById('lfRows');if(!rows)return;
+ rows.innerHTML=(d.rows||[]).length?d.rows.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td>${r.med===null?'—':r.med+' ms'}</td><td>${r.runs}</td><td>${esc(r.text||'')}</td><td><button class="btn soft" onclick="if(confirm('現在對這個視窗做一次過圖（起點卡→前點卡）？等鍵盤滑鼠閒置後才會執行。'))send('lfnow',{value:${r.index}})">現在過圖</button></td></tr>`).join(''):'<tr><td colspan="5" class="hint">沒有已連接的遊戲視窗</td></tr>';
+}
+setInterval(()=>{const t=document.getElementById('lagRows');if(t&&t.offsetParent)send('lagstate');},3000);
 function renderDaily(d){
  dailyCache=d; if(latestState)renderFeatures(latestState); if(latestState)renderHpMonitor(latestState.accounts||[],false);
  const delay=document.getElementById('dailyDelay');if(delay)delay.textContent=`到期 ${d.delay} 分鐘後提醒`;
  const rows=document.getElementById('dailyRows');
- if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td></tr>`}).join(''):'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
+ if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}${(!busy&&r.fail)?`<div class="account-sub" style="margin-top:4px;color:var(--red)">上次自動更換沒完成：${esc(r.fail)}</div>`:''}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td></tr>`}).join(''):'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
  renderDailyCfg(d);
  const info=document.getElementById('dailyRunInfo');
  if(info)info.textContent=(d.running?`🔄 正在自動更換：${d.running}　`:'')+(d.queue?`等待中：${d.queue}　`:'')+(d.popupTimeout>0?`到期後跳出提醒；${d.popupTimeout} 秒內沒有人點選提醒視窗就自動更換。`:d.autorun?`到期後跳出提醒；${d.idle} 秒內沒有鍵鼠操作就自動更換。`:'到期後跳出提醒（目前未開啟無人自動執行，可在提醒視窗按「立即更換」）。');
@@ -1774,6 +1863,7 @@ setInterval(()=>{if(isShown('recovery'))send('recstats');},60000);
 setInterval(()=>{if(isShown('dropRates'))send('dropindex');},30000);
 setInterval(()=>{if(isShown('mbox'))send('mboxstate');},2000);
 setInterval(()=>{if(isShown('party'))send('partystate');},2000);
+setInterval(()=>{if(isShown('companion'))send('companionstate');},2000);
 setInterval(()=>{if(isShown('skillcombo'))send('skillcombostate');},2500);
 setInterval(()=>{if(isShown('home')||!dailyCache)send('dailystate');},60000);
 setTimeout(()=>send('dailystate'),1500);
@@ -1781,5 +1871,5 @@ setTimeout(()=>send('updatestate'),2500);
 setTimeout(()=>send('licensestate'),2000);setInterval(()=>send('licensestate'),600000);
 setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
 setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
-if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
 </script><div id="toast"></div></body></html>

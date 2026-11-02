@@ -145,7 +145,7 @@ MBoxBlocker() {
     if autoSwitchRunning
         return "「遊戲視窗自動切換」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
     if setupMode
-        return "座標設定中"
+        return "8 點登入座標設定還沒做完（到「設定」按「取消設定」，或把 8 點記完）"
     ; 閒置時間會被我們自己送出的按鍵 / 切視窗歸零（沒有裝輸入鉤子時分不出來），所以只有「我們最後一次動作之後」
     ; 又有輸入才算你在操作。
     idle := mboxIdleMs()
@@ -169,6 +169,7 @@ MBoxBlockedForSwitch() {
 MBoxReady(p) {
     ; GameInWorld：真的在遊戲世界裡（選角畫面不算）；hpEventOpen：角色死亡中
     return p.enabled && MBoxOn(p) && p.pid && ProfileGameAlive(p) && p.state = "監控中"
+        && !(p.HasOwnProp("mboxLagPending") && p.mboxLagPending)   ; 等自動過圖時不按、也不看「沒按卻在掉」
         && GameOffsetsReady(p.pid) && GameInWorld(p.pid) && !(p.HasOwnProp("hpEventOpen") && p.hpEventOpen)
 }
 
@@ -176,6 +177,9 @@ MBoxTick() {
     global profiles, MBOX_ENABLED, mboxBusy
     if mboxBusy
         return
+    for p in profiles   ; 看門狗：等過圖等太久（請求遺失 / 管理程式狀態不一致）就視為失敗，照原規則處理
+        if p.HasOwnProp("mboxLagPending") && p.mboxLagPending && A_TickCount - p.mboxLagPending > 2700000
+            MBoxLagFixDone(p, false)
     if MBOX_ENABLED
         MBoxWatchTick()   ; 唯讀：偵測「沒按卻在掉箱子」（就算現在不能切視窗也要看，越早知道損失越少）
     if MBoxBlocker() != ""
@@ -437,17 +441,90 @@ MBoxStuck(p, used, why, c1, fromPress) {
     if c2 >= 0
         p.mboxExpected := c2, p.mboxCount := c2
     if still || again {
-        p.mboxEnabled := 0, p.mboxExpected := -1
-        try SaveProfiles()
-        p.mboxStatus := "⛔ 已停止：" why (still ? "，放開按鍵後還在掉" : "，30 分鐘內第二次")
-        EventLog(p.name, "MBOX_DISABLED", p.mboxStatus)
-        AddRecentEvent("⛔ " p.name " 的命運箱子已自動停止（" why "）")
-        try SendDiscordMessage("⛔ HIHIYONG：" p.name " 的命運箱子已自動停止：" why (still ? "，放開按鍵後箱子還在減少" : "，30 分鐘內第二次") "。請到遊戲確認後再手動開啟。")
+        if MBoxTryLagFix(p, why, still, c2)
+            return
+        MBoxDisable(p, why, still)
     } else {
         ; 下一次：效果還在就依剩餘時間，不然等一個完整間隔（不要 30 秒就又按）
         p.mboxNextAt := A_TickCount + MBoxNextWaitSec(MBoxBuff(p.pid)) * 1000
         p.mboxStatus := "⚠ " why "，已放開按鍵（箱子不再減少）"
         try SendDiscordMessage("⚠️ HIHIYONG：" p.name " 的命運箱子" why "，已補送按鍵放開，箱子沒有再減少。")
+    }
+}
+
+; 停掉這個角色的命運箱子（卡鍵放開後還在掉 / 30 分鐘內第二次，而且自動過圖沒有幫上忙或沒開）。
+MBoxDisable(p, why, still) {
+    p.mboxEnabled := 0, p.mboxExpected := -1
+    try SaveProfiles()
+    afterFix := p.HasOwnProp("mboxLagFixAt") && p.mboxLagFixAt && A_TickCount - p.mboxLagFixAt < 3600000
+    p.mboxStatus := "⛔ 已停止：" why (still ? "，放開按鍵後還在掉" : "，30 分鐘內第二次") (afterFix ? "（已自動過圖，仍然卡住）" : "")
+    EventLog(p.name, "MBOX_DISABLED", p.mboxStatus)
+    AddRecentEvent("⛔ " p.name " 的命運箱子已自動停止（" why "）")
+    try SendDiscordMessage("⛔ HIHIYONG：" p.name " 的命運箱子已自動停止：" why (still ? "，放開按鍵後箱子還在減少" : "，30 分鐘內第二次") (afterFix ? "；已經自動過圖一次，過圖後仍然卡住" : "") "。請到遊戲確認後再手動開啟。")
+}
+
+; 卡鍵很可能是遊戲太 lag：停止之前先請 LagFix 過一次圖（起點卡 → 前點卡），過圖後再觀察。
+; 只在「變慢自動過圖」開著、而且 60 分鐘內還沒為這個角色過過圖時才做；回傳 true = 已改成等過圖（先不停止）。
+MBoxTryLagFix(p, why, still, c1 := -1) {
+    global LF_ENABLED
+    en := 0, fn := 0
+    try en := LF_ENABLED
+    try fn := %"LagFixRequest"%
+    if !en || !IsObject(fn)
+        return false
+    if p.HasOwnProp("mboxLagFixAt") && p.mboxLagFixAt && A_TickCount - p.mboxLagFixAt < 3600000
+        return false   ; 過圖後觀察期內又卡住 = 過圖沒有用，照原本規則停止
+    if p.HasOwnProp("mboxLagPending") && p.mboxLagPending
+        return true
+    ; 角色不在野外（城裡 / 讀不到地圖）過圖一定會被拒絕：不要多繞一圈，直接照原規則
+    fld := 0
+    try fld := %"LfFieldMap"%
+    if IsObject(fld) {
+        m := ""
+        try m := fld(p.pid)
+        if m = ""
+            return false
+    }
+    ; 先設 pending 再呼叫（呼叫若同步回報也不會被蓋掉）；被拒絕再還原
+    p.mboxLagPending := A_TickCount, p.mboxLagWhy := why, p.mboxLagStill := still
+    ok := false
+    ; 放開後箱子還在減少：排隊最多 3 分鐘（損失會一直增加）；放開有效（只是第二次）：最多 10 分鐘
+    try ok := fn(p, "命運箱子卡鍵", MBoxLagFixDone, still ? 180000 : 600000)
+    if !ok {
+        p.mboxLagPending := 0
+        return false
+    }
+    p.mboxExpected := -1
+    p.mboxStatus := "⚠ " why (still ? "，放開後還在掉" : "，30 分鐘內第二次") "｜先自動過圖，再觀察是否還卡住"
+    EventLog(p.name, "MBOX_LAGFIX", why "｜先請自動過圖，過圖後再觀察；觀察期內再卡住才停止")
+    AddRecentEvent("⚠ " p.name " 命運箱子卡鍵（" why "），先自動過圖再觀察")
+    try SendDiscordMessage("⚠️ HIHIYONG：" p.name " 命運箱子卡鍵（" why "），可能是遊戲太 lag。" (still ? "放開按鍵後箱子仍在減少（目前約剩 " c1 " 個），最多等 3 分鐘；沒有過圖成功就停止自動開箱。" : "先自動過一次圖再觀察，過圖後如果又卡住才會停止自動開箱。"))
+    return true
+}
+
+; LagFix 回報：ok = 已過圖並回到原地。沒完成就照原本規則停止。
+MBoxLagFixDone(p, ok) {
+    global MBOX_ENABLED
+    wasPending := p.HasOwnProp("mboxLagPending") && p.mboxLagPending
+    p.mboxLagPending := 0
+    if !wasPending
+        return
+    if !MBOX_ENABLED || !MBoxOn(p) {
+        ; 等過圖的時候你自己把命運箱子關掉了：尊重你的決定，不恢復也不再「停止」
+        EventLog(p.name, "MBOX_LAGFIX_DONE", "過圖結果 " (ok ? "完成" : "沒完成") "，但命運箱子已被關閉，不做任何動作")
+        return
+    }
+    if ok {
+        p.mboxLagFixAt := A_TickCount
+        p.mboxStuckAt := -99999999, p.mboxDrainAt := -99999999   ; 過圖後重新計「30 分鐘內第二次」
+        p.mboxExpected := -1
+        p.mboxNextAt := A_TickCount + 20000
+        p.mboxStatus := "✓ 已自動過圖，觀察中（60 分鐘內再卡住才停止）"
+        EventLog(p.name, "MBOX_LAGFIX_DONE", "過圖完成，恢復自動開箱；60 分鐘內再卡住就停止")
+        AddRecentEvent("✓ " p.name " 已自動過圖，命運箱子恢復，觀察中")
+    } else {
+        EventLog(p.name, "MBOX_LAGFIX_FAIL", "自動過圖沒有完成，照原本規則停止命運箱子")
+        MBoxDisable(p, (p.HasOwnProp("mboxLagWhy") ? p.mboxLagWhy : "按鍵卡住") "，自動過圖沒有完成", p.HasOwnProp("mboxLagStill") && p.mboxLagStill)
     }
 }
 
@@ -569,10 +646,12 @@ MBoxSetRole(rawValue) {
     if name != p.name
         return AddRecentEvent("⚠ 命運箱子設定沒有儲存：角色清單已變動，請重新整理畫面")
     key := Trim(parts[3])
+    p.mboxLagPending := 0
+    try %"LagFixCancelRequest"%(p)   ; 重新設定時，排隊中的過圖請求不用了
     p.mboxEnabled := Integer(parts[2] = "1")
     p.mboxKey := RegExMatch(key, "i)^([a-z0-9]|F([1-9]|1[0-2]))$") ? (StrLen(key) = 1 ? StrLower(key) : key) : "e"
     p.mboxNextAt := 0, p.mboxFails := 0, p.mboxDrainSeen := -1   ; 等待中的「補送放開」不在這裡清掉（一定要送出去）
-    for k in ["mboxStuckAt", "mboxDrainAt"]
+    for k in ["mboxStuckAt", "mboxDrainAt", "mboxLagFixAt"]
         if p.HasOwnProp(k)
             p.DeleteProp(k)
     SaveProfiles()

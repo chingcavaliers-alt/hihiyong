@@ -13,7 +13,7 @@ global GAME_OFFSETS_DB_DIR := A_ScriptDir "\offsets_db"
 global gameOffsetsKnownTried := Map()   ; build → 已找過已知版本資料夾
 global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
 ; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
-global GAME_OFFSETS_TOOL_VERSION := 20
+global GAME_OFFSETS_TOOL_VERSION := 23
 global gameMapInfoCache := Map()      ; "主ID-子ID" → {name, peace}（地圖清單在遊戲執行期間不變）
 global gameOffsets := Map()
 global gameBuildByPid := Map()        ; pid → game.exe 版本（每個 PID 只讀一次 PE header）
@@ -292,6 +292,76 @@ ReadGameServerTime(pid,&serverTime) {
         return false
     serverTime:=v
     return true
+}
+
+; v1.3.51.0 道具冷卻表（GLCharacter.m_mapCoolTimeType：std::map<冷卻類型, ITEM_COOLTIME>）。
+; 回傳 [{type, id, use, end}]（id = 最後使用的道具 主ID | 子ID<<16；use / end = 伺服器時間 time_t 秒）；沒有這組位置資料 / 讀不到回傳 ""。
+; 起點卡與前點卡共用同一個冷卻類型：按了其中一張，兩張都要等 end 過了才能再用。
+ReadGameCoolEntries(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("CoolMapTypeOffset") || !GameOffset("CoolNodeValueOffset") || !GameOffset("CoolEndTimeOffset")
+        return ""
+    cb:=GameCharBase(pid)
+    if !cb
+        return ""
+    h:=GameProcHandle(pid)
+    mapAddr:=cb+GameOffset("CoolMapTypeOffset")
+    head:=GameReadNum(h,mapAddr,"Ptr"),size:=GameReadNum(h,mapAddr+8,"Ptr")
+    if head="" || !head || size="" || size>256
+        return ""
+    ; std::map 節點：_Left 0 / _Parent 8 / _Right 0x10（MSVC 固定排列）；從 head 的 _Parent 取根，逐一走訪
+    root:=GameReadNum(h,head+8,"Ptr")
+    out:=[],stack:=[root],seen:=Map()
+    isNil:=GameOffset("CoolNodeIsNilOffset"),keyOff:=GameOffset("CoolNodeKeyOffset"),valOff:=GameOffset("CoolNodeValueOffset")
+    idOff:=GameOffset("CoolItemIdOffset"),useOff:=GameOffset("CoolUseTimeOffset"),endOff:=GameOffset("CoolEndTimeOffset")
+    need:=Max(valOff+endOff+8,isNil+1,0x18)
+    while stack.Length && out.Length<=size+1 {
+        n:=stack.Pop()
+        if !n || n="" || n=head || seen.Has(n)
+            continue
+        seen[n]:=1
+        nb:=GameReadBuf(h,n,need)
+        if !nb
+            return ""
+        if NumGet(nb,isNil,"UChar")
+            continue
+        end:=NumGet(nb,valOff+endOff,"Int64")
+        if end<0 || end>4102444800    ; 超過 2100 年 = 讀到垃圾
+            return ""
+        out.Push({type:NumGet(nb,keyOff,"UInt"),id:NumGet(nb,valOff+idOff,"UInt"),use:NumGet(nb,valOff+useOff,"Int64"),end:end})
+        stack.Push(NumGet(nb,0,"Ptr"),NumGet(nb,0x10,"Ptr"))
+    }
+    return out.Length=size ? out : ""      ; 筆數對不上 = 讀到一半被改動，當作讀不到
+}
+
+; 道具「主ID-子ID」（快捷欄 DailyQuickInfo 的 id）轉成冷卻表用的 dwID。
+GameItemKeyToId(key) {
+    p:=StrSplit(key,"-")
+    return p.Length=2 && IsInteger(p[1]) && IsInteger(p[2]) ? (Integer(p[1])&0xFFFF)|((Integer(p[2])&0xFFFF)<<16) : ""
+}
+
+; 某個冷卻類型現在還要等幾秒（0 = 可以用了）；讀不到冷卻表 / 伺服器時間回傳 -1；表裡沒有這個類型 = 0。
+GameCoolRemainByType(pid, type) {
+    ents:=ReadGameCoolEntries(pid)
+    srv:=0
+    if !IsObject(ents) || !ReadGameServerTime(pid,&srv) || srv<=0
+        return -1
+    for e in ents
+        if e.type=type
+            return Max(0,e.end-srv)
+    return 0
+}
+
+; 最後一次用這個道具的冷卻資訊 {type, end, use, remain}；表裡沒有（沒用過）回傳 0；讀不到回傳 ""。
+; 注意：同一個冷卻類型的別張卡後來用過，這筆會被改寫成那張卡（所以起點卡 / 前點卡要兩個一起看）。
+GameCoolInfoByItem(pid, itemId) {
+    ents:=ReadGameCoolEntries(pid)
+    srv:=0
+    if !IsObject(ents) || !ReadGameServerTime(pid,&srv) || srv<=0
+        return ""
+    for e in ents
+        if e.id=itemId
+            return {type:e.type,end:e.end,use:e.use,remain:Max(0,e.end-srv),srv:srv}
+    return 0
 }
 
 ; 角色是否已進入遊戲：伺服器已送來角色資料（最大 HP > 0）。
@@ -616,6 +686,21 @@ ReadGamePetOut(pid) {
     inst:=GameGaeaBase(pid)
     v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("PetValidOffset"),"UChar") : ""
     return v="" ? -1 : (v ? 1 : 0)
+}
+; 召喚獸（雇傭兵）現在是否在外面：1 = 在外面，0 = 不在，讀不到回傳 -1。和寵物同一種讀法（GLGaeaClient.m_Summon.m_bValid）。
+ReadGameSummonOut(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("SummonValidOffset")
+        return -1
+    inst:=GameGaeaBase(pid)
+    v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("SummonValidOffset"),"UChar") : ""
+    return v="" ? -1 : (v ? 1 : 0)
+}
+; 角色身上記的召喚獸全域 ID（沒有召喚獸通常是 0xFFFFFFFF）；讀不到回傳 ""。
+ReadGameSummonGuid(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("CharSummonGuidOffset")
+        return ""
+    cb:=GameCharBase(pid)
+    return cb ? GameReadNum(GameProcHandle(pid),cb+GameOffset("CharSummonGuidOffset"),"UInt") : ""
 }
 ; 登入 / 選伺服器 / 選角畫面的控制項（COuterInterface 各頁）：每個控制項的名稱、位置（遊戲畫面座標，1024x768）與是否顯示。
 ; 回傳 {pages: Map(頁名 → {ptr,shown,l,r,t,b}), ctrls: [{page,depth,name,shown,l,r,t,b}]}；

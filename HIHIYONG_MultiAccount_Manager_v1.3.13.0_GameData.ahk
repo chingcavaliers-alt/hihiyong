@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.43.0"
+global APP_VERSION := "v1.3.52.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -70,6 +70,7 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 ; v1.3.14.0: 背景等待遊戲載入（佇列不再被慢載入卡住）與假在線訊號紀錄。
 #Include modules\AsyncLoading.ahk
 #Include modules\Signals.ahk
+#Include modules\LagProbe.ahk
 ; v1.3.15.0: 每日道具資料；v1.3.16.0: 到期提醒與示範錄製。
 #Include modules\DailyItems.ahk
 #Include modules\Recorder.ahk
@@ -109,10 +110,13 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\MBox.ahk
 ; H-018: 自動組隊（全部登入完成後，隊長邀請設定好的隊員；預設關閉）。
 #Include modules\AutoParty.ahk
+#Include modules\CompanionWatch.ahk
+#Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
 #Include modules\SkillCombo.ahk
 #Include modules\NetGuard.ahk
 #Include modules\License.ahk
+#Include modules\Diagnostics.ahk
 ; v1.3.20.0：自動採礦已停用（效益不足），MiningRun.ahk 保留在 Git 紀錄中，不再載入。
 ; v1.3.12.2 migration: known stale offsets from the previous maintenance must not override the newly validated value.
 if MEMORY_HP_RUNTIME_OFFSET=0xE7ADE0 || MEMORY_HP_RUNTIME_OFFSET=0x26B250 {
@@ -2211,15 +2215,26 @@ SoftDisconnectConfirmed(i, p, detail) {
 
 EvaluateMultiWindowFakeOnline() {
     global profiles,SoftMinVotesEdit
-    required:=Max(2,SoftMinVotesEdit.Value+0)
+    required:=Max(1,SoftMinVotesEdit.Value+0)
     candidates:=[]
     for i,p in profiles {
         if !p.enabled || !p.softDetect || p.state!="監控中" || p.hpEventOpen || !ProfileGameAlive(p) || !p.memHpReadOk
             continue
         if p.HasOwnProp("memHpGraceUntil") && A_TickCount<p.memHpGraceUntil
             continue
-        if A_TickCount-p.memHpLastChangeTick>=60000
-            candidates.Push(i)
+        staticMs:=A_TickCount-p.memHpLastChangeTick
+        if staticMs<60000
+            continue
+        if required=1 {
+            ; 單一角色就成立時沒有別的視窗交叉，改用伺服器時間當第二個證據：
+            ; 伺服器時間還在更新 → 只是閒置不是斷線，不算；讀不到伺服器時間 → 要靜止更久（3 分鐘）才算。
+            srvSec:=SignalServerStaticSec(p)
+            if srvSec>=0 && srvSec<SOFT_SRV_SUSPECT_SEC
+                continue
+            if srvSec<0 && staticMs<180000
+                continue
+        }
+        candidates.Push(i)
     }
     count:=candidates.Length
     for idx in candidates {
@@ -5488,6 +5503,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer NetGuardTick, 5000   ; H-031：整體斷網守門（不開任何外部程式）
     SetTimer InventoryStatsTick, INV_STATS_INTERVAL_MS
     SetTimer SignalsTick, SIGNAL_TICK_MS
+    SetTimer LagProbeTick, LAG_TICK_MS
     SetTimer DailyItemsTick, DAILY_TICK_MS
     ; 同一個函式重設 SetTimer 會改掉原本的週期，所以第一次（啟動 1 分鐘後）用另一個函式物件
     SetTimer DropRatesCheck.Bind(false), -60000
@@ -5498,6 +5514,8 @@ WebNavigationCompleted(sender,args) {
     SetTimer MBoxTick, 1000
     SetTimer ApTick, 2000
     SetTimer ApAcceptTick, 1000   ; 隊長在另一台電腦時，邀請視窗有時效：比 ApTick 看得勤一點
+    SetTimer CompanionTick, CW_CHECK_MS   ; 寵物 / 雇傭兵監測（預設關閉）
+    SetTimer LagFixTick, 5000   ; 變慢自動過圖（預設關閉；待救援的角色即使關閉也會送回去）
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
     SetTimer KillStatsTick, KILL_TICK_MS
@@ -5662,6 +5680,11 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="skillcombolist" {
         SkillComboSetList(WebUrlDecode(rawValue))
         SkillComboPushWeb()
+    } else if action="companionstate" {
+        CompanionPushWeb()
+    } else if action="companionset" {
+        CompanionSet(WebUrlDecode(rawValue))
+        CompanionPushWeb()
     } else if action="partystate" {
         ApPushWeb()
     } else if action="partycfg" {
@@ -5743,6 +5766,10 @@ WebRunAction(action,value:=0,rawValue:="") {
         StartSetup()
     } else if action="coordrecord" {
         RecordSetupPoint()
+    } else if action="coordcancel" {
+        global setupMode
+        if setupMode
+            CancelSetup("8 點登入座標設定已取消，舊座標保持不變。")
     } else if action="coordclear" {
         ClearPoints()
     } else if action="coordtest" {
@@ -5819,6 +5846,29 @@ WebRunAction(action,value:=0,rawValue:="") {
         AddRecentEvent("已儲存全部設定")
     } else if action="selfcheck" {
         WebRunSelfCheck()
+    } else if action="diagexport" {
+        DiagExport()
+    } else if action="effectsdump" {
+        EffectsDump()
+    } else if action="diagopen" {
+        DiagOpenFolder()
+    } else if action="diagstate" {
+        DiagPushWeb()
+    } else if action="lagstate" {
+        LagPushWeb()
+        LagFixPushWeb()
+    } else if action="lfset" {
+        LagFixSet(WebUrlDecode(rawValue))
+        LagFixPushWeb()
+    } else if action="lfnow" {
+        if IsInteger(rawValue)
+            SetTimer(LagFixManual.Bind(Integer(rawValue)), -50)   ; 不要卡住網頁訊息處理
+    } else if action="lagmark" {
+        LagMark(IsInteger(rawValue) ? Integer(rawValue) : 0)
+        LagPushWeb()
+    } else if action="lagset" {
+        LagSetEnabled(rawValue = "1")
+        LagPushWeb()
     } else if action="settings" {
         global g
         g.Show("w1080 h748")
@@ -6045,7 +6095,7 @@ WebRunSelfCheck() {
     launcherOk:=FileExist(Trim(LauncherEdit.Value)) ? 1 : 0
     items.Push([launcherOk,"遊戲啟動程式",launcherOk ? "已設定" : "找不到啟動程式，請到「環境與通知」重新選擇"])
     coordsOk:=(PointsConfigured() || LoginMemoryAvailable()) ? 1 : 0
-    items.Push([coordsOk,"登入座標",PointsConfigured() ? "8/8 已設定" : (coordsOk ? "直接讀遊戲畫面（不需要記位置）" : "尚未完成 8 點")])
+    items.Push([coordsOk,"登入座標",PointsConfigured() ? "8/8 已設定" : (coordsOk ? "直接讀遊戲畫面（這台不需要設 8 點）" : "尚未完成 8 點（這台讀不到遊戲的登入畫面位置，自動登入要靠 8 點）")])
     profileOk:=profiles.Length>0 ? 1 : 0
     items.Push([profileOk,"帳號",profiles.Length " 個"])
     bound:=0
@@ -6251,7 +6301,7 @@ WebSaveMonitorSettings(rawValue) {
     SoftEnableCB.Value:=p[1]+0
     SoftIdleEdit.Value:=Max(30,p[2]+0)
     SoftConfirmEdit.Value:=Max(5,p[3]+0)
-    SoftMinVotesEdit.Value:=Max(2,p[4]+0)
+    SoftMinVotesEdit.Value:=Max(1,p[4]+0)
     SoftAutoRecoverCB.Value:=p[5]+0
     SoftMultiAssistCB.Value:=p[6]+0
     SaveGeneral()

@@ -26,7 +26,7 @@ TI_GET_CHILDRENCOUNT, TI_FINDCHILDREN = 13, 7
 LEA_RAX_RIP = bytes([0x48, 0x8D, 0x05])
 SYMBOL_INFOW_BASE_SIZE = 88  # sizeof(SYMBOL_INFOW) 不含名稱緩衝區（x64）
 # 輸出欄位有增加時遞增；管理器發現 INI 的版本較舊會自動重新解析。
-TOOL_VERSION = 20
+TOOL_VERSION = 23
 MAP_LIST_PAIR = "std::pair<unsigned long const ,SMAPNODE>"
 MAP_LIST_NODE = "std::_List_node<std::pair<unsigned long const ,SMAPNODE>,void *>"
 CROW_LIST = "CGLLIST<GLCrowClient *>"
@@ -354,6 +354,59 @@ def party_fields(image: PeImage, pdb: Pdb) -> dict[str, object]:
     }
 
 
+def summon_fields(pdb: Pdb) -> dict[str, object]:
+    """v22：召喚獸（雇傭兵）是否在外面：GLGaeaClient.m_Summon.m_bValid（和寵物 m_Pet.m_bValid 同一種結構）。
+    GLCharacter.m_dwSummonGUID 是召喚獸的全域 ID，當作對照用。選用：找不到只留 SummonError。"""
+    return {
+        "SummonValidOffset": pdb.offset("GLGaeaClient", "m_Summon.m_bValid"),
+        "CharSummonGuidOffset": pdb.offset("GLCharacter", "m_dwSummonGUID"),
+    }
+
+
+COOL_NODE = "std::_Tree_node<std::pair<unsigned long const ,ITEM_COOLTIME>,void *>"
+COOL_PAIR = "std::pair<unsigned long const ,ITEM_COOLTIME>"
+
+
+def cooltime_fields(pdb: Pdb) -> dict[str, object]:
+    """v23：道具冷卻（傳送卡 / 寵物卡 / 召喚獸卡）。GLCharacter.m_mapCoolTimeType 是 std::map<冷卻類型, ITEM_COOLTIME>，
+    每筆有最後使用的道具 dwID、使用時間 tUseTime、冷卻結束時間 tCoolTime（伺服器時間的 time_t 秒）。
+    起點卡與前點卡共用同一個冷卻類型（實機 10 秒）。自動過圖用它判斷前點卡能不能按。選用。"""
+    return {
+        "CoolMapTypeOffset": pdb.offset("GLCharacter", "m_mapCoolTimeType"),
+        "CoolNodeIsNilOffset": pdb.offset(COOL_NODE, "_Isnil"),
+        "CoolNodeKeyOffset": pdb.offset(COOL_NODE, "_Myval.first"),
+        "CoolNodeValueOffset": pdb.offset(COOL_NODE, "_Myval.second"),
+        "CoolItemIdOffset": pdb.offset("ITEM_COOLTIME", "dwID"),
+        "CoolUseTimeOffset": pdb.offset("ITEM_COOLTIME", "tUseTime"),
+        "CoolEndTimeOffset": pdb.offset("ITEM_COOLTIME", "tCoolTime"),
+    }
+
+
+def party_window_fields(image: PeImage, pdb: Pdb) -> dict[str, object]:
+    """v21：隊伍視窗與一般確認視窗（自動組隊「隊長斷線重連後把隊長交還」用）。
+    隊伍視窗 CPartyWindow 的每一格 CPartySlot 有玩家名稱、「委任隊長」按鈕、「退出」按鈕（會踢人 / 退隊：程式只讀它的位置用來避開，絕不點）；
+    確認視窗 CModalWindow 是遊戲一般的確認對話框。選用：任何欄位找不到整組不輸出（只留 PartyWinError）。"""
+    return {
+        "InnerPartyWindowOffset": pdb.offset("CInnerInterface", "m_pPartyWindow"),
+        "PartyWindowVftableRvas": "|".join(f"0x{v:X}" for v in pdb.data_symbols("CPartyWindow::`vftable'")),
+        "PartyWindowSlotOffset": pdb.offset("CPartyWindow", "m_pPartySlot"),
+        "PartyWindowSlotBytes": pdb.member_size("CPartyWindow", "m_pPartySlot"),
+        "PartyWindowMasterIdOffset": pdb.offset("CPartyWindow", "m_dwMasterID"),
+        "PartySlotNameOffset": pdb.offset("CPartySlot", "m_pPlayerName"),
+        "PartySlotAuthBtnOffset": pdb.offset("CPartySlot", "m_pAuthorityButton"),
+        "PartySlotQuitBtnOffset": pdb.offset("CPartySlot", "m_pQuitButton"),
+        "PartySlotMasterOffset": pdb.offset("CPartySlot", "m_bMaster"),
+        "InnerModalWindowOffset": pdb.offset("CInnerInterface", "m_pModalWindow"),
+        "ModalWindowVftableRvas": "|".join(f"0x{v:X}" for v in pdb.data_symbols("CModalWindow::`vftable'")),
+        "ModalTextOffset": pdb.offset("CModalWindow", "m_pTextBox"),
+        "ModalOkOffset": pdb.offset("CModalWindow", "m_pOK"),
+        "ModalCancelOffset": pdb.offset("CModalWindow", "m_pCANCEL"),
+        "ModalYesOffset": pdb.offset("CModalWindow", "m_pYES"),
+        "ModalNoOffset": pdb.offset("CModalWindow", "m_pNO"),
+        "ModalTypeOffset": pdb.offset("CModalWindow", "m_nModalType"),
+    }
+
+
 def resolve(exe: Path) -> dict[str, str]:
     image = PeImage(exe)
     pdb = Pdb(exe)
@@ -493,6 +546,18 @@ def resolve(exe: Path) -> dict[str, str]:
         except Exception as e:   # 任何例外（含 struct.error）都只停用組隊，不能讓整個解析失敗
             # 自動組隊的欄位找不到（例如遊戲改版改了類別）：其他功能照常，只有組隊功能停用
             values["PartyError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(summon_fields(pdb))
+        except Exception as e:   # 召喚獸欄位找不到：只有「雇傭兵偵測」停用
+            values["SummonError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(party_window_fields(image, pdb))
+        except Exception as e:   # 隊伍視窗欄位找不到：只有「隊長交還」停用，組隊邀請照常
+            values["PartyWinError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(cooltime_fields(pdb))
+        except Exception as e:   # 冷卻欄位找不到：只有「變慢自動過圖」停用
+            values["CoolError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
     finally:
         pdb.close()
     return {k: (f"0x{v:X}" if isinstance(v, int) else v) for k, v in values.items()}

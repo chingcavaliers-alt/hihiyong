@@ -225,6 +225,7 @@ DailyItemsPushWeb() {
             . ',"expiry":"' (expiry ? GameTimeText(expiry,"MM-dd HH:mm") : "") '"'
             . ',"due":"' (expiry ? GameTimeText(expiry+DAILY_DELAY_MIN*60,"MM-dd HH:mm") : "") '"'
             . ',"status":"' JsonEscapeWeb(DailyStatusText(p)) '"'
+            . ',"fail":"' JsonEscapeWeb(p.HasOwnProp("dailyFail") ? p.dailyFail : "") '"'
             . ',"packs":' (p.HasOwnProp("dailyPacks") ? p.dailyPacks : -1)
             . ',"packsStale":' (p.HasOwnProp("dailyPacksStale") && p.dailyPacksStale ? "true" : "false")
             . ',"items":"' JsonEscapeWeb(DailyItemsOf(p)) '","mode":"' DailyModeOf(p) '","weapon":"' JsonEscapeWeb(DailyWeaponOf(p)) '"}'

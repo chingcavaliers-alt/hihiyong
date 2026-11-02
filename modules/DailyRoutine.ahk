@@ -164,7 +164,7 @@ DailyRoutineBlocker(p) {
         return ""
     WinGetClientPos(,,&cw,&ch,"ahk_id " p.hwnd)
     if cw!=DAILY_CLIENT_W || ch!=DAILY_CLIENT_H
-        return "遊戲畫面大小為 " cw "x" ch "，目前只支援 " DAILY_CLIENT_W "x" DAILY_CLIENT_H
+        return "遊戲畫面大小為 " cw "x" ch "，目前只支援 " DAILY_CLIENT_W "x" DAILY_CLIENT_H "（Windows 顯示縮放 " Round(A_ScreenDPI/96*100) "%；請把遊戲視窗調成 " DAILY_CLIENT_W "x" DAILY_CLIENT_H "，縮放建議 100%）"
     return ""
 }
 
@@ -174,6 +174,7 @@ DailyRoutineRun(idx) {
     reason:=DailyRoutineBlocker(p)
     if reason!="" {
         EventLog(p.name,"DAILY_SKIP",reason)
+        p.dailyFail:=reason
         AddRecentEvent("⚠ " p.name " 無法自動更換每日道具：" reason)
         return false
     }
@@ -182,7 +183,8 @@ DailyRoutineRun(idx) {
     dailyCurWeaponKw:=DailyWeaponOf(p)
     foregroundOwner:="daily",dailyRunning:=p.name
     activeRecoveryHwnd:=p.hwnd,activeRecoveryPid:=p.pid
-    EventLog(p.name,"DAILY_START","開始自動更換每日道具")
+    envText:=DailyEnvText(ctx)
+    EventLog(p.name,"DAILY_START","開始自動更換每日道具" (envText!="" ? "｜" envText : ""))
     AddRecentEvent("🎁 " p.name " 開始自動更換每日道具（請勿操作鍵盤滑鼠，F10 可中止）")
     ok:=true
     try {
@@ -191,6 +193,7 @@ DailyRoutineRun(idx) {
         secs:=Round((A_TickCount-ctx.start)/1000)
         EventLog(p.name,"DAILY_DONE","每日道具更換完成｜" secs " 秒")
         p.dailyDoneAt:=UnixNow()
+        p.dailyFail:=""
         if !IsObject(dailyTestDriver)
             try IniWrite p.dailyDoneAt,INI,"DailyItemsProgress",p.name "|done"
         AddRecentEvent("✓ " p.name " 每日道具更換完成（" secs " 秒）")
@@ -199,9 +202,13 @@ DailyRoutineRun(idx) {
         ok:=false
         shot:=DailySaveFailShot(ctx)
         DailyReleaseHeld(ctx)
+        diag:=DailyDiagInfo(ctx)
         EventLog(p.name,"DAILY_FAIL",e.Message (shot!="" ? "｜畫面：" shot : ""))
+        if diag!=""
+            EventLog(p.name,"DAILY_DIAG",diag)
+        p.dailyFail:=e.Message (diag!="" ? "｜" diag : "")
         AddRecentEvent("⚠ " p.name " 每日道具自動更換停止：" e.Message)
-        msg:="⚠️ HIHIYONG 每日道具自動更換停止`n角色：" p.name "`n原因：" e.Message "`n已停止操作，請人工確認。"
+        msg:="⚠️ HIHIYONG 每日道具自動更換停止`n角色：" p.name "`n原因：" e.Message (diag!="" ? "`n診斷：" diag : "") "`n已停止操作，請人工確認。"
         try (shot!="" && REPORT_ERROR_SHOTS) ? SendDiscordImage(msg,shot) : SendDiscordMessage(msg)
         p.dailyAcked:=1   ; 失敗後不再自動重試，等人工處理
     }
@@ -218,6 +225,44 @@ DailyRoutineRun(idx) {
 ; ---------------------------------------------------------------------------
 ; 流程
 ; ---------------------------------------------------------------------------
+
+; 顯示縮放與遊戲畫面大小（日誌與診斷用）。讀不到回傳空字串。
+DailyEnvText(ctx) {
+    global dailyTestDriver
+    if IsObject(dailyTestDriver)
+        return ""
+    try {
+        WinGetClientPos(,,&cw,&ch,"ahk_id " ctx.hwnd)
+        return "顯示縮放 " Round(A_ScreenDPI/96*100) "%｜遊戲畫面 " cw "x" ch
+    }
+    return ""
+}
+
+; 失敗時的診斷（只讀畫面）：環境，以及兩張視窗標題辨識圖在不同色差容許度下找不找得到，
+; 用來分辨是「縮放 / 畫面大小不對」還是「顏色有差」。
+DailyDiagInfo(ctx) {
+    global DAILY_TPL_DIR,DAILY_CLIENT_W,DAILY_CLIENT_H,dailyTestDriver
+    if IsObject(dailyTestDriver)
+        return ""
+    out:=DailyEnvText(ctx)
+    try EnsureRecoveryFocus(ctx.hwnd,ctx.name)   ; 畫面不在最上層時搜尋一律「找不到」，診斷會誤導
+    try {
+        CoordMode "Pixel","Client"
+        for name,title in Map("character_title","角色詳情","inventory_title","裝備道具") {
+            found:="找不到"
+            for tol in [60,90,120] {
+                x:=0,y:=0,hit:=false
+                try hit:=ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*" tol " " DAILY_TPL_DIR "\" name ".bmp")
+                if hit {
+                    found:=tol=60 ? "找得到" : "色差容許到 " tol " 才找到（顏色和辨識圖有差）"
+                    break
+                }
+            }
+            out.=(out="" ? "" : "｜") "「" title "」辨識圖：" found
+        }
+    }
+    return out
+}
 
 DailyRoutineSteps(ctx) {
     pid:=ctx.pid
@@ -488,7 +533,7 @@ DailyQuickInfo(pid, needle) {
         k:=IsObject(keys) && i<=keys.Length ? keys[i] : ""
         if k=""
             k:=i<=manual.Length ? Trim(manual[i]) : ""
-        return {slot:i,key:k}
+        return {slot:i,key:k,id:s.key}   ; id = "主ID-子ID"（道具冷卻表用它對照）
     }
     return 0
 }
@@ -1298,10 +1343,21 @@ DailyFindTemplate(ctx, name, &x, &y, region:="") {
         return dailyTestDriver.Find(name,&x,&y)
     EnsureRecoveryFocus(ctx.hwnd,ctx.name)
     CoordMode "Pixel","Client"
+    ; 兩張視窗標題辨識圖是整段固定的標題文字：色差稍大（螢幕色彩設定不同）時要放寬容許度。
+    ; 這一輪一旦發現需要 *90，之後這兩張圖（全畫面和區域搜尋）一律用 *90，前後判斷才一致（不會一次找得到、一次找不到）。
+    isTitle:=(name="character_title" || name="inventory_title")
+    tol:=(isTitle && ctx.HasOwnProp("titleTol")) ? ctx.titleTol : 60
     try {
         if IsObject(region)
-            return ImageSearch(&x,&y,Max(0,region[1]),Max(0,region[2]),Min(DAILY_CLIENT_W,region[3]),Min(DAILY_CLIENT_H,region[4]),"*60 " DAILY_TPL_DIR "\" name ".bmp")
-        return ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*60 " DAILY_TPL_DIR "\" name ".bmp")
+            return ImageSearch(&x,&y,Max(0,region[1]),Max(0,region[2]),Min(DAILY_CLIENT_W,region[3]),Min(DAILY_CLIENT_H,region[4]),"*" tol " " DAILY_TPL_DIR "\" name ".bmp")
+        if ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*" tol " " DAILY_TPL_DIR "\" name ".bmp")
+            return true
+        if isTitle && tol=60 && ImageSearch(&x,&y,0,0,DAILY_CLIENT_W,DAILY_CLIENT_H,"*90 " DAILY_TPL_DIR "\" name ".bmp") {
+            ctx.titleTol:=90
+            EventLog(ctx.name,"DAILY_TPL_LOOSE","「" name "」辨識圖要放寬色差容許度（*90）才找得到｜這一輪視窗標題辨識圖都改用 *90｜這台電腦的畫面顏色和辨識圖有差")
+            return true
+        }
+        return false
     }
     catch
         return false
