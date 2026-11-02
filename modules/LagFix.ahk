@@ -688,7 +688,7 @@ LagFixVerify() {
             st.next := st.pauseUntil
             EventLog(p.name, "LAGFIX_PAUSE", "連續 2 次過圖後回應都沒有改善，這個視窗暫停自動過圖 6 小時")
             AddRecentEvent("⚠ " p.name " 過圖兩次都沒有改善，暫停自動過圖 6 小時")
-            try SendDiscordMessage("⚠️ HIHIYONG 自動過圖沒有效果`n角色：" p.name "`n連續 2 次過圖後視窗回應仍偏慢（" Round(after) " ms），這個視窗暫停自動過圖 6 小時。請到「功能 → 量測與過圖」查看，或匯出診斷包。")
+            try SendDiscordMessage("⚠️ HIHIYONG 自動過圖沒有效果`n角色：" p.name "`n連續 2 次過圖後視窗回應仍偏慢（" Round(after) " ms），這個視窗暫停自動過圖 6 小時。請到「功能 → 流暢度偵測」查看，或匯出診斷包。")
         }
     }
 }

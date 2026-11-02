@@ -373,7 +373,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.52.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.53.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -486,7 +486,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="companion">🐾 寵物雇傭兵</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="lagtab">📉 量測與過圖</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="companion">🐾 寵物雇傭兵</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="lagtab">📉 流暢度偵測</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -575,7 +575,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="subpage" id="lagtab">
 <div class="card">
-<div class="section-title"><span class="ni"><span class="emo">📉</span></span>量測與過圖</div>
+<div class="section-title"><span class="ni"><span class="emo">📉</span></span>流暢度偵測</div>
  <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>久掛延遲量測：</b>只讀，不碰遊戲。每個視窗約每 30 秒記一次記憶體、CPU、視窗回應時間、登入至今多久，存成 <code>Logs\LagProbe_日期.csv</code>。看到動作變慢、寵物撿東西變慢時，按「標記 Lag」，方便之後比對過圖前後的資料（診斷包會一起收）。</div>
  <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lagOn" onchange="send('lagset',{value:this.checked?1:0})"> 啟用量測</label><button class="btn soft" onclick="send('lagmark',{value:0});showToast('已標記 Lag（全部視窗）')">標記 Lag（全部視窗）</button><span id="lagMarkInfo" class="hint"></span></div>
  <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>登入至今</th><th>記憶體</th><th>CPU</th><th>視窗回應</th><th>前景</th><th>最後量測</th><th></th></tr></thead><tbody id="lagRows"><tr><td colspan="8" class="hint">還沒有資料</td></tr></tbody></table></div>
