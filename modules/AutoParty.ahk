@@ -36,6 +36,7 @@ global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000, apAcceptPeekAt
 global AP_SCROLL_MAX := 40   ; 目標在好友名單畫面外時，最多滾幾次滾輪（每次確認真的捲動了才繼續）
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
+global AP_LEADER_ACCEPT_IDLE_MS := 1500   ; 隊長被邀回的邀請視窗只開一小段時間：閒置只要等這麼久（一般隊員仍等 AP_IDLE_SEC）
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
 ; 測試用：設成物件時，讀記憶體 / 切視窗 / 按鍵 / 點擊都交給它（不動真正的遊戲、視窗與鍵盤）。
 global apTestDriver := 0
@@ -88,6 +89,15 @@ ApMark(p, name, st, text) {
 }
 ; 這個角色是不是正在這台電腦上執行（有遊戲視窗）。兩台電腦共用同一份角色清單時，另一台跑的角色在這台只是「沒開」。
 ApRunsLocally(q) => q.enabled && q.pid && ProfileGameAlive(q)
+; 這個隊長設定要不要處理「斷線重連 / 交還」：隊長在別台電腦時，這台沒勾選它是正常的（沒有遊戲視窗），照樣要處理；
+; 只有「這台勾選了監控才算開著」或「遊戲視窗就在這台但沒勾選」兩種情況才跳過後者。
+ApGroupWatched(Lp) {
+    if !ApIsLeader(Lp)
+        return false
+    if Lp.enabled
+        return true
+    return !(Lp.pid && ProfileGameAlive(Lp))
+}
 ; 這個遊戲內角色名稱是不是這台電腦上正在執行的角色（線上讀到的名稱；記錄的舊名稱可能是別台電腦留下的，不算）。
 ApIsLocalChar(name) {
     global profiles
@@ -178,13 +188,15 @@ ApBlockerRaw() {
     return ""
 }
 
-ApBlocker() {
+ApBlocker(idleMs := -1) {
     global AP_IDLE_SEC, apIdleMs
     why := ApBlockerRaw()
     if why != ""
         return why
-    if apIdleMs() < AP_IDLE_SEC * 1000
-        return "等你停止操作鍵盤滑鼠 " AP_IDLE_SEC " 秒"
+    if idleMs < 0
+        idleMs := AP_IDLE_SEC * 1000
+    if apIdleMs() < idleMs
+        return "等你停止操作鍵盤滑鼠 " Round(idleMs / 1000, 1) " 秒"
     return ""
 }
 
@@ -1111,7 +1123,7 @@ ApRejoinPick() {
     if !AP_REJOIN
         return 0
     for Lp in profiles {
-        if !Lp.enabled || !ApIsLeader(Lp) || !ApMemberNames(Lp).Length
+        if !ApGroupWatched(Lp) || !ApMemberNames(Lp).Length
             continue
         if Lp.HasOwnProp("rejoinCheckAt") && Lp.rejoinCheckAt > A_TickCount
             continue
@@ -1251,7 +1263,7 @@ ApHandbackPick() {
     if !AP_HANDBACK
         return 0
     for Lp in profiles {
-        if !Lp.enabled || !ApIsLeader(Lp) || !ApMemberNames(Lp).Length
+        if !ApGroupWatched(Lp) || !ApMemberNames(Lp).Length
             continue
         if Lp.HasOwnProp("handbackCheckAt") && Lp.handbackCheckAt > A_TickCount
             continue
@@ -1867,7 +1879,7 @@ ApAcceptTick() {
     if !anyOn
         return
     ; 現在本來就不能動（使用者在操作、重新登入中…）：每 3 秒才看一次有沒有邀請，只為了把原因記下來，不必每秒讀遊戲記憶體
-    blocker := ApBlocker()
+    blocker := ApBlocker(AP_REJOIN ? AP_LEADER_ACCEPT_IDLE_MS : -1)
     if blocker != "" {
         if A_TickCount - apAcceptPeekAt < 3000
             return
@@ -1901,6 +1913,7 @@ ApAcceptTick() {
             p.acceptStatus := "視窗最小化，收不到邀請（請不要縮小）"
             continue
         }
+        blocker := ApBlocker(ApIsLeader(p) ? AP_LEADER_ACCEPT_IDLE_MS : -1)   ; 隊長被邀回：閒置縮短；一般隊員照原本的閒置時間
         ui := ApUi(p.pid)
         if !IsObject(ui) {
             p.acceptStatus := "讀不到遊戲畫面資料"
@@ -1925,7 +1938,7 @@ ApAcceptTick() {
 
 ApAcceptRun(p) {
     global apBusy, foregroundOwner, apRunStart, apLastOwn, AP_ACCEPT_BACKOFF_MS, AP_STEP_MS, AP_INVITE_EXTRA_MS
-    why := ApBlocker()
+    why := ApBlocker(ApIsLeader(p) ? AP_LEADER_ACCEPT_IDLE_MS : -1)
     if why != "" {
         p.acceptStatus := "等待中：" why
         return
