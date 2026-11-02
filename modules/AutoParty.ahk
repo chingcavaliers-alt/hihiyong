@@ -920,8 +920,11 @@ ApTick() {
         if p.enabled && ApIsLeader(p) && (ApMemberNames(p).Length || ApRemoteNames(p).Length)
             leaders.Push(i)
     if !leaders.Length {
-        apManual := 0
-        return
+        ; 這台沒有設定任何隊長：只有「邀回 / 交還」可能要做（用「只接受這些隊長」推出的組），沒有的話不用往下
+        if !((AP_REJOIN || AP_HANDBACK) && ApInferredLeaders().Length) {
+            apManual := 0
+            return
+        }
     }
     if apManual && A_TickCount - apManualAt > AP_MANUAL_TTL_MS
         apManual := 0   ; 請求超過 60 秒沒執行（一直被擋住）就作廢，不要等很久之後才突然開始
