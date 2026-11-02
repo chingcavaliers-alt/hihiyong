@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.54.0",
+    "version":  "v1.3.55.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "e235a222a09643fbc90cfeb11d293702d6af2defb6730c638f9fcd4eb8054cb1"
+                      "sha256":  "f49b8a34a29d440db94b352180fcc34537ea528a23e3c90f8f011ef93e72f395"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -43,7 +43,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "c8997059a497fe918d1fe7bae6e5023e27407c73c43586ad5f51e50bac867935"
+                      "sha256":  "b5ee9b89d3fc46d2401b5ffea2ccf628125634f3137daedc8299718fbc5e8b90"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -123,7 +123,7 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "b24a3e86208f1c7a5f915105b32fe38746b67a1b09c6bf23c1de276b01b362d4"
+                      "sha256":  "c8eb1b8ab21293fe82f56de5c9453165de3c032bc6dce9ebd849f001001b7d7d"
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
@@ -295,7 +295,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "0feed5831a54c0d4bcf3106e289edf5356790d35add43398333059b034af4df5"
+                      "sha256":  "8868aaafc739243228de1914807a9a2941144bf8b5e68ddd0ce8fab57854c5f0"
                   },
                   {
                       "path":  "登入測試.bat",

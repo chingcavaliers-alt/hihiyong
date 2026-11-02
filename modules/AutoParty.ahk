@@ -36,6 +36,7 @@ global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000, apAcceptPeekAt
 global AP_SCROLL_MAX := 40   ; 目標在好友名單畫面外時，最多滾幾次滾輪（每次確認真的捲動了才繼續）
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
+global apInferred := Map()
 global AP_LEADER_ACCEPT_IDLE_MS := 1500   ; 隊長被邀回的邀請視窗只開一小段時間：閒置只要等這麼久（一般隊員仍等 AP_IDLE_SEC）
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
 ; 測試用：設成物件時，讀記憶體 / 切視窗 / 按鍵 / 點擊都交給它（不動真正的遊戲、視窗與鍵盤）。
@@ -111,6 +112,51 @@ ApIsLocalChar(name) {
     }
     return false
 }
+; 沒有另外設定隊長的電腦（只勾了「自動接受邀請 / 只接受這些隊長」）：用「只接受這些隊長」推出一組虛擬的隊長設定。
+; 隊長變成誰（哪一台、哪一隻）事先不知道，所以不需要指定；只要這台有角色接受這位原隊長的邀請，
+; 原隊長不在隊伍裡、而這台有一隻是自己隊伍的隊長時，就由它邀回（和有設定的隊長走同一套檢查）。
+; 已經另外設定成隊長的、或原隊長就在這台執行的，不推。
+ApInferredLeaders() {
+    global profiles, apInferred
+    names := Map()
+    for q in profiles {
+        if !q.enabled || ApIsLeader(q) || !(q.HasOwnProp("partyAccept") && q.partyAccept)
+            continue
+        for L in ApAcceptFromNames(q) {
+            if !names.Has(L)
+                names[L] := []
+            names[L].Push(q.name)
+        }
+    }
+    out := []
+    for L, mem in names {
+        skip := false
+        for q in profiles
+            if ApIsLeader(q) && (q.name == L || ApGroupLeaderName(q) == L)
+                skip := true
+        if skip || ApIsLocalChar(L)
+            continue
+        if !apInferred.Has(L)
+            apInferred[L] := {name: L, charName: L, enabled: false, pid: 0, partyLeader: 1, inferred: true}
+        Lp := apInferred[L]
+        Lp.partyMembers := ""
+        for n in mem
+            Lp.partyMembers .= (Lp.partyMembers = "" ? "" : "|") n
+        out.Push(Lp)
+    }
+    return out
+}
+; 要檢查「邀回 / 交還」的所有隊長設定：自己設定的 + 推出來的
+ApRejoinGroups() {
+    global profiles
+    out := []
+    for Lp in profiles
+        out.Push(Lp)
+    for Lp in ApInferredLeaders()
+        out.Push(Lp)
+    return out
+}
+
 ApProfileByName(name) {
     global profiles
     for p in profiles
@@ -1106,7 +1152,7 @@ ApRejoinPlan(Lp) {
             else
                 stranger := true
         }
-        if !others || stranger
+        if !others || (stranger && !Lp.HasOwnProp("inferred"))   ; 推出來的組不知道另一台的隊員是誰：隊伍裡有別台的人不算組外
             continue
         target := lLocal ? Lp : {name: ln, remote: true, pid: 0}
         Lp.handbackUntil := A_TickCount + 900000   ; 原隊長確實不在現任隊長的隊伍裡：之後 15 分鐘內他回來了，才把隊長交還（交還的證據）
@@ -1122,7 +1168,7 @@ ApRejoinPick() {
     global profiles, AP_REJOIN, AP_RECHECK_SEC
     if !AP_REJOIN
         return 0
-    for Lp in profiles {
+    for Lp in ApRejoinGroups() {
         if !ApGroupWatched(Lp) || !ApMemberNames(Lp).Length
             continue
         if Lp.HasOwnProp("rejoinCheckAt") && Lp.rejoinCheckAt > A_TickCount
@@ -1239,7 +1285,7 @@ ApHandbackPlan(Lp) {
         for m in cpar.members
             if !(m == cn) && !(m == ln) && !ApHasNameExact(group, m)
                 stranger := true
-        if stranger
+        if stranger && !Lp.HasOwnProp("inferred")
             continue
         if C.HasOwnProp("handbackWait") && C.handbackWait > A_TickCount
             continue
@@ -1262,7 +1308,7 @@ ApHandbackPick() {
     global profiles, AP_HANDBACK, AP_HANDBACK_STABLE_MS
     if !AP_HANDBACK
         return 0
-    for Lp in profiles {
+    for Lp in ApRejoinGroups() {
         if !ApGroupWatched(Lp) || !ApMemberNames(Lp).Length
             continue
         if Lp.HasOwnProp("handbackCheckAt") && Lp.handbackCheckAt > A_TickCount
