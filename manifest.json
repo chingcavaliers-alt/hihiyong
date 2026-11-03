@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.59.0",
+    "version":  "v1.3.60.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "fa9fccb9f58357436a678d7e16948f67944d074b1e3739f630e4c848253f33ce"
+                      "sha256":  "e3b6ad384c3d1b5a2287b83668fccc1ec10df54daf7450de6d6e93dfe9f42490"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -43,7 +43,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "f5208bf66dcf087e4a6a40a7832a47001e4c008c6561771e4164bb5399e1531a"
+                      "sha256":  "ad0dae160a54e2e428959f9efc191ff95a6d9781fbe196ac3b9804e22f522929"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -127,7 +127,7 @@
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
-                      "sha256":  "4a4c5a425fc19b35947c86a0db9cf78bd325c54fc72bcc7beedbc10120a8f2ac"
+                      "sha256":  "130b300968f6b6ff84bbcb1699878f3667eaa0c731a9681c1617c541abd4952c"
                   },
                   {
                       "path":  "modules\\DailyItems.ahk",
@@ -147,7 +147,7 @@
                   },
                   {
                       "path":  "modules\\Diagnostics.ahk",
-                      "sha256":  "ab28d1bcbd22b5205e9095b17769b9c813747a4dd37dcf738e4658dabe5b8f59"
+                      "sha256":  "453c342cfaca071efa8119dc7b19a7398c2953892a2cf9089355743777a7bb19"
                   },
                   {
                       "path":  "modules\\DropRates.ahk",
@@ -159,7 +159,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "4f63c09e97604e03c09852da1521483fd0c3be5150b4e16d9c7efeeeb2ecb986"
+                      "sha256":  "5530311fd0ed88f82bf95c83f42c74820bfbb96e5604dc1955c628167a87fb2c"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -246,16 +246,8 @@
                       "sha256":  "6cc3d992399643b130fd81e48112528848779a80b47e81498fd4a13677f271d1"
                   },
                   {
-                      "path":  "offsets_db\\6AE6F3F6-208F000.ini",
-                      "sha256":  "fb210d713750a5b8628a4fb575b76eb054ce5b8714744081c107b2f6b2baf767"
-                  },
-                  {
-                      "path":  "offsets_db\\6AE8A5AB-20E9000.ini",
-                      "sha256":  "42c1c1cac05b96d606f4380fdd5917db6977bd49ea2977901e4985035fc76eb7"
-                  },
-                  {
                       "path":  "offsets_db\\6AE8F3A7-20EC000.ini",
-                      "sha256":  "b8726c5a137dc6c01272fe6542100f7cad1716794044563998f514553f408ec2"
+                      "sha256":  "b4ea8730c6f0f91f12c26263cb8476f8bb7dfe8b9d2db4126f7b85395ca7600f"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -299,11 +291,11 @@
                   },
                   {
                       "path":  "tools\\resolve_game_offsets.py",
-                      "sha256":  "1e1a4d578d268d452f2a52c868f397dce79607fbe436f2ba437653b1a9e695df"
+                      "sha256":  "0b56f052091bd49c083d04ba9b1e68a1892937c27c65dfdbcebc9c839896d317"
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "b3fecf38b01fa62db47e204a30272b300edb7d69f7a28de2bd35cf302cec6435"
+                      "sha256":  "7f3cde1f414bc614f18b471375d358b658b36766209e63111f092b4c57b13d13"
                   },
                   {
                       "path":  "登入測試.bat",

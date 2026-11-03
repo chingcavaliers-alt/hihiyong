@@ -26,7 +26,7 @@ TI_GET_CHILDRENCOUNT, TI_FINDCHILDREN = 13, 7
 LEA_RAX_RIP = bytes([0x48, 0x8D, 0x05])
 SYMBOL_INFOW_BASE_SIZE = 88  # sizeof(SYMBOL_INFOW) 不含名稱緩衝區（x64）
 # 輸出欄位有增加時遞增；管理器發現 INI 的版本較舊會自動重新解析。
-TOOL_VERSION = 23
+TOOL_VERSION = 24
 MAP_LIST_PAIR = "std::pair<unsigned long const ,SMAPNODE>"
 MAP_LIST_NODE = "std::_List_node<std::pair<unsigned long const ,SMAPNODE>,void *>"
 CROW_LIST = "CGLLIST<GLCrowClient *>"
@@ -363,6 +363,12 @@ def summon_fields(pdb: Pdb) -> dict[str, object]:
     }
 
 
+def magic_doll_fields(pdb: Pdb) -> dict[str, object]:
+    """v24：魔法娃娃是否在外面：GLCharacter.m_magicDoll（MagicDoll::State）。收起時整組是 0、座標 0xFFFF，
+    叫出時階級 / 座標有值。選用：找不到只留 MagicDollError。"""
+    return {"MagicDollOffset": pdb.offset("GLCharacter", "m_magicDoll")}
+
+
 COOL_NODE = "std::_Tree_node<std::pair<unsigned long const ,ITEM_COOLTIME>,void *>"
 COOL_PAIR = "std::pair<unsigned long const ,ITEM_COOLTIME>"
 
@@ -550,6 +556,10 @@ def resolve(exe: Path) -> dict[str, str]:
             values.update(summon_fields(pdb))
         except Exception as e:   # 召喚獸欄位找不到：只有「雇傭兵偵測」停用
             values["SummonError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(magic_doll_fields(pdb))
+        except Exception as e:   # 沒有魔法娃娃欄位（舊版遊戲）：只有「魔法娃娃偵測」停用
+            values["MagicDollError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
         try:
             values.update(party_window_fields(image, pdb))
         except Exception as e:   # 隊伍視窗欄位找不到：只有「隊長交還」停用，組隊邀請照常

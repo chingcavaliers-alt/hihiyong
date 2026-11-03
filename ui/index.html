@@ -373,7 +373,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.59.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.60.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -518,17 +518,18 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
 </div><div class="subpage" id="companion">
-<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐾</span></span>寵物 / 雇傭兵監測 <span class="pill" id="cwPill">—</span></div>
- <div class="hint">掛機中發現寵物或雇傭兵不在外面，就按道具快捷欄裡那一張卡的鍵叫出來。兩種卡都是「開關」，在外面再按會收起來，所以<b>只在遊戲資料確認「不在外面」時才按</b>：連續確認 10 秒才算（換地圖時它們會暫時消失）、按之前再確認、按完確認真的出現、同一種兩分鐘內不重按、失敗的休息時間越來越長。快捷欄找不到那張卡就不按。</div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐾</span></span>寵物 / 雇傭兵 / 魔法娃娃監測 <span class="pill" id="cwPill">—</span></div>
+ <div class="hint">掛機中發現寵物、雇傭兵或魔法娃娃不在外面，就按道具快捷欄裡那一張卡的鍵叫出來。三種卡都是「開關」，在外面再按會收起來，所以<b>只在遊戲資料確認「不在外面」時才按</b>：連續確認 10 秒才算（換地圖時它們會暫時消失）、按之前再確認、按完確認真的出現、同一種兩分鐘內不重按、失敗的休息時間越來越長。快捷欄找不到那張卡就不按。</div>
  <div class="inv-toolbar" style="margin-top:12px">
   <label class="toggle"><input type="checkbox" id="cwEnabled" onchange="saveCompanion()"> 啟用監測</label>
   <label class="toggle"><input type="checkbox" id="cwPet" onchange="saveCompanion()"> 寵物</label>
   <label class="toggle"><input type="checkbox" id="cwMerc" onchange="saveCompanion()"> 雇傭兵</label>
+  <label class="toggle"><input type="checkbox" id="cwDoll" onchange="saveCompanion()"> 魔法娃娃</label>
  </div>
  <div class="account-sub" id="cwBlocker" style="margin-top:8px"></div>
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>各角色狀態</div>
- <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th></tr></thead><tbody id="cwRows"><tr><td colspan="3" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th><th>魔法娃娃</th></tr></thead><tbody id="cwRows"><tr><td colspan="4" class="hint">讀取中…</td></tr></tbody></table></div>
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>不打擾你：</b>需要把遊戲視窗切到前面按鍵，做完切回原本的視窗；你正在用鍵盤滑鼠時（停 5 秒後才動作）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 組隊 / 示範錄製 / 輪流切換視窗執行中、死亡中、按下緊急停止時都不會動作。</div><div class="hint"><b>注意：</b>遊戲的聊天框正在輸入時按鍵會打進聊天框，請不要把聊天框一直開著輸入狀態。雇傭兵卡如果是限時（例如 [1D]）道具，過期消失後快捷欄就找不到，程式不會亂按。</div></div></details>
 </div><div class="subpage" id="party">
@@ -1623,15 +1624,16 @@ function renderParty(d){
  (d.roles||[]).forEach(r=>{const tr=abox.querySelector(`tr[data-idx="${r.index}"]`);const c=tr&&tr.querySelector('.party-accept-status');if(c)c.textContent=r.accept?(r.acceptStatus||''):'';});
 }
 function renderCompanion(d){
- const en=document.getElementById('cwEnabled'),pe=document.getElementById('cwPet'),me=document.getElementById('cwMerc'),pill=document.getElementById('cwPill'),bl=document.getElementById('cwBlocker'),box=document.getElementById('cwRows');
+ const en=document.getElementById('cwEnabled'),pe=document.getElementById('cwPet'),me=document.getElementById('cwMerc'),dl=document.getElementById('cwDoll'),pill=document.getElementById('cwPill'),bl=document.getElementById('cwBlocker'),box=document.getElementById('cwRows');
  if(en&&document.activeElement!==en)en.checked=!!d.enabled;
  if(pe&&document.activeElement!==pe)pe.checked=!!d.pet;
  if(me&&document.activeElement!==me)me.checked=!!d.merc;
+ if(dl&&document.activeElement!==dl)dl.checked=!!d.doll;
  if(pill)pill.textContent=d.enabled?'監測中':'未啟用';
  if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
- if(box)box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td class="account-sub">${d.pet?esc(r.pet||'—'):'不監測'}</td><td class="account-sub">${d.merc?esc(r.merc||'—'):'不監測'}</td></tr>`).join(''):'<tr><td colspan="3" class="hint">沒有開啟監控的角色</td></tr>';
+ if(box)box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td class="account-sub">${d.pet?esc(r.pet||'—'):'不監測'}</td><td class="account-sub">${d.merc?esc(r.merc||'—'):'不監測'}</td><td class="account-sub">${d.doll?esc(r.doll||'—'):'不監測'}</td></tr>`).join(''):'<tr><td colspan="4" class="hint">沒有開啟監控的角色</td></tr>';
 }
-function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;send('companionset',{value:`${v('cwEnabled')}~${v('cwPet')}~${v('cwMerc')}`});}
+function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;send('companionset',{value:`${v('cwEnabled')}~${v('cwPet')}~${v('cwMerc')}~${v('cwDoll')}`});}
 let partyAcceptSig='';
 function savePartyRemote(el){const tr=el.closest('tr');el.value=el.value.replace(/~/g,'');send('partyremote',{value:`${tr.dataset.idx}~${el.value.trim()}~${tr.dataset.name}`});}
 function savePartyAccept(el){const tr=el.closest('tr');const f=tr.querySelector('.party-from');f.value=f.value.replace(/~/g,'');send('partyaccept',{value:`${tr.dataset.idx}~${tr.querySelector('.party-accept').checked?1:0}~${tr.querySelector('.party-from').value.trim()}~${tr.dataset.name}`});}

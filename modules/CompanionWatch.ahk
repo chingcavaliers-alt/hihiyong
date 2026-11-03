@@ -1,7 +1,7 @@
 ; ============================================================================
-; CompanionWatch：寵物 / 雇傭兵監測。掛機中發現寵物或雇傭兵（召喚獸）不在外面，就按快捷欄那一格的鍵叫出來。
+; CompanionWatch：寵物 / 雇傭兵 / 魔法娃娃監測。掛機中發現寵物、雇傭兵（召喚獸）或魔法娃娃不在外面，就按快捷欄那一格的鍵叫出來。
 ; 預設關閉（工具 → 🐾 寵物雇傭兵 勾選啟用）。
-; 兩種卡都是「開關」：在外面再按一次會收起來，所以只在「記憶體確認不在外面」時才按，而且：
+; 三種卡都是「開關」：在外面再按一次會收起來，所以只在「記憶體確認不在外面」時才按，而且：
 ;   - 連續確認不在外面 CW_CONFIRM_MS（換地圖、前點傳送時它們會暫時消失再出現）才算；
 ;   - 按之前再讀一次、切到前景後再讀一次，還是不在外面才按；
 ;   - 按完等 CW_VERIFY_MS 確認真的出現；兩分鐘內不重按同一種；失敗的休息時間越來越長（最長 30 分鐘）；
@@ -18,20 +18,21 @@ CwIniFlag(key, def) {
 global CW_ENABLED := CwIniFlag("Enabled", 0)
 global CW_PET := CwIniFlag("Pet", 1)
 global CW_MERC := CwIniFlag("Merc", 1)
+global CW_DOLL := CwIniFlag("Doll", 1)
 global CW_CHECK_MS := 5000, CW_CONFIRM_MS := 10000, CW_COOLDOWN_MS := 120000, CW_VERIFY_MS := 8000
 global CW_BACKOFF_MAX_MS := 1800000, CW_NOCARD_MS := 1800000
 global cwBusy := false
 
-; kind："pet" / "merc"
-CwLabel(kind) => kind = "pet" ? "寵物" : "雇傭兵"
-CwCard(kind) => kind = "pet" ? "寵物卡" : "雇傭兵"
+; kind："pet" / "merc" / "doll"
+CwLabel(kind) => kind = "pet" ? "寵物" : (kind = "doll" ? "魔法娃娃" : "雇傭兵")
+CwCard(kind) => kind = "pet" ? "寵物卡" : (kind = "doll" ? "魔法娃娃" : "雇傭兵")   ; 娃娃卡名稱是「魔法娃娃-霜刃劍士」這類，比對只用前面的字
 CwOn(kind) {
-    global CW_PET, CW_MERC
-    return kind = "pet" ? CW_PET : CW_MERC
+    global CW_PET, CW_MERC, CW_DOLL
+    return kind = "pet" ? CW_PET : (kind = "doll" ? CW_DOLL : CW_MERC)
 }
 ; 1 = 在外面，0 = 不在，-1 = 讀不到
 CwRead(p, kind) {
-    try return kind = "pet" ? ReadGamePetOut(p.pid) : ReadGameSummonOut(p.pid)
+    try return kind = "pet" ? ReadGamePetOut(p.pid) : (kind = "doll" ? ReadGameMagicDollOut(p.pid) : ReadGameSummonOut(p.pid))
     return -1
 }
 CwState(p, kind) {
@@ -66,14 +67,14 @@ CompanionTick() {
         ; 別的功能（例如組隊）正在動遊戲視窗：這段時間不算「連續確認」，等它做完重新計
         if !cwBusy
             for p in profiles
-                for kind in ["pet", "merc"]
+                for kind in ["pet", "merc", "doll"]
                     CwState(p, kind).since := 0
         return
     }
     why := ApBlockerRaw()
     if why != "" {
         for p in profiles
-            for kind in ["pet", "merc"]
+            for kind in ["pet", "merc", "doll"]
                 if CwOn(kind)
                     CwReset(p, kind, "等待中：" why)
         return
@@ -83,7 +84,7 @@ CompanionTick() {
     for p in profiles {
         if !p.enabled
             continue
-        for kind in ["pet", "merc"] {
+        for kind in ["pet", "merc", "doll"] {
             if !CwOn(kind) {
                 CwReset(p, kind, "")
                 continue
@@ -209,28 +210,31 @@ CompanionRun(p, kind) {
 }
 
 CompanionSet(rawValue) {
-    global INI, CW_ENABLED, CW_PET, CW_MERC
+    global INI, CW_ENABLED, CW_PET, CW_MERC, CW_DOLL
     parts := StrSplit(rawValue, "~")
-    if parts.Length < 3 || !IsInteger(parts[1]) || !IsInteger(parts[2]) || !IsInteger(parts[3])
+    if parts.Length < 3 || !IsInteger(parts[1]) || !IsInteger(parts[2]) || !IsInteger(parts[3]) || (parts.Length >= 4 && !IsInteger(parts[4]))
         return
     CW_ENABLED := Integer(parts[1]) ? 1 : 0, CW_PET := Integer(parts[2]) ? 1 : 0, CW_MERC := Integer(parts[3]) ? 1 : 0
+    if parts.Length >= 4
+        CW_DOLL := Integer(parts[4]) ? 1 : 0
     IniWrite CW_ENABLED, INI, "Companion", "Enabled"
     IniWrite CW_PET, INI, "Companion", "Pet"
     IniWrite CW_MERC, INI, "Companion", "Merc"
-    AddRecentEvent("🐾 寵物 / 雇傭兵監測：" (CW_ENABLED ? "開啟" : "關閉") "｜寵物 " (CW_PET ? "監測" : "不監測") "｜雇傭兵 " (CW_MERC ? "監測" : "不監測"))
+    IniWrite CW_DOLL, INI, "Companion", "Doll"
+    AddRecentEvent("🐾 寵物 / 雇傭兵 / 魔法娃娃監測：" (CW_ENABLED ? "開啟" : "關閉") "｜寵物 " (CW_PET ? "監測" : "不監測") "｜雇傭兵 " (CW_MERC ? "監測" : "不監測") "｜魔法娃娃 " (CW_DOLL ? "監測" : "不監測"))
 }
 
 CompanionPushWeb() {
-    global webReady, WVCore, profiles, CW_ENABLED, CW_PET, CW_MERC
+    global webReady, WVCore, profiles, CW_ENABLED, CW_PET, CW_MERC, CW_DOLL
     if !webReady || !WVCore
         return
     roles := ""
     for p in profiles {
         if !p.enabled
             continue
-        pt := CW_PET ? CwState(p, "pet").text : "", mt := CW_MERC ? CwState(p, "merc").text : ""
-        roles .= (roles = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","pet":"' JsonEscapeWeb(pt) '","merc":"' JsonEscapeWeb(mt) '"}'
+        pt := CW_PET ? CwState(p, "pet").text : "", mt := CW_MERC ? CwState(p, "merc").text : "", dt := CW_DOLL ? CwState(p, "doll").text : ""
+        roles .= (roles = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","pet":"' JsonEscapeWeb(pt) '","merc":"' JsonEscapeWeb(mt) '","doll":"' JsonEscapeWeb(dt) '"}'
     }
     try WVCore.PostWebMessageAsJson('{"type":"companion","data":{"enabled":' (CW_ENABLED ? "true" : "false") ',"pet":' (CW_PET ? "true" : "false")
-        . ',"merc":' (CW_MERC ? "true" : "false") ',"blocker":"' JsonEscapeWeb(ApBlockerRaw()) '","roles":[' roles ']}}')
+        . ',"merc":' (CW_MERC ? "true" : "false") ',"doll":' (CW_DOLL ? "true" : "false") ',"blocker":"' JsonEscapeWeb(ApBlockerRaw()) '","roles":[' roles ']}}')
 }

@@ -13,7 +13,7 @@ global GAME_OFFSETS_DB_DIR := A_ScriptDir "\offsets_db"
 global gameOffsetsKnownTried := Map()   ; build → 已找過已知版本資料夾
 global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
 ; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
-global GAME_OFFSETS_TOOL_VERSION := 23
+global GAME_OFFSETS_TOOL_VERSION := 24
 global gameMapInfoCache := Map()      ; "主ID-子ID" → {name, peace}（地圖清單在遊戲執行期間不變）
 global gameOffsets := Map()
 global gameBuildByPid := Map()        ; pid → game.exe 版本（每個 PID 只讀一次 PE header）
@@ -694,6 +694,17 @@ ReadGameSummonOut(pid) {
     inst:=GameGaeaBase(pid)
     v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("SummonValidOffset"),"UChar") : ""
     return v="" ? -1 : (v ? 1 : 0)
+}
+; 魔法娃娃現在是否在外面：1 = 在外面，0 = 不在，讀不到回傳 -1。GLCharacter.m_magicDoll：收起時階級 0、座標 0xFFFF，
+; 叫出時階級 / 座標有值（實測：收放一次序號加 1）。只有「階級 0 而且座標 0xFFFF」才算不在，其他一律當作在外面，避免誤判後把它收起來。
+ReadGameMagicDollOut(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("MagicDollOffset")
+        return -1
+    cb:=GameCharBase(pid)
+    buf:=cb ? GameReadBuf(GameProcHandle(pid),cb+GameOffset("MagicDollOffset"),12) : 0
+    if !buf
+        return -1
+    return (NumGet(buf,0,"UInt")=0 && NumGet(buf,8,"UShort")=0xFFFF) ? 0 : 1
 }
 ; 角色身上記的召喚獸全域 ID（沒有召喚獸通常是 0xFFFFFFFF）；讀不到回傳 ""。
 ReadGameSummonGuid(pid) {
