@@ -30,6 +30,14 @@ global gameOffsetsResolvePid := 0
 global gameOffsetsResolveBuild := ""
 global gameOffsetsResolveStart := 0
 global gameOffsetsResolveTried := Map() ; build → 已自動嘗試過（失敗不重複執行）
+; 沒有這個版本的位置資料時，從 GitHub（offsets_db\<Build>.ini）補抓；還沒上傳就每 10 分鐘再試
+global GAME_OFFSETS_REMOTE_RETRY_MS := 600000
+global gameOffsetsRemoteReq := 0
+global gameOffsetsRemoteBuild := ""
+global gameOffsetsRemotePid := 0
+global gameOffsetsRemoteStart := 0
+global gameOffsetsRemoteTried := Map()  ; build → 上次開始下載的 A_TickCount
+global gameOffsetsWaitBuild := ""       ; 目前在等位置資料的版本（空 = 沒在等）
 
 ; MSVC x64 std::map 節點：_Left, _Parent, _Right, _Color, _Isnil, _Myval(key, value)
 global STDMAP_NODE_ISNIL := 0x19
@@ -89,13 +97,117 @@ GameOffsetsReady(pid) {
     build:=GameBuildOf(pid)
     if build=""
         return false
-    if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build
+    global gameOffsetsWaitBuild
+    if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build {
+        if gameOffsetsWaitBuild=build
+            gameOffsetsWaitBuild:=""
         return true
+    }
     ; 沒有 Game.pdb 的電腦：先找隨程式附上的「已知版本」位置資料
-    if GameOffsetsUseKnownBuild(build)
+    if GameOffsetsUseKnownBuild(build) {
+        gameOffsetsWaitBuild:=""
         return true
+    }
+    gameOffsetsWaitBuild:=build
     StartGameOffsetsResolve(pid,build)
     return false
+}
+
+; 登入座標 / 開始監控被擋時要顯示的說明：遊戲剛更新、還在等新版位置資料時回傳說明文字，否則空字串。
+GameOffsetsWaitingText() {
+    global gameOffsetsWaitBuild
+    if gameOffsetsWaitBuild=""
+        return ""
+    return "遊戲剛更新（版本 " gameOffsetsWaitBuild "），正在等待新版的遊戲資料位置。`n`n"
+        . "程式會自動到 GitHub 下載，約每 10 分鐘重試一次；也可以按畫面上方的「檢查更新」。`n"
+        . "下載到之後就能使用，不需要重新校正座標。"
+}
+
+; 下載來的位置資料是否可信：UTF-16（含 BOM）、Status=OK、Build 與要的版本相同、工具版本夠新。
+GameOffsetsRemoteValid(text, build) {
+    global GAME_OFFSETS_TOOL_VERSION
+    if !RegExMatch(text,"m)^Status=OK\s*$") || !RegExMatch(text,"m)^Build=(\S+)\s*$",&mb) || mb[1]!=build
+        return false
+    return RegExMatch(text,"m)^ToolVersion=(\d+)\s*$",&mt) && Integer(mt[1])>=GAME_OFFSETS_TOOL_VERSION
+}
+
+; 非同步下載（不卡住管理程式）；回傳 true = 已經開始或正在下載，呼叫端先不要走 Game.pdb 解析。
+GameOffsetsFetchRemote(pid, build) {
+    global gameOffsetsRemoteReq,gameOffsetsRemoteBuild,gameOffsetsRemotePid,gameOffsetsRemoteStart
+    global gameOffsetsRemoteTried,GAME_OFFSETS_REMOTE_RETRY_MS
+    if IsObject(gameOffsetsRemoteReq)
+        return gameOffsetsRemoteBuild=build
+    if !RegExMatch(build,"^[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*\z")
+        return false
+    last:=gameOffsetsRemoteTried.Get(build,0)
+    if last && A_TickCount-last<GAME_OFFSETS_REMOTE_RETRY_MS
+        return false
+    gameOffsetsRemoteTried[build]:=A_TickCount
+    repo:="chingcavaliers-alt/hihiyong"   ; 與 Updater.ahk 的 UPDATE_REPO 相同；測試環境沒有那個變數
+    try repo:=%"UPDATE_REPO"%
+    try {
+        gameOffsetsRemoteReq:=ComObject("WinHttp.WinHttpRequest.5.1")
+        gameOffsetsRemoteReq.Open("GET","https://raw.githubusercontent.com/" repo "/main/offsets_db/" build ".ini?t=" A_TickCount,true)
+        gameOffsetsRemoteReq.SetRequestHeader("Cache-Control","no-cache")
+        gameOffsetsRemoteReq.Send()
+    } catch {
+        gameOffsetsRemoteReq:=0
+        return false
+    }
+    gameOffsetsRemoteBuild:=build,gameOffsetsRemotePid:=pid,gameOffsetsRemoteStart:=A_TickCount
+    EventLog("GLOBAL","GAME_OFFSETS_REMOTE","本機沒有版本 " build " 的位置資料｜向 GitHub 查詢")
+    AddRecentEvent("🌐 遊戲版本 " build " 沒有位置資料，正在向 GitHub 下載")
+    SetTimer GameOffsetsRemotePoll,300
+    return true
+}
+
+GameOffsetsRemotePoll() {
+    global gameOffsetsRemoteReq,gameOffsetsRemoteBuild,gameOffsetsRemotePid,gameOffsetsRemoteStart
+    global gameOffsetsKnownTried,GAME_OFFSETS_DB_DIR,gameOffsets,profiles
+    done:=false
+    try done:=gameOffsetsRemoteReq.WaitForResponse(0)
+    if !done && A_TickCount-gameOffsetsRemoteStart<20000
+        return
+    SetTimer GameOffsetsRemotePoll,0
+    req:=gameOffsetsRemoteReq,build:=gameOffsetsRemoteBuild,pid:=gameOffsetsRemotePid
+    gameOffsetsRemoteReq:=0
+    ok:=false,code:=0
+    try {
+        code:=req.Status
+        if code=200 {
+            body:=req.ResponseBody,size:=body.MaxIndex()+1
+            ; SAFEARRAY.pvData（x64 在 +16）；UTF-16 LE 要有 BOM（FF FE），否則 IniRead 讀不到
+            p:=NumGet(ComObjValue(body),8+A_PtrSize,"Ptr")
+            if size>4 && size<65536 && NumGet(p,0,"UShort")=0xFEFF {
+                text:=StrGet(p+2,(size-2)//2,"UTF-16")
+                if GameOffsetsRemoteValid(text,build) {
+                    DirCreate GAME_OFFSETS_DB_DIR
+                    tmp:=GAME_OFFSETS_DB_DIR "\" build ".ini.part"
+                    f:=FileOpen(tmp,"w")
+                    f.RawWrite(p,size)
+                    f.Close()
+                    FileMove tmp,GAME_OFFSETS_DB_DIR "\" build ".ini",true
+                    ok:=true
+                }
+            }
+        }
+    }
+    if ok {
+        try gameOffsetsKnownTried.Delete(build)
+        if GameOffsetsUseKnownBuild(build) {
+            EventLog("GLOBAL","GAME_OFFSETS_REMOTE_OK","已從 GitHub 取得版本 " build " 的位置資料")
+            AddRecentEvent("✓ 已從 GitHub 取得新版遊戲資料位置，不需要校正")
+            for p in profiles {
+                if !p.HasOwnProp("memHpStale") || !ProfileGameAlive(p)
+                    continue
+                p.memHpStale:=0,p.memHpArmed:=0,p.memHpPlausibleStreak:=0
+                p.memHpUnarmedSince:=A_TickCount,p.memHpSuspectLogged:=0
+            }
+            return
+        }
+    }
+    EventLog("GLOBAL","GAME_OFFSETS_REMOTE_MISS","GitHub 還沒有版本 " build " 的位置資料" (code ? "（回應 " code "）" : "（連不到 GitHub）") "｜10 分鐘後再試")
+    StartGameOffsetsResolve(pid,build)
 }
 
 ; 已知版本資料夾 offsets_db\<Build>.ini：由有 Game.pdb 的電腦解析後隨發佈包 / 更新一起發出。
@@ -160,7 +272,10 @@ FindPythonLauncher() {
 
 StartGameOffsetsResolve(pid,build) {
     global gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,gameOffsetsResolveTried,GAME_OFFSETS_INI
-    global GAME_OFFSETS_TOOL_VERSION
+    global GAME_OFFSETS_TOOL_VERSION,gameOffsetsRemoteTried
+    ; 先向 GitHub 要這個版本的位置資料；已經問過（或剛問完沒有）才輪到本機 Game.pdb 解析
+    if GameOffsetsFetchRemote(pid,build)
+        return
     tryKey:=build "#" GAME_OFFSETS_TOOL_VERSION
     if GameOffsetsResolving() || gameOffsetsResolveTried.Has(tryKey)
         return

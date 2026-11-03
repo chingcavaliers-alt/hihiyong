@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.60.0"
+global APP_VERSION := "v1.3.61.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -1338,7 +1338,7 @@ SaveGeneral(*) {
 BatchStartChecked(*) {
     global running,abortRequested,profiles,recoveryQueue,queued,processingQueue,Status
     if !PointsConfigured() && !LoginMemoryAvailable() {
-        MsgBox "找不到完整 8 點登入座標。請先完成登入座標校正。", APP_TITLE
+        MsgBox (GameOffsetsWaitingText()!="" ? GameOffsetsWaitingText() : "找不到完整 8 點登入座標。請先完成登入座標校正。"), APP_TITLE
         return
     }
 
@@ -1412,7 +1412,7 @@ StartMonitoring(*) {
     global running,abortRequested,profiles,Status,emergencyStop,DeathResetOnMonitorCB
     emergencyStop:=false
     if !PointsConfigured() && !LoginMemoryAvailable() {
-        MsgBox "找不到完整 8 點登入座標。請先用 v0.5.x 完成座標校正；v0.6 會沿用同一個 HIHIYONG_AutoRecovery.ini。",APP_TITLE
+        MsgBox (GameOffsetsWaitingText()!="" ? GameOffsetsWaitingText() : "找不到完整 8 點登入座標。請先用 v0.5.x 完成座標校正；v0.6 會沿用同一個 HIHIYONG_AutoRecovery.ini。"),APP_TITLE
         return
     }
     for p in profiles {
