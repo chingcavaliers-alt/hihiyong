@@ -144,7 +144,7 @@ UpdateApply() {
         updateStatus := "下載 " ver " 中…"
         UpdatePushWeb()
         try FileDelete zip
-        Download "https://github.com/" UPDATE_REPO "/archive/refs/tags/" ver ".zip", zip
+        UpdateDownload("https://github.com/" UPDATE_REPO "/archive/refs/tags/" ver ".zip", zip)
         r := UpdateInstall(zip, ver, A_ScriptDir, APP_VERSION)
         try FileDelete zip
         EventLog("GLOBAL", "UPDATE_DONE", APP_VERSION " → " ver "｜換了 " r.count " 個檔案｜備份：" r.backup)
@@ -160,6 +160,35 @@ UpdateApply() {
         updateRunning := false, foregroundOwner := ""
         UpdatePushWeb()
     }
+}
+
+; 下載檔案：先用 WinHttp（檢查更新用的就是它，遇過電腦的 WinINet 因 TLS 設定出現 12157 而失敗），
+; 不行再退回 AHK 內建的 Download；兩個都失敗時訊息要寫出錯誤碼（Download 的例外沒有文字）。
+UpdateDownload(url, path) {
+    winErr := ""
+    try {
+        req := ComObject("WinHttp.WinHttpRequest.5.1")
+        req.Open("GET", url, false)
+        req.SetTimeouts(15000, 15000, 30000, 180000)
+        req.SetRequestHeader("User-Agent", "HIHIYONG-Updater")
+        req.Send()
+        if req.Status != 200
+            throw Error("GitHub 回應 " req.Status)
+        body := req.ResponseBody, size := body.MaxIndex() + 1
+        if size < 1024
+            throw Error("下載的檔案太小（" size " 位元組）")
+        p := NumGet(ComObjValue(body), 8 + A_PtrSize, "Ptr")   ; SAFEARRAY.pvData
+        f := FileOpen(path, "w")
+        f.RawWrite(p, size)
+        f.Close()
+        return
+    } catch as e
+        winErr := e.Message
+    try {
+        Download url, path
+        return
+    } catch as e2
+        throw Error("下載失敗（WinHttp：" winErr "｜WinINet：" (e2.Message != "" ? e2.Message : "錯誤碼 " A_LastError) "）。請確認這台電腦連得上 github.com、系統時間正確，並到「網際網路選項 → 進階」勾選使用 TLS 1.2")
 }
 
 ; 新檔已就位：等重新登入 / 每日道具等做完才重新啟動（不會把它們從中間砍掉）。
