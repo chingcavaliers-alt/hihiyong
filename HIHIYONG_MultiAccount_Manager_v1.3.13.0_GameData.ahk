@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.56.0"
+global APP_VERSION := "v1.3.58.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -143,6 +143,7 @@ if softIdleSec=60 && softConfirmSec=15 {
     IniWrite softConfirmSec, INI, "SoftDisconnect", "ConfirmSeconds"
 }
 global softMinVotes:=Integer(IniRead(INI,"SoftDisconnect","MinVotes","2"))
+global softMultiConfirmTick:=0
 global softMultiAssist:=Integer(IniRead(INI,"SoftDisconnect","MultiAssist","1"))
 global softAutoRecover:=Integer(IniRead(INI,"SoftDisconnect","AutoRecover","1"))
 global softCandidateSince:=0
@@ -2214,8 +2215,10 @@ SoftDisconnectConfirmed(i, p, detail) {
 }
 
 EvaluateMultiWindowFakeOnline() {
-    global profiles,SoftMinVotesEdit
+    global profiles,SoftMinVotesEdit,softMultiConfirmTick
     required:=Max(1,SoftMinVotesEdit.Value+0)
+    ; 共同確認成立後的 3 分鐘內，慢幾秒才滿 60 秒的視窗不用再湊滿門檻（其他視窗已離開監控，永遠湊不到）：同一次卡住，一起處理
+    fellowWindow:=softMultiConfirmTick && A_TickCount-softMultiConfirmTick<180000
     candidates:=[]
     for i,p in profiles {
         if !p.enabled || !p.softDetect || p.state!="監控中" || p.hpEventOpen || !ProfileGameAlive(p) || !p.memHpReadOk
@@ -2237,16 +2240,19 @@ EvaluateMultiWindowFakeOnline() {
         candidates.Push(i)
     }
     count:=candidates.Length
+    need:=fellowWindow ? 1 : required
     for idx in candidates {
         p:=profiles[idx]
-        p.memSoftState := count>=required ? "已確認假在線" : "等待其他角色確認（" count " / " required "）"
+        p.memSoftState := count>=need ? "已確認假在線" : "等待其他角色確認（" count " / " required "）"
     }
-    if count<required
+    if count<need
         return
+    if !fellowWindow
+        softMultiConfirmTick:=A_TickCount
     names:=""
     for idx in candidates
         names.=(names="" ? "" : "、") profiles[idx].name
-    EventLog("GLOBAL","SOFT_MULTI_CONFIRMED","多視窗共同判定成立｜60秒無血量變化=" count "｜門檻=" required "｜" names)
+    EventLog("GLOBAL","SOFT_MULTI_CONFIRMED","多視窗共同判定成立｜60秒無血量變化=" count "｜門檻=" required (fellowWindow ? "（同一次卡住稍後才滿 60 秒的視窗）" : "") "｜" names)
     for idx in candidates {
         p:=profiles[idx]
         if p.memSoftAlerted
