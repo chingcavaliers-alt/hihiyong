@@ -13,7 +13,7 @@ global GAME_OFFSETS_DB_DIR := A_ScriptDir "\offsets_db"
 global gameOffsetsKnownTried := Map()   ; build → 已找過已知版本資料夾
 global GAME_OFFSETS_RESOLVE_TIMEOUT_MS := 60000
 ; 需要的解析工具版本（tools\resolve_game_offsets.py 的 TOOL_VERSION）；INI 較舊時自動重新解析。
-global GAME_OFFSETS_TOOL_VERSION := 24
+global GAME_OFFSETS_TOOL_VERSION := 31
 global gameMapInfoCache := Map()      ; "主ID-子ID" → {name, peace}（地圖清單在遊戲執行期間不變）
 global gameOffsets := Map()
 global gameBuildByPid := Map()        ; pid → game.exe 版本（每個 PID 只讀一次 PE header）
@@ -820,6 +820,170 @@ ReadGameMagicDollOut(pid) {
     if !buf
         return -1
     return (NumGet(buf,0,"UInt")=0 && NumGet(buf,8,"UShort")=0xFFFF) ? 0 : 1
+}
+; 每日任務（T 視窗）：回傳 {today, rows:[{name, claimed, goals:[{map, name, target, done}]}]}；讀不到回傳 0。
+; 資料是遊戲收到伺服器回應後放在固定位置的 DailyTasks::Response，這個遊戲視窗打開過 T 才有；
+; 還沒有資料（今日欄位 0 / 沒有任務），或任務是前一天的（row.day 不等於 today），也回傳 0（呼叫端要先開 T 再讀）。
+ReadGameDailyTasks(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("DailyStateRva")
+        return 0
+    hProc:=GameProcHandle(pid)
+    base:=hProc ? GetGameModuleBase(pid,hProc) : 0
+    if !base
+        return 0
+    rowBytes:=GameOffset("DailyRowBytes"),rowMax:=GameOffset("DailyRowCount"),objBytes:=GameOffset("DailyObjectiveBytes")
+    if !rowBytes || !rowMax || !objBytes || rowMax>8
+        return 0
+    state:=base+GameOffset("DailyStateRva")
+    head:=GameReadBuf(hProc,state,GameOffset("DailyRowsOffset"))
+    if !head
+        return 0
+    today:=NumGet(head,GameOffset("DailyTodayOffset"),"UInt")
+    count:=NumGet(head,GameOffset("DailyCountOffset"),"UInt")
+    if !today || !count || count>rowMax
+        return 0
+    res:={today:today,rows:[]}
+    Loop count {
+        row:=GameReadBuf(hProc,state+GameOffset("DailyRowsOffset")+(A_Index-1)*rowBytes,rowBytes)
+        if !row
+            return 0
+        if NumGet(row,GameOffset("DailyRowDayOffset"),"UInt")!=today
+            return 0
+        objCount:=NumGet(row,GameOffset("DailyRowObjCountOffset"),"UInt")
+        if objCount>4
+            return 0
+        r:={name:StrGet(row.Ptr+GameOffset("DailyRowDefNameOffset"),"CP950"),claimed:NumGet(row,GameOffset("DailyRowClaimedOffset"),"UInt")?1:0,goals:[]}
+        Loop objCount {
+            o:=GameOffset("DailyRowObjectivesOffset")+(A_Index-1)*objBytes
+            r.goals.Push({map:NumGet(row,o+GameOffset("DailyObjMapOffset"),"UInt")
+                ,name:StrGet(row.Ptr+o+GameOffset("DailyObjNameOffset"),"CP950")
+                ,target:NumGet(row,o+GameOffset("DailyObjTargetOffset"),"UInt")
+                ,done:NumGet(row,GameOffset("DailyRowObjProgressOffset")+(A_Index-1)*4,"UInt")})
+        }
+        res.rows.Push(r)
+    }
+    return res
+}
+; 介面視窗指標：which = "Bus"（公車）/ "Dialogue"（NPC 對話）/ "LargeMap"（大地圖）；讀不到回傳 0。
+GameInnerWindow(pid, which) {
+    key := "Inner" which "WindowOffset"
+    if !GameOffsetsReady(pid) || !GameOffset("InnerInterfaceRva") || !GameOffset(key)
+        return 0
+    hProc := GameProcHandle(pid)
+    base := hProc ? GetGameModuleBase(pid, hProc) : 0
+    if !base
+        return 0
+    w := GameReadNum(hProc, base + GameOffset("InnerInterfaceRva") + GameOffset(key), "Ptr")
+    return w ? w : 0
+}
+; 這個介面視窗現在有沒有開著：1 = 開著，0 = 沒開，讀不到回傳 -1。
+ReadGameUiOpen(pid, which) {
+    w := GameInnerWindow(pid, which)
+    if !w || !GameOffset("UiVisibleOffset")
+        return -1
+    v := GameReadNum(GameProcHandle(pid), w + GameOffset("UiVisibleOffset"), "UInt")
+    return v = "" ? -1 : (v ? 1 : 0)
+}
+; 公車視窗：{visible, sel（目前選到清單第幾筆，0 起算；沒選 = -1）, maps:[清單每一筆的地圖編號]}；讀不到回傳 0。
+; 清單是遊戲自己載入的（GLBusList.m_vecVILLAGE），不用寫死哪張圖在第幾筆。
+ReadGameBusWindow(pid) {
+    w := GameInnerWindow(pid, "Bus")
+    if !w || !GameOffset("BusVillageVecOffset") || !GameOffset("BusVillageBytes")
+        return 0
+    hProc := GameProcHandle(pid)
+    vis := GameReadNum(hProc, w + GameOffset("UiVisibleOffset"), "UInt")
+    sel := GameReadNum(hProc, w + GameOffset("BusSelectMapOffset"), "UInt")
+    vb := GameReadNum(hProc, w + GameOffset("BusVillageVecOffset"), "Ptr")
+    ve := GameReadNum(hProc, w + GameOffset("BusVillageVecOffset") + 8, "Ptr")
+    stride := GameOffset("BusVillageBytes")
+    if vis = "" || sel = "" || !vb || !ve || ve <= vb || (ve - vb) // stride > 200
+        return 0
+    count := (ve - vb) // stride
+    buf := GameReadBuf(hProc, vb, count * stride)
+    if !buf
+        return 0
+    maps := []
+    Loop count
+        maps.Push(NumGet(buf, (A_Index - 1) * stride + GameOffset("BusVillageMapIdOffset"), "UInt"))
+    return {visible: vis ? 1 : 0, sel: sel < count ? sel : -1, maps: maps}
+}
+; 公車清單文字框：{cur（目前頁首第幾行，0 起算）, visible（一頁幾行）, total（總共幾行）, over（滑鼠停在第幾行：沒停在任何一行 = -1）, sel, top, height（框在遊戲畫面上的位置）}；讀不到回傳 0。
+; 「捲到哪裡」「游標下面是哪一行」遊戲裡直接讀得到，不用靠點擊再讀回去猜。
+ReadGameBusList(pid) {
+    w := GameInnerWindow(pid, "Bus")
+    if !w || !GameOffset("BusMapListOffset") || !GameOffset("TextBoxCurLineOffset")
+        return 0
+    hProc := GameProcHandle(pid)
+    tb := GameReadNum(hProc, w + GameOffset("BusMapListOffset"), "Ptr")
+    if !tb
+        return 0
+    cur := GameReadNum(hProc, tb + GameOffset("TextBoxCurLineOffset"), "Int")
+    vis := GameReadNum(hProc, tb + GameOffset("TextBoxVisibleLineOffset"), "Int")
+    tot := GameReadNum(hProc, tb + GameOffset("TextBoxTotalLineOffset"), "Int")
+    over := GameReadNum(hProc, tb + GameOffset("TextBoxMouseOverOffset"), "Int")
+    sel := GameReadNum(hProc, tb + GameOffset("TextBoxSelectedOffset"), "Int")
+    rc := GameReadBuf(hProc, tb + GameOffset("UiGlobalRectOffset"), 24)
+    if cur = "" || vis = "" || tot = "" || over = "" || sel = "" || !rc || vis < 1 || vis > 100 || tot < 0 || tot > 500
+        return 0
+    return {cur: cur, visible: vis, total: tot, over: over, sel: sel, top: NumGet(rc, 8, "Float"), height: NumGet(rc, 20, "Float")}
+}
+; 大地圖（M）頁面：{visible, left, right, top, bottom（地圖框在遊戲畫面上的位置）, startX, startY, sizeX, sizeY（世界範圍）, texX, texY（地圖貼圖像素）,
+;  viewX, viewY（視圖起點）, rpx, rpy（目前顯示的貼圖位置，0~1）, tx, ty（遊戲記的「上次點的目標」地圖像素）, mapMain（這頁顯示哪張圖）}；讀不到回傳 0。
+ReadGameNewMap(pid) {
+    w := GameInnerWindow(pid, "NewMap")
+    if !w || !GameOffset("NewMapMainPageOffset") || !GameOffset("NewMapCtlOffset")
+        return 0
+    hProc := GameProcHandle(pid)
+    vis := GameReadNum(hProc, w + GameOffset("UiVisibleOffset"), "UInt")
+    page := GameReadNum(hProc, w + GameOffset("NewMapMainPageOffset"), "Ptr")
+    if vis = "" || !page
+        return 0
+    I(key) => GameReadNum(hProc, page + GameOffset(key), "Int")
+    pg := {visible: vis ? 1 : 0, startX: I("NewMapWorldStartXOffset"), startY: I("NewMapWorldStartYOffset"), sizeX: I("NewMapWorldSizeXOffset"), sizeY: I("NewMapWorldSizeYOffset")
+        , texX: I("NewMapTexSizeXOffset"), texY: I("NewMapTexSizeYOffset"), viewX: I("NewMapViewStartXOffset"), viewY: I("NewMapViewStartYOffset")
+        , tx: I("NewMapTargetXOffset"), ty: I("NewMapTargetYOffset")}
+    for k, v in pg.OwnProps()
+        if v = ""
+            return 0
+    if pg.sizeX <= 0 || pg.sizeY <= 0 || pg.texX <= 0 || pg.texY <= 0
+        return 0
+    rp := GameReadBuf(hProc, page + GameOffset("NewMapRenderPosOffset"), 8)
+    ctl := GameReadNum(hProc, page + GameOffset("NewMapCtlOffset"), "Ptr")
+    rc := ctl ? GameReadBuf(hProc, ctl + GameOffset("UiGlobalRectOffset"), 24) : 0
+    mid := GameReadNum(hProc, page + GameOffset("NewMapMapIdOffset"), "UShort")
+    if !rp || !rc || mid = ""
+        return 0
+    ; 玩家標記（代表人物的小點）在畫面上的中心：地圖開著時每個畫面都會更新，用它對照人物的世界座標就能得到精確的偏移
+    pm := GameOffset("NewMapPlayerMarkOffset") ? GameReadNum(hProc, page + GameOffset("NewMapPlayerMarkOffset"), "Ptr") : 0
+    prc := pm ? GameReadBuf(hProc, pm + GameOffset("UiGlobalRectOffset"), 24) : 0
+    if prc {
+        mx := (NumGet(prc, 0, "Float") + NumGet(prc, 4, "Float")) / 2, my := (NumGet(prc, 8, "Float") + NumGet(prc, 12, "Float")) / 2
+        if vis && mx > NumGet(rc, 0, "Float") - 60 && mx < NumGet(rc, 4, "Float") + 60 && my > NumGet(rc, 8, "Float") - 60 && my < NumGet(rc, 12, "Float") + 60
+            pg.markX := mx, pg.markY := my
+    }
+    pg.rpx := NumGet(rp, 0, "Float"), pg.rpy := NumGet(rp, 4, "Float")
+    pg.left := NumGet(rc, 0, "Float"), pg.right := NumGet(rc, 4, "Float"), pg.top := NumGet(rc, 8, "Float"), pg.bottom := NumGet(rc, 12, "Float")
+    pg.mapMain := mid
+    return pg
+}
+; 滑鼠現在指著哪一個怪 / NPC：{kind（1 = NPC，2 = 怪）, id（全域編號，和怪物清單的 glob 一樣；沒指到任何東西 = -1）}；讀不到回傳 0。
+ReadGameMouseTarget(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("CharMouseTargetOffset") || !GameOffset("TargetIdOffset")
+        return 0
+    cb := GameCharBase(pid)
+    buf := cb ? GameReadBuf(GameProcHandle(pid), cb + GameOffset("CharMouseTargetOffset"), GameOffset("TargetIdOffset") + 4) : 0
+    if !buf
+        return 0
+    id := NumGet(buf, GameOffset("TargetIdOffset"), "UInt")
+    return {kind: NumGet(buf, 0, "UInt"), id: id = 0xFFFFFFFF ? -1 : id}
+}
+; 遊戲的「自動打怪」（F6）是不是開著：1 = 開著，0 = 沒開，讀不到回傳 -1。
+ReadGameAutoHunt(pid) {
+    if !GameOffsetsReady(pid) || !GameOffset("AutoHuntOffset")
+        return -1
+    cb := GameCharBase(pid)
+    v := cb ? GameReadNum(GameProcHandle(pid), cb + GameOffset("AutoHuntOffset"), "UInt") : ""
+    return v = "" ? -1 : (v ? 1 : 0)
 }
 ; 角色身上記的召喚獸全域 ID（沒有召喚獸通常是 0xFFFFFFFF）；讀不到回傳 ""。
 ReadGameSummonGuid(pid) {

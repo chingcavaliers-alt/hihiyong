@@ -1,4 +1,4 @@
-﻿; ============================================================================
+; ============================================================================
 ; v1.3.18.0 ReviveAssist：卡復活時自動點遊戲畫面上的復活鍵。
 ;
 ; 死亡事件（Memory HP = 0）持續超過 StuckSeconds 秒仍沒復活 → 視為卡復活：
@@ -21,7 +21,8 @@ global REVIVE_TEMPLATE := "revive_button"
 global REVIVE_CONFIRM_MS := 8000
 
 ; 由 Memory HP 監控在死亡事件進行中呼叫（每次取樣一次）。
-ReviveStuckCheck(p) {
+; stuckSec / idleSec：預設用設定值（死亡超過 60 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上用歸魂珠原地復活，不等 60 秒。
+ReviveStuckCheck(p, stuckSec := -1, idleSec := -1) {
     global REVIVE_AUTOCLICK,REVIVE_STUCK_SEC,REVIVE_IDLE_SEC,REVIVE_RETRY_SEC,REVIVE_MAX_ATTEMPTS
     global foregroundOwner,processingQueue,fastLoginCritical,asyncLoadingEntries,abortRequested,dailyRunning,recorder
     if !REVIVE_AUTOCLICK || !p.hpEventOpen || abortRequested
@@ -31,12 +32,16 @@ ReviveStuckCheck(p) {
     p.reviveEventNo:=p.hpEventNo
     if !p.HasOwnProp("reviveAttempts")
         p.reviveAttempts:=0,p.reviveLastTick:=0
-    if A_TickCount-p.hpEventTick<REVIVE_STUCK_SEC*1000 || p.reviveAttempts>=REVIVE_MAX_ATTEMPTS
+    if stuckSec<0
+        stuckSec:=REVIVE_STUCK_SEC
+    if idleSec<0
+        idleSec:=REVIVE_IDLE_SEC
+    if A_TickCount-p.hpEventTick<stuckSec*1000 || p.reviveAttempts>=REVIVE_MAX_ATTEMPTS
         return
     if p.reviveLastTick && A_TickCount-p.reviveLastTick<REVIVE_RETRY_SEC*1000
         return
     ; 使用者正在操作 / 其他自動化正在用前景：下一輪再看。
-    if A_TimeIdlePhysical<REVIVE_IDLE_SEC*1000 || foregroundOwner!="" || processingQueue || fastLoginCritical
+    if A_TimeIdlePhysical<idleSec*1000 || foregroundOwner!="" || processingQueue || fastLoginCritical
         || asyncLoadingEntries.Count || dailyRunning!="" || IsObject(recorder)
         return
     p.reviveAttempts+=1

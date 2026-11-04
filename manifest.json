@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.62.0",
+    "version":  "v1.3.63.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -43,7 +43,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "c1b6f0deef93976b9255111be2db7252db4f0b663d08941df20d7b5e73aad053"
+                      "sha256":  "65944c966dbb0e1aee6570643d5679be7a0613a3d315c1d6ef4c4876ba1e9203"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -123,11 +123,15 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "56501a8de628f796f1a29afd99322ae83aa9059a9926991332a39ee6beabae62"
+                      "sha256":  "12dfb0fe952057d5562be6e46a8e8e88cbb2509eec9afd66e18274d6480f82fa"
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
                       "sha256":  "130b300968f6b6ff84bbcb1699878f3667eaa0c731a9681c1617c541abd4952c"
+                  },
+                  {
+                      "path":  "modules\\DailyHunt.ahk",
+                      "sha256":  "0d393170ae7748e120e288cee45475b814505fe5bce703f8218e2566deb4e84f"
                   },
                   {
                       "path":  "modules\\DailyItems.ahk",
@@ -159,7 +163,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "9b1fbe31b0940a4b63817d25a7fa2d3351f6dab0483c9ac7d2dfb76e20fc1616"
+                      "sha256":  "949f0f5197af6c453fdece6ae79e6042efa1b56cc9154b8c8f850190d69b6143"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -191,7 +195,7 @@
                   },
                   {
                       "path":  "modules\\Mining.ahk",
-                      "sha256":  "797ba4d5c9ecdb8bfd13f7c83b19551318fe0a37e6eb91298f4b28c60c1ff682"
+                      "sha256":  "197f48710607ece9ad0550cbb78a9c4375967911a96e174fa749bf4481a0ec7c"
                   },
                   {
                       "path":  "modules\\NetGuard.ahk",
@@ -231,7 +235,7 @@
                   },
                   {
                       "path":  "modules\\ReviveAssist.ahk",
-                      "sha256":  "ee6da25e645e6996e8121c857beb10a1ace9ea2523442ed508b2625ceb1aadc1"
+                      "sha256":  "c7dd736ea62d4d0d4470b54703a9e10ef3ca4007c86750c23e131cd85c45d3dc"
                   },
                   {
                       "path":  "modules\\Signals.ahk",
@@ -246,12 +250,8 @@
                       "sha256":  "bdf6d382b676d3c4a29089a0493858b5431e57a2ea18751224966e82e97fa1a9"
                   },
                   {
-                      "path":  "offsets_db\\6AE8F3A7-20EC000.ini",
-                      "sha256":  "b4ea8730c6f0f91f12c26263cb8476f8bb7dfe8b9d2db4126f7b85395ca7600f"
-                  },
-                  {
                       "path":  "offsets_db\\6AE9CFCB-2103000.ini",
-                      "sha256":  "b7dd1c0d80f49743eb29a9904d41741b6fdb1684ca98ab65008c2993d1d25a94"
+                      "sha256":  "209403b8ce13b8722b95b976c694605afedace3d8b219e3ff4e1be57d94db74c"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -295,11 +295,11 @@
                   },
                   {
                       "path":  "tools\\resolve_game_offsets.py",
-                      "sha256":  "0b56f052091bd49c083d04ba9b1e68a1892937c27c65dfdbcebc9c839896d317"
+                      "sha256":  "69479d9ccb8eccf015c9b2a38b276f8e18ec2b85d5f41186167d8217e290e490"
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "5fc57f667e8cc1243699e6b362dd6c2598dede2af0be38e8fb97aabdcedb9241"
+                      "sha256":  "585bd31267b3a56ab972cb2e7ef3377b92cdc12c0cd26c5afb31e4aef7ff4602"
                   },
                   {
                       "path":  "登入測試.bat",

@@ -26,7 +26,7 @@ TI_GET_CHILDRENCOUNT, TI_FINDCHILDREN = 13, 7
 LEA_RAX_RIP = bytes([0x48, 0x8D, 0x05])
 SYMBOL_INFOW_BASE_SIZE = 88  # sizeof(SYMBOL_INFOW) 不含名稱緩衝區（x64）
 # 輸出欄位有增加時遞增；管理器發現 INI 的版本較舊會自動重新解析。
-TOOL_VERSION = 24
+TOOL_VERSION = 31
 MAP_LIST_PAIR = "std::pair<unsigned long const ,SMAPNODE>"
 MAP_LIST_NODE = "std::_List_node<std::pair<unsigned long const ,SMAPNODE>,void *>"
 CROW_LIST = "CGLLIST<GLCrowClient *>"
@@ -369,6 +369,82 @@ def magic_doll_fields(pdb: Pdb) -> dict[str, object]:
     return {"MagicDollOffset": pdb.offset("GLCharacter", "m_magicDoll")}
 
 
+def daily_task_fields(image: PeImage, pdb: Pdb) -> dict[str, object]:
+    """v25：每日任務（T 視窗）的資料。DailyTasks::Client::Get() 回傳 game.exe 裡固定位置的狀態，開頭就是伺服器傳來的
+    DailyTasks::Response（今日、最多 4 組任務；每組有 1~4 個地圖目標與各自的擊殺進度）。打開過 T 視窗才有資料。
+    唯讀。選用：找不到只留 DailyError。"""
+    row = "DailyTasks::Row"
+    definition = "DailyTasks::Definition"
+    objective = "DailyTasks::Objective"
+    return {
+        "DailyStateRva": static_instance_rva(image, *pdb.function("DailyTasks::Client::Get")),
+        "DailyTodayOffset": pdb.offset("DailyTasks::Response", "today"),
+        "DailyCountOffset": pdb.offset("DailyTasks::Response", "count"),
+        "DailyRowsOffset": pdb.offset("DailyTasks::Response", "rows"),
+        "DailyRowBytes": pdb.size(row),
+        "DailyRowCount": pdb.member_size("DailyTasks::Response", "rows") // pdb.size(row),
+        "DailyRowDefNameOffset": pdb.offset(row, "definition.name"),
+        "DailyRowObjCountOffset": pdb.offset(row, "definition.objectiveCount"),
+        "DailyRowObjectivesOffset": pdb.offset(row, "definition.objectives"),
+        "DailyRowDayOffset": pdb.offset(row, "day"),
+        "DailyRowProgressOffset": pdb.offset(row, "progress"),
+        "DailyRowClaimedOffset": pdb.offset(row, "claimed"),
+        "DailyRowObjProgressOffset": pdb.offset(row, "objectiveProgress"),
+        "DailyObjectiveBytes": pdb.size(objective),
+        "DailyObjMapOffset": pdb.offset(objective, "map"),
+        "DailyObjTargetOffset": pdb.offset(objective, "target"),
+        "DailyObjNameOffset": pdb.offset(objective, "name"),
+    }
+
+def hunt_fields(pdb: Pdb) -> dict[str, object]:
+    """v26：每日討伐自動跑圖用（唯讀）：公車視窗是否開著 / 目前選了哪一筆 / 清單裡每筆的地圖編號，
+    NPC 對話視窗、大地圖視窗是否開著，以及遊戲的「自動打怪」（F6）是否開著。選用：找不到只留 HuntError。"""
+    village = "SVILLAGE"
+    return {
+        "InnerBusWindowOffset": pdb.offset("CInnerInterface", "m_pBusWindow"),
+        "InnerDialogueWindowOffset": pdb.offset("CInnerInterface", "m_pDialogueWindow"),
+        "InnerLargeMapWindowOffset": pdb.offset("CInnerInterface", "m_pLargeMapWindow"),
+        "UiVisibleOffset": pdb.offset("CBusWindow", "m_bVisible"),
+        "BusSelectMapOffset": pdb.offset("CBusWindow", "m_nSelectMap"),
+        "BusVillageVecOffset": pdb.offset("CBusWindow", "m_glBusList.m_vecVILLAGE"),
+        "BusVillageBytes": pdb.size(village),
+        "BusVillageMapIdOffset": pdb.offset(village, "dwMAPID"),
+        "BusVillageNameOffset": pdb.offset(village, "strMAP"),
+        "AutoHuntOffset": pdb.offset("GLCharacter", "m_sAutoSystem.sAutoSkill.bActive"),
+        # v27：公車清單那個文字框（CBasicTextBoxEx）：目前頁首第幾行 / 一頁幾行 / 總共幾行 / 滑鼠停在第幾行 / 選到第幾行 / 畫面上的框（UIRECT：left,right,top,bottom,sizeX,sizeY）
+        "BusMapListOffset": pdb.offset("CBusWindow", "m_pMapList"),
+        "TextBoxCurLineOffset": pdb.offset("CBasicTextBoxEx", "m_nCurLine"),
+        "TextBoxVisibleLineOffset": pdb.offset("CBasicTextBoxEx", "m_nVisibleLine"),
+        "TextBoxTotalLineOffset": pdb.offset("CBasicTextBoxEx", "m_nTotalLine"),
+        "TextBoxMouseOverOffset": pdb.offset("CBasicTextBoxEx", "m_nMouseOverLine"),
+        "TextBoxSelectedOffset": pdb.offset("CBasicTextBoxEx", "m_nSELECTED_INDEX"),
+        "UiGlobalRectOffset": pdb.offset("CBasicTextBox", "m_rcGlobalPos"),
+        # v28：大地圖（M）：點地圖上的位置人物會自動走過去。世界座標 ↔ 地圖像素 ↔ 畫面座標的換算資料
+        "InnerNewMapWindowOffset": pdb.offset("CInnerInterface", "m_pNewMapWindow"),
+        "NewMapMainPageOffset": pdb.offset("CNewMapWindow", "m_pMainPage"),
+        "NewMapWorldStartXOffset": pdb.offset("CNewMapMainPage", "m_nWORLD_START_X"),
+        "NewMapWorldStartYOffset": pdb.offset("CNewMapMainPage", "m_nWORLD_START_Y"),
+        "NewMapWorldSizeXOffset": pdb.offset("CNewMapMainPage", "m_nWORLD_SIZE_X"),
+        "NewMapWorldSizeYOffset": pdb.offset("CNewMapMainPage", "m_nWORLD_SIZE_Y"),
+        "NewMapTexSizeXOffset": pdb.offset("CNewMapMainPage", "m_nMAP_TEXSIZE_X"),
+        "NewMapTexSizeYOffset": pdb.offset("CNewMapMainPage", "m_nMAP_TEXSIZE_Y"),
+        "NewMapViewStartXOffset": pdb.offset("CNewMapMainPage", "m_nVIEW_START_X"),
+        "NewMapViewStartYOffset": pdb.offset("CNewMapMainPage", "m_nVIEW_START_Y"),
+        "NewMapRenderPosOffset": pdb.offset("CNewMapMainPage", "m_vRenderPos"),
+        "NewMapCtlOffset": pdb.offset("CNewMapMainPage", "m_pMap"),
+        "NewMapTargetXOffset": pdb.offset("CNewMapMainPage", "m_iTargetX"),
+        "NewMapTargetYOffset": pdb.offset("CNewMapMainPage", "m_iTargetY"),
+        "NewMapMapIdOffset": pdb.offset("CNewMapMainPage", "m_sMapID"),
+        "NewMapPlayerMarkOffset": pdb.offset("CNewMapMainPage", "m_pPlayerMark"),   # v31：代表人物的小點在畫面上的位置（用來算地圖像素 ↔ 螢幕的精確偏移）
+        # v29：怪物資料裡「這是怪還是 NPC / 礦」（SCROWDATA.m_sBasic.m_emCrow，相對於 CrowDataPtrOffset 指到的資料）
+        "CrowKindOffset": pdb.offset("SCROWDATA", "m_sBasic.m_emCrow"),
+        "CrowNpcTypeOffset": pdb.offset("SCROWDATA", "m_sBasic.m_emNPCType"),
+        # v30：滑鼠現在指著哪一個怪 / NPC（GLCharacter.m_sMouseTargetID：STARGETID = emCrow + 全域編號 dwID；沒指到 = dwID 0xFFFFFFFF）
+        "CharMouseTargetOffset": pdb.offset("GLCharacter", "m_sMouseTargetID"),
+        "TargetIdOffset": pdb.offset("STARGETID", "dwID"),
+    }
+
+
 COOL_NODE = "std::_Tree_node<std::pair<unsigned long const ,ITEM_COOLTIME>,void *>"
 COOL_PAIR = "std::pair<unsigned long const ,ITEM_COOLTIME>"
 
@@ -564,6 +640,14 @@ def resolve(exe: Path) -> dict[str, str]:
             values.update(party_window_fields(image, pdb))
         except Exception as e:   # 隊伍視窗欄位找不到：只有「隊長交還」停用，組隊邀請照常
             values["PartyWinError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(hunt_fields(pdb))
+        except Exception as e:   # 公車視窗 / 自動打怪欄位找不到：只有「每日討伐自動跑圖」停用
+            values["HuntError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
+        try:
+            values.update(daily_task_fields(image, pdb))
+        except Exception as e:   # 每日任務欄位找不到：只有「每日任務自動打怪」停用
+            values["DailyError"] = str(e).replace("\r", " ").replace("\n", " ")[:200]
         try:
             values.update(cooltime_fields(pdb))
         except Exception as e:   # 冷卻欄位找不到：只有「變慢自動過圖」停用

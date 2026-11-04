@@ -42,6 +42,7 @@ global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, 
 ; 測試用：設成物件時，讀記憶體 / 切視窗 / 按鍵 / 點擊都交給它（不動真正的遊戲、視窗與鍵盤）。
 global apTestDriver := 0
 global apIdleMs := () => A_TimeIdlePhysical
+global dhCurProfile := 0   ; 每日討伐這一回合正在操作的角色（死亡時整輪要馬上停，不能繼續點，更不能卡著前景讓復活動作做不了）
 
 ApIsLeader(p) => p.HasOwnProp("partyLeader") && p.partyLeader
 ; 「名稱1|名稱2」→ 陣列
@@ -223,7 +224,7 @@ ApBlockerRaw() {
         return "更換每日道具中"
     if invRunning
         return "背包清理中"
-    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion"
+    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion" && foregroundOwner != "dailyhunt"
         return "其他功能正在操作遊戲視窗"
     if IsObject(recorder)
         return "示範錄製中"
@@ -670,15 +671,37 @@ ApMoveCursorBack(c) {
 ApStop(msg) {
     throw Error(msg, , "stop")
 }
+; 程式結束 / 重新載入時：放開滑鼠左 / 中 / 右鍵、解除游標限制。自動操作做到一半（按著中鍵轉鏡頭、按著左鍵點擊）被結束時，不能把按鍵留在「按著」的狀態。
+OnExit(ApReleaseInputOnExit)
+ApReleaseInputOnExit(*) {
+    try {
+        DllCall("mouse_event", "UInt", 0x0004, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)   ; LEFTUP
+        DllCall("mouse_event", "UInt", 0x0010, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)   ; RIGHTUP
+        DllCall("mouse_event", "UInt", 0x0040, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)   ; MIDDLEUP
+        DllCall("ClipCursor", "Ptr", 0)
+    }
+}
 ApGuardAny() {
-    global abortRequested, emergencyStop, apRunStart, AP_RUN_MAX_MS
+    global abortRequested, emergencyStop, apRunStart, AP_RUN_MAX_MS, foregroundOwner, apLastOwn, dhCurProfile
     if abortRequested || emergencyStop
         ApStop("已按停止")
     why := ApBlockerRaw()
     if why != ""
         ApStop("中途有其他動作開始：" why)
-    if ApUserActive()
+    if foregroundOwner = "dailyhunt" && IsObject(dhCurProfile) && dhCurProfile.HasOwnProp("hpEventOpen") && dhCurProfile.hpEventOpen
+        ApStop("角色死亡了，先停下來等復活")
+    if ApUserActive() {
+        ; 每日討伐：偶發的一下輸入（滑鼠輕碰、無線滑鼠雜訊、遠端軟體）不算「你開始操作」。等 0.45 秒再看：這段時間沒有新的輸入 = 偶發，繼續；還在動才停
+        if foregroundOwner = "dailyhunt" {
+            Sleep 450
+            if apIdleMs() >= 400 {
+                apLastOwn := A_TickCount
+                EventLog("GLOBAL", "DH_BLIP", "偵測到一次實體鍵鼠輸入，之後 0.45 秒內沒有再動，當作偶發、繼續")
+                return
+            }
+        }
         ApStop("你開始操作電腦，先暫停")
+    }
     if apRunStart && A_TickCount - apRunStart > AP_RUN_MAX_MS
         ApStop("這一輪超過 " Round(AP_RUN_MAX_MS / 1000) " 秒，先停")
 }
@@ -709,7 +732,8 @@ ApKey(p, k) {
 }
 
 ; 在遊戲畫面（Client）座標 x,y 點一下（實測可用：先靠近再移上去，按住 90 毫秒）。
-ApClick(p, x, y) {
+; holdMs：按住多久（預設 90 毫秒；遊戲畫面更新比這慢時會漏掉那一下，公車清單用 220 以上）
+ApClick(p, x, y, holdMs := 90) {
     global apTestDriver, apLastOwn, AP_DESIGN_W, AP_DESIGN_H
     Critical "On"
     try {
@@ -739,7 +763,7 @@ ApClick(p, x, y) {
             if !ApCursorOn(p, px, py)
                 ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
             DllCall("mouse_event", "UInt", 0x0002, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)
-            Sleep 90
+            Sleep holdMs
             DllCall("mouse_event", "UInt", 0x0004, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)
         }
     } finally {
@@ -784,6 +808,135 @@ ApScroll(p, x, y, dir) {
     apLastOwn := A_TickCount
 }
 
+; 游標只移一次，連續滾 count 格（每格間隔 gapMs 毫秒；每 8 格再檢查一次視窗還在前面、游標沒被移走）。
+; 比重複呼叫 ApScroll 快很多（ApScroll 每一格都要重新移游標等 0.2 秒），遊戲清單也不會一直抖。
+ApScrollMany(p, x, y, dir, count, gapMs := 20) {
+    global apTestDriver, apLastOwn, AP_DESIGN_W, AP_DESIGN_H
+    Critical "On"
+    try {
+        ApGuard(p)
+        if IsObject(apTestDriver) {
+            Loop count
+                apTestDriver.Scroll(p, x, y, dir)
+        } else {
+            if !IsNumber(x) || !IsNumber(y)
+                ApStop("要捲動的座標不是數字")
+            WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
+            sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
+            dpi := A_ScreenDPI / 96
+            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
+                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
+                ApStop("要捲動的座標超出遊戲畫面（" x "," y "）")
+            px := cx + Round(x * sx), py := cy + Round(y * sy)
+            DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
+            apLastOwn := A_TickCount
+            Sleep 60
+            DllCall("SetCursorPos", "Int", px, "Int", py)
+            apLastOwn := A_TickCount
+            Sleep 120
+            ApGuard(p)
+            if !ApCursorOn(p, px, py)
+                ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
+            Loop count {
+                DllCall("mouse_event", "UInt", 0x0800, "Int", 0, "Int", 0, "UInt", (dir > 0 ? -120 : 120) & 0xFFFFFFFF, "UPtr", 0)
+                apLastOwn := A_TickCount
+                Sleep gapMs
+                if Mod(A_Index, 8) = 0 {
+                    ApGuard(p)
+                    if !ApCursorOn(p, px, py)
+                        ApStop("捲動途中游標被移走")
+                }
+            }
+        }
+    } finally {
+        Critical "Off"
+    }
+    apLastOwn := A_TickCount
+}
+; 游標移到遊戲畫面（Client）座標 x,y（不按、不滾），讓遊戲更新「滑鼠停在哪一個控制項 / 哪一行」。檢查和 ApClick 一樣。
+ApHover(p, x, y) {
+    global apTestDriver, apLastOwn, AP_DESIGN_W, AP_DESIGN_H
+    Critical "On"
+    try {
+        ApGuard(p)
+        if IsObject(apTestDriver) {
+            if HasMethod(apTestDriver, "Hover")
+                apTestDriver.Hover(p, x, y)
+        } else {
+            if !IsNumber(x) || !IsNumber(y)
+                ApStop("要移過去的座標不是數字")
+            WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
+            sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
+            dpi := A_ScreenDPI / 96
+            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
+                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
+                ApStop("要移過去的座標超出遊戲畫面（" x "," y "）")
+            px := cx + Round(x * sx), py := cy + Round(y * sy)
+            DllCall("SetCursorPos", "Int", px - 4, "Int", py - 2)
+            apLastOwn := A_TickCount
+            Sleep 40
+            DllCall("SetCursorPos", "Int", px, "Int", py)
+            apLastOwn := A_TickCount
+            Sleep 70
+            ApGuard(p)
+            if !ApCursorOn(p, px, py)
+                ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
+        }
+    } finally {
+        Critical "Off"
+    }
+    apLastOwn := A_TickCount
+}
+; 壓住滑鼠中鍵（滾輪）左右拖曳 = 環繞旋轉遊戲鏡頭。游標先移到畫面 (x,y)，按下中鍵，水平拖 dxTotal 像素（正 = 往右），放開。
+; 檢查和 ApClick 一樣；不管怎樣中鍵一定放開。
+ApOrbit(p, x, y, dxTotal, steps := 14, gapMs := 18, mode := "abs") {
+    global apTestDriver, apLastOwn, AP_DESIGN_W, AP_DESIGN_H
+    Critical "On"
+    down := false
+    try {
+        ApGuard(p)
+        if IsObject(apTestDriver) {
+            if HasMethod(apTestDriver, "Orbit")
+                apTestDriver.Orbit(p, x, y, dxTotal)
+        } else {
+            if !IsNumber(x) || !IsNumber(y) || !IsNumber(dxTotal)
+                ApStop("要旋轉的座標不是數字")
+            WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
+            sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
+            dpi := A_ScreenDPI / 96
+            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
+                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if x < 60 || x >= AP_DESIGN_W - 60 || y < 60 || y >= AP_DESIGN_H - 60
+                ApStop("要旋轉的座標太靠邊（" x "," y "）")
+            px := cx + Round(x * sx), py := cy + Round(y * sy)
+            DllCall("SetCursorPos", "Int", px, "Int", py)
+            apLastOwn := A_TickCount
+            Sleep 120
+            ApGuard(p)
+            if !ApCursorOn(p, px, py)
+                ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
+            DllCall("mouse_event", "UInt", 0x0020, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)   ; MIDDLEDOWN
+            down := true
+            Sleep 60
+            Loop steps {
+                if mode = "rel"   ; 相對移動（遊戲抓住游標轉鏡頭時吃這種）
+                    DllCall("mouse_event", "UInt", 0x0001, "Int", Round(dxTotal / steps), "Int", 0, "UInt", 0, "UPtr", 0)
+                else
+                    DllCall("SetCursorPos", "Int", px + Round(dxTotal * sx * A_Index / steps), "Int", py)
+                apLastOwn := A_TickCount
+                Sleep gapMs
+            }
+            Sleep 60
+        }
+    } finally {
+        if down
+            DllCall("mouse_event", "UInt", 0x0040, "Int", 0, "Int", 0, "UInt", 0, "UPtr", 0)   ; MIDDLEUP
+        Critical "Off"
+    }
+    apLastOwn := A_TickCount
+}
 ; 游標現在在 (px,py)，而且那一點最上層的視窗屬於這個遊戲視窗。
 ApCursorOn(p, px, py) {
     pt := Buffer(8, 0)

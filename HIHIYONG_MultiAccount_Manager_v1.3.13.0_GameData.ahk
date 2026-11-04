@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.62.0"
+global APP_VERSION := "v1.3.63.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -111,6 +111,7 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 ; H-018: 自動組隊（全部登入完成後，隊長邀請設定好的隊員；預設關閉）。
 #Include modules\AutoParty.ahk
 #Include modules\CompanionWatch.ahk
+#Include modules\DailyHunt.ahk
 #Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
 #Include modules\SkillCombo.ahk
@@ -5521,6 +5522,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer ApTick, 2000
     SetTimer ApAcceptTick, 1000   ; 隊長在另一台電腦時，邀請視窗有時效：比 ApTick 看得勤一點
     SetTimer CompanionTick, CW_CHECK_MS   ; 寵物 / 雇傭兵監測（預設關閉）
+    SetTimer DailyHuntTick, DH_TICK_MS    ; 每日討伐自動跑圖（預設關閉）
     SetTimer LagFixTick, 5000   ; 變慢自動過圖（預設關閉；待救援的角色即使關閉也會送回去）
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
@@ -5686,6 +5688,14 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="skillcombolist" {
         SkillComboSetList(WebUrlDecode(rawValue))
         SkillComboPushWeb()
+    } else if action="dailyhuntstate" {
+        DailyHuntPushWeb()
+    } else if action="dailyhuntspot" {
+        DailyHuntSpot(WebUrlDecode(rawValue))
+        DailyHuntPushWeb()
+    } else if action="dailyhuntset" {
+        DailyHuntSet(WebUrlDecode(rawValue))
+        DailyHuntPushWeb()
     } else if action="companionstate" {
         CompanionPushWeb()
     } else if action="companionset" {

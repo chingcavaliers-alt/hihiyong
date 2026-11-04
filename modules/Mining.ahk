@@ -8,6 +8,7 @@
 ; ============================================================================
 
 global GLAT_GATHERING := 6
+global MINING_MAX_CROWS := 1500   ; 一次最多讀幾隻（大地圖一次幾百隻；擊殺統計的 KILL_MAX_CROWS 是 400，不夠用）
 
 MiningOffsetsOk(pid) {
     return GameOffsetsReady(pid) && GameOffset("LandMaterialListOffset") && GameOffset("ViewPortInstanceRva")
@@ -95,7 +96,7 @@ MiningCrows(pid, nameFilter:="") {
     list:=land+GameOffset("LandCrowListOffset")
     amount:=GameReadNum(hProc,list,"UInt")
     node:=GameReadNum(hProc,list+GameOffset("CrowListHeadOffset"),"Ptr")
-    if amount="" || node="" || amount>KILL_MAX_CROWS
+    if amount="" || node="" || amount>MINING_MAX_CROWS
         return 0
     base:=GetGameModuleBase(pid,hProc)
     span:=Max(GameOffset("CrowActionOffset"),GameOffset("CrowGlobIdOffset"),GameOffset("CrowHpNowOffset"),GameOffset("CrowPosOffset")+8)+4
@@ -118,7 +119,13 @@ MiningCrows(pid, nameFilter:="") {
         if nameFilter!="" && !InStr(name,nameFilter)
             continue
         po:=GameOffset("CrowPosOffset")
-        out.Push({glob:NumGet(cb,GameOffset("CrowGlobIdOffset"),"UInt"),nid:nid,name:name
+        ; 這是怪（EMCROW）還是 NPC / 礦：讀不到（舊位置資料）回傳 -1
+        dp:=NumGet(cb,GameOffset("CrowDataPtrOffset"),"Ptr"),kind:=-1
+        if dp && GameOffset("CrowKindOffset") {
+            kv:=GameReadNum(hProc,dp+GameOffset("CrowKindOffset"),"UInt")
+            kind:=kv=""?-1:kv
+        }
+        out.Push({kind:kind,glob:NumGet(cb,GameOffset("CrowGlobIdOffset"),"UInt"),nid:nid,name:name
             ,x:NumGet(cb,po,"Float"),y:NumGet(cb,po+4,"Float"),z:NumGet(cb,po+8,"Float")
             ,hp:NumGet(cb,GameOffset("CrowHpNowOffset"),"UInt"),action:NumGet(cb,GameOffset("CrowActionOffset"),"UInt")})
     }
@@ -177,6 +184,24 @@ GameRvaInList(key,rva) {
     return false
 }
 
+; 鏡頭位置（世界座標）與朝向：{x, y, z, fx, fz}（fx / fz = 鏡頭看的方向在水平面上的分量）；讀不到回傳 0。
+; 用來確認「拉遠鏡頭 / 旋轉鏡頭」真的生效。D3D 列向量：view = [世界座標 1] × View，所以鏡頭位置 E = -t × R^T（t = 第 4 列，R = 左上 3x3）。
+GameCameraEye(pid) {
+    if !GameOffset("ViewPortInstanceRva")
+        return 0
+    hProc:=GameProcHandle(pid)
+    base:=hProc ? GetGameModuleBase(pid,hProc) : 0
+    if !base
+        return 0
+    vp:=base+GameOffset("ViewPortInstanceRva")
+    b:=GameReadBuf(hProc,vp,GameOffset("ViewPortRectOffset")+24)
+    if !b || !GameRvaInList("ViewPortVftableRvas",NumGet(b,0,"Ptr")-base)
+        return 0
+    v:=GameOffset("ViewMatrixOffset")
+    M(row,col) => NumGet(b,v+(row*4+col)*4,"Float")
+    tx:=M(3,0),ty:=M(3,1),tz:=M(3,2)
+    return {x:-(tx*M(0,0)+ty*M(0,1)+tz*M(0,2)),y:-(tx*M(1,0)+ty*M(1,1)+tz*M(1,2)),z:-(tx*M(2,0)+ty*M(2,1)+tz*M(2,2)),fx:M(0,2),fz:M(2,2)}
+}
 ; 世界座標 → 遊戲畫面（client 區）座標：{x, y, visible}；讀不到回傳 0。
 ; D3D 列向量：clip = [x y z 1] × View × Proj；畫面 = ViewPort.X + (ndc.x+1)/2 × W，ViewPort.Y + (1-ndc.y)/2 × H。
 GameWorldToScreen(pid,wx,wy,wz) {
