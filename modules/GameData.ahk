@@ -970,6 +970,25 @@ ReadGameBusWindow(pid) {
 }
 ; 公車清單文字框：{cur（目前頁首第幾行，0 起算）, visible（一頁幾行）, total（總共幾行）, over（滑鼠停在第幾行：沒停在任何一行 = -1）, sel, top, height（框在遊戲畫面上的位置）}；讀不到回傳 0。
 ; 「捲到哪裡」「游標下面是哪一行」遊戲裡直接讀得到，不用靠點擊再讀回去猜。
+; 公車視窗下方的「公車站」（入口）清單：選好地圖後要先點它的一行，才能按確定傳送。回傳 {top, height, total, sel}；讀不到回傳 0。
+; 這個欄位在遊戲裡就在地圖清單後面一格（+0x10），舊的位置資料沒有這個鍵，所以沒有時用地圖清單位置推。
+ReadGameBusGateList(pid) {
+    w := GameInnerWindow(pid, "Bus")
+    mapOff := GameOffset("BusMapListOffset")
+    off := GameOffset("BusGateListOffset") ? GameOffset("BusGateListOffset") : (mapOff ? mapOff + 0x10 : 0)
+    if !w || !off || !GameOffset("TextBoxTotalLineOffset")
+        return 0
+    hProc := GameProcHandle(pid)
+    tb := GameReadNum(hProc, w + off, "Ptr")
+    if !tb
+        return 0
+    tot := GameReadNum(hProc, tb + GameOffset("TextBoxTotalLineOffset"), "Int")
+    sel := GameReadNum(hProc, tb + GameOffset("TextBoxSelectedOffset"), "Int")
+    rc := GameReadBuf(hProc, tb + GameOffset("UiGlobalRectOffset"), 24)
+    if tot = "" || sel = "" || !rc || tot < 0 || tot > 50
+        return 0
+    return {top: NumGet(rc, 8, "Float"), height: NumGet(rc, 20, "Float"), total: tot, sel: sel}
+}
 ReadGameBusList(pid) {
     w := GameInnerWindow(pid, "Bus")
     if !w || !GameOffset("BusMapListOffset") || !GameOffset("TextBoxCurLineOffset")

@@ -939,7 +939,27 @@ DhActFinish(p) {
     DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，已用起點傳送卡回到復活點")
     AddRecentEvent("🎯 " p.name "：指定任務全部完成，已回起點")
 }
-; 回起點 → 點麗娜 → 公車站2號線 → 捲到最底 → 點地圖 → 確定 → 等換圖
+; 選好地圖後，下方「公車站」清單會出現入口：要先點第一行（入口）再按確定，不點的話確定沒有反應。
+DhBusPickGate(p) {
+    global DH_BUS_LIST_X
+    pid := p.pid
+    gl := 0
+    ApWait(() => (ApGuardAny(), (gl := ReadGameBusGateList(pid)) != 0 && gl.total > 0), 2500)   ; 入口清單跟著地圖選取才長出來
+    if !IsObject(gl) || gl.total < 1 {
+        EventLog(p.name, "DH_BUS_GATE", "讀不到入口清單，照舊直接按確定")
+        return
+    }
+    y := Round(gl.top) + 9
+    for hold in [200, 300, 450] {
+        ApClick(p, DH_BUS_LIST_X, y, hold)
+        ApWait(() => (ApGuardAny(), false), 500)
+        gl := ReadGameBusGateList(pid)
+        if !IsObject(gl) || gl.sel >= 0
+            return
+    }
+    EventLog(p.name, "DH_BUS_GATE", "點了入口三次，清單仍沒有選取，照舊按確定")
+}
+; 回起點 → 點麗娜 → 公車站2號線 → 捲到最底 → 點地圖 → 點入口 → 確定 → 等換圖
 DhActTravel(p, g) {
     global DH_NPC_NAME, DH_START_CARD, DH_BUS_OPTION_X, DH_BUS_LIST_X, DH_BUS_ROW0_Y, DH_BUS_ROW_H, DH_BUS_OK_X, DH_BUS_OK_Y, DH_BUS_BOTTOM_ROWS, DH_NPC_ROW, DH_BUS_OPTION_Y0, DH_BUS_OPTION_PITCH
     pid := p.pid
@@ -1000,6 +1020,7 @@ DhActTravel(p, g) {
         throw Error("公車清單裡沒有 " g.name)
     DhBusSelect(p, g, idx, bus.maps.Length)
     ApWait(() => (ApGuardAny(), false), 700)   ; 選好之後停一下再按確定
+    DhBusPickGate(p)
     arrivedMap := false
     for hold in [220, 320, 450] {   ; 確定沒按到（公車視窗還開著、地圖也沒換）就換更長的按住時間再按
         if ReadGameUiOpen(pid, "Bus") = 1 {
