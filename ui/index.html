@@ -293,6 +293,9 @@ tbody tr:hover td{background:var(--surface-2)}
 .dh-msg .dh-status{font-weight:600;color:var(--text)}
 .dh-msg .dh-note{background:var(--surface-2);border-radius:8px;padding:7px 11px;color:var(--text-2)}
 .dh-spot{font-variant-numeric:tabular-nums;white-space:nowrap}
+.dh-spot .dh-xy{display:inline-block;min-width:118px;text-align:left;margin-right:10px}
+.dh-spot .btn{min-width:52px;margin-right:6px;text-align:center}
+.dh-spot .btn:last-child{margin-right:0}
 .dh-spot .btn{padding:3px 10px;font-size:12px}
 .dh-tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:2px 0 12px}
 /* 每小時收益：兩張單一數列長條圖（金幣與個數單位不同，不共用座標軸） */
@@ -387,7 +390,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.63.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.64.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -562,7 +565,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>今日任務</div>
  <div class="dh-tools"><span class="account-sub">勾選地圖：</span><button class="btn" onclick="dhPick('all')">全選</button><button class="btn" onclick="dhPick('none')">全不選</button><button class="btn" onclick="dhPick('todo')">只選未完成</button></div>
- <div class="table-wrap"><table><thead><tr><th>勾選</th><th>地圖</th><th>怪物</th><th>進度</th><th>任務組</th><th>備註</th><th>打怪點</th></tr></thead><tbody id="dhRows"><tr><td colspan="7" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="table-wrap"><table><thead><tr><th>勾選</th><th>地圖</th><th>怪物</th><th>進度</th><th>任務組</th><th>備註</th><th style="width:1%;white-space:nowrap">打怪點</th></tr></thead><tbody id="dhRows"><tr><td colspan="7" class="hint">讀取中…</td></tr></tbody></table></div>
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>勾選：</b>勾選的地圖都會跑：還沒打滿的先跑（照任務順序）；全部打滿後，人物用起點傳送卡回起點，並通知 Discord「指定任務全部完成」。清單裡沒有位置資料的新地圖（備註寫「尚未支援」）無法自動跑，只能自己打。</div><div class="hint"><b>打怪點：</b>每張圖可以記一個固定打怪點，到了就直接走到那裡開打。在遊戲的大地圖（M）上左鍵點一下想去的位置，等人物走到那裡後，再按那張圖的「記錄」。程式記的是你點的目標（人物已走到它旁邊時最精準）；人物沒走到（那個位置走不到）或沒點過，就記「人物現在站的位置」，所以也可以直接用滑鼠點地板或鍵盤把人物走到想打怪的地方，再按記錄。沒有記錄的圖，到了之後自動找怪最多的地方。</div><div class="hint"><b>通知與復活：</b>每張圖完成、全部完成都會發 Discord（要在設定裡啟用 Discord）。跑圖途中角色死亡會立刻暫停、通知，並用歸魂珠原地復活（背包或身上要有），復活後自動繼續。</div><div class="hint"><b>安全：</b>預設停止；程式只讀遊戲資料，不修改任務數字。</div></div></details>
 </div><div class="subpage" id="party">
@@ -1681,7 +1684,7 @@ function renderDailyHunt(d){
  const sm=document.getElementById('dhSpotMsg');if(sm)sm.textContent=d.spotMsg||'';
  const bd=document.getElementById('dhBuild');if(bd){bd.textContent=d.build||'';bd.style.color=(d.build||'').includes('⚠')?'#c0392b':'';}
  if(st)st.textContent=d.status||(d.using?`顯示角色：${d.using}｜勾選且未完成：${d.pending} 張圖`:'');
- if(box)box.innerHTML=dhTasks.length?dhTasks.map(t=>{const full=t.done>=t.target;const note=!t.runnable?'尚未支援（只能自己打）':(t.claimed?'已領獎':(full?'已打滿':''));return `<tr><td><input type="checkbox" ${dhOn.has(t.map)?'checked':''} ${t.runnable?'':'disabled'} onchange="dhToggle(${t.map},this.checked)"></td><td class="account-name">${esc(t.name.split(' / ')[0])}</td><td class="account-sub">${esc(t.name.split(' / ')[1]||'')}</td><td class="account-sub">${t.done} / ${t.target}${full?' ✓':''}</td><td class="account-sub">${esc(t.group)}</td><td class="account-sub">${note}</td><td class="account-sub dh-spot">${t.runnable?`${t.spot?`<b>${esc(t.spot)}</b> `:'<span class="account-sub">自動找怪</span> '}<button class="btn" onclick="dhSpot(${t.map},'teach')">記錄</button>${t.spot?` <button class="btn" onclick="dhSpot(${t.map},'clear')">清除</button>`:''}`:''}</td></tr>`;}).join(''):'<tr><td colspan="7" class="hint">還沒有任務資料：勾選角色並按「▶ 啟動」後程式會自己按 T 讀取，或在遊戲裡按 T 打開一次。</td></tr>';
+ if(box)box.innerHTML=dhTasks.length?dhTasks.map(t=>{const full=t.done>=t.target;const note=!t.runnable?'尚未支援（只能自己打）':(t.claimed?'已領獎':(full?'已打滿':''));return `<tr><td><input type="checkbox" ${dhOn.has(t.map)?'checked':''} ${t.runnable?'':'disabled'} onchange="dhToggle(${t.map},this.checked)"></td><td class="account-name">${esc(t.name.split(' / ')[0])}</td><td class="account-sub">${esc(t.name.split(' / ')[1]||'')}</td><td class="account-sub">${t.done} / ${t.target}${full?' ✓':''}</td><td class="account-sub">${esc(t.group)}</td><td class="account-sub">${note}</td><td class="account-sub dh-spot">${t.runnable?`<span class="dh-xy">${t.spot?`<b>${esc(t.spot)}</b>`:'自動找怪'}</span><button class="btn" onclick="dhSpot(${t.map},'teach')">記錄</button><button class="btn" style="${t.spot?'':'visibility:hidden'}" ${t.spot?'':'tabindex="-1" disabled'} onclick="dhSpot(${t.map},'clear')">清除</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="7" class="hint">還沒有任務資料：勾選角色並按「▶ 啟動」後程式會自己按 T 讀取，或在遊戲裡按 T 打開一次。</td></tr>';
 }
 function dhNpcPick(){const sel=document.getElementById('dhNpcSel'),inp=document.getElementById('dhNpc');if(sel.value==='__other'){inp.style.display='';inp.focus();return;}inp.style.display='none';inp.value=sel.value;saveDailyHunt();}
 function dhSpot(map,what){send('dailyhuntspot',{value:`${map}~${what}`});}

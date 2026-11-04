@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.63.0",
+    "version":  "v1.3.64.0",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -43,7 +43,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "65944c966dbb0e1aee6570643d5679be7a0613a3d315c1d6ef4c4876ba1e9203"
+                      "sha256":  "42d52303a296c57210fbeec1877c27fa1f4891103f8eb1dacf3f0429a3b67a17"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -299,7 +299,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "585bd31267b3a56ab972cb2e7ef3377b92cdc12c0cd26c5afb31e4aef7ff4602"
+                      "sha256":  "f61b7c5edee93269e00a856c30c89c8336419f424694775eedc8b1707545fdef"
                   },
                   {
                       "path":  "登入測試.bat",
