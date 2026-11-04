@@ -1,4 +1,4 @@
-; ============================================================================
+﻿; ============================================================================
 ; DailyHunt：每日討伐（T 視窗任務：指定地圖的怪各打 1000 隻）自動跑圖。
 ; 按「▶ 啟動」才會動（不存檔：程式重開一定是停止）；「勾選」是選要跑哪幾個角色（可多個，各自獨立進行，
 ; 同一時間只有一個角色在用前景視窗，其他角色在掛機打怪時不需要視窗）。要跑哪幾張圖也可以另外勾。
@@ -109,13 +109,22 @@ DhNum(v) {
     return InStr(s, ".") ? RTrim(RTrim(s, "0"), ".") : s
 }
 DhSpotsText() {
-    global DH_SPOTS
+    global DH_SPOTS, DH_SPOT_DEFAULTS
     s := ""
-    for id, v in DH_SPOTS
+    for id, v in DH_SPOTS {
+        d := DH_SPOT_DEFAULTS.Get(id, 0)
+        if IsObject(d) && DhNum(d.x) = DhNum(v.x) && DhNum(d.z) = DhNum(v.z)
+            continue   ; 和預設一樣的不存，以後預設更新才會跟著換
         s .= (s = "" ? "" : "|") id ":" DhNum(v.x) "," DhNum(v.z)
+    }
     return s
 }
+; 內建預設固定點（開發者實測記下來的）。使用者自己按「記錄」存的點（INI Spots）會蓋過預設；「清除」= 回到預設（沒有預設的圖就是沒有固定點）。
+global DH_SPOT_DEFAULTS := DhParseSpots("163:-141.6,-317.4|164:710.9,-254.6|165:304,-197.8|166:-6522.4,-4384.3|167:-264.9,286.1|221:-821.7,1748.5|222:542.5,-32.2|233:-12.8,2397.5|235:-176.7,348.3|251:805.4,-1975.4|254:22.9,-2.6|285:-189.1,163.3|286:-17.2,-1031.3")
 global DH_SPOTS := DhParseSpots(DhIniGet("Spots", ""))
+for id, v in DH_SPOT_DEFAULTS
+    if !DH_SPOTS.Has(id)
+        DH_SPOTS[id] := v
 global dhSpotMsg := ""
 
 ; value：地圖編號~teach（從遊戲讀「上次在大地圖點的位置」）／地圖編號~clear／地圖編號~x~z（手動輸入）。回傳給畫面的訊息。
@@ -126,7 +135,7 @@ DailyHuntSpot(rawValue) {
 }
 global dhTeachLast := 0   ; 最近一次「記錄」用的遊戲目標像素（{map, tx, ty}），擋住「沒在這張圖點過、記到上一張圖的點」
 DhSpotDo(rawValue) {
-    global INI, DH_SPOTS, DH_MAPS, dhTeachLast
+    global INI, DH_SPOTS, DH_SPOT_DEFAULTS, DH_MAPS, dhTeachLast
     parts := StrSplit(rawValue, "~")
     if parts.Length < 2 || !IsInteger(parts[1]) || !DH_MAPS.Has(Integer(parts[1]))
         return "（這張圖不支援）"
@@ -134,7 +143,11 @@ DhSpotDo(rawValue) {
     if parts[2] = "clear" {
         if DH_SPOTS.Has(id)
             DH_SPOTS.Delete(id)
-        msg := DH_MAPS[id][1] "：已清除固定點，改用自動找最密的地方"
+        if DH_SPOT_DEFAULTS.Has(id) {
+            DH_SPOTS[id] := DH_SPOT_DEFAULTS[id]
+            msg := DH_MAPS[id][1] "：已回復內建預設固定點 (" Round(DH_SPOTS[id].x) ", " Round(DH_SPOTS[id].z) ")"
+        } else
+            msg := DH_MAPS[id][1] "：已清除固定點，改用自動找最密的地方"
     } else if parts[2] = "teach" {
         p := DhProfile()
         pg := p ? ReadGameNewMap(p.pid) : 0
