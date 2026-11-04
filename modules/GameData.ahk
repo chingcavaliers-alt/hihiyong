@@ -30,6 +30,10 @@ global gameOffsetsResolvePid := 0
 global gameOffsetsResolveBuild := ""
 global gameOffsetsResolveStart := 0
 global gameOffsetsResolveTried := Map() ; build → 已自動嘗試過（失敗不重複執行）
+; 沒有 Game.pdb（或 pdb 解析失敗）時的後備：tools\derive_game_offsets.py 拿上一個已知版本的位置資料，從執行中的遊戲推算新位置
+global gameOffsetsResolveKind := "pdb"   ; 目前背景工作是 "pdb"（Game.pdb 解析）還是 "derive"（遊戲記憶體推算）
+global gameOffsetsDeriveTried := Map()   ; build → 上次開始推算的 A_TickCount
+global GAME_OFFSETS_DERIVE_RETRY_MS := 300000
 ; 沒有這個版本的位置資料時，從 GitHub（offsets_db\<Build>.ini）補抓；還沒上傳就每 10 分鐘再試
 global GAME_OFFSETS_REMOTE_RETRY_MS := 600000
 global gameOffsetsRemoteReq := 0
@@ -277,14 +281,19 @@ StartGameOffsetsResolve(pid,build) {
     if GameOffsetsFetchRemote(pid,build)
         return
     tryKey:=build "#" GAME_OFFSETS_TOOL_VERSION
-    if GameOffsetsResolving() || gameOffsetsResolveTried.Has(tryKey)
+    if GameOffsetsResolving()
         return
+    if gameOffsetsResolveTried.Has(tryKey) {   ; Game.pdb 那條路已經試過（失敗）：改用遊戲記憶體推算，過一陣子再試
+        GameOffsetsStartDerive(pid,build)
+        return
+    }
     gameOffsetsResolveTried[tryKey]:=A_TickCount
     exe:=""
     try exe:=ProcessGetPath(pid)
     pdb:=RegExReplace(exe,"[^\\]+$","Game.pdb")
     if exe="" || !FileExist(pdb) {
-        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 Game.pdb，也沒有這個版本（" build "）的已知位置資料（" exe "）｜HP 改用動態校正；快捷欄 / 寵物 / 前點卡自動判別停用")
+        EventLog("GLOBAL","GAME_OFFSETS_UNAVAILABLE","找不到 Game.pdb，也沒有這個版本（" build "）的已知位置資料（" exe "）｜改由執行中的遊戲推算")
+        GameOffsetsStartDerive(pid,build)
         return
     }
     python:=FindPythonLauncher()
@@ -303,13 +312,53 @@ StartGameOffsetsResolve(pid,build) {
     gameOffsetsResolvePid:=newPid
     gameOffsetsResolveBuild:=build
     gameOffsetsResolveStart:=A_TickCount
+    gameOffsetsResolveKind:="pdb"
     EventLog("GLOBAL","GAME_OFFSETS_RESOLVE","game.exe 版本 " build "｜由 Game.pdb 解析 HP / 金幣 / 背包位置")
     AddRecentEvent("🔎 偵測到 game.exe 版本 " build "，正在由 Game.pdb 解析資料位置")
     SetTimer GameOffsetsResolveTick,500
 }
 
+; 沒有 Game.pdb 時：由執行中的遊戲推算（已知版本的位置資料 + 遊戲記憶體逐項驗證，全部對上才採用）。
+; 需要至少一個已登入角色的遊戲視窗；角色還在登入畫面就會失敗，之後每 5 分鐘自動再試。
+GameOffsetsStartDerive(pid,build) {
+    global gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,gameOffsetsResolveKind
+    global gameOffsetsDeriveTried,GAME_OFFSETS_DERIVE_RETRY_MS,GAME_OFFSETS_INI,GAME_OFFSETS_DB_DIR,profiles
+    if GameOffsetsResolving() || !RegExMatch(build,"^[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*\z")
+        return
+    last:=gameOffsetsDeriveTried.Get(build,0)
+    if last && A_TickCount-last<GAME_OFFSETS_DERIVE_RETRY_MS
+        return
+    python:=FindPythonLauncher()
+    exe:=""
+    try exe:=ProcessGetPath(pid)
+    if python="" || exe="" || !FileExist(A_ScriptDir "\tools\derive_game_offsets.py")
+        return
+    pids:=" --pid " pid
+    for p in profiles {
+        try {
+            if p.pid && p.pid!=pid && ProfileGameAlive(p) && GameBuildOf(p.pid)=build
+                pids.=" --pid " p.pid
+        }
+    }
+    gameOffsetsDeriveTried[build]:=A_TickCount
+    cmd:=python ' -I "' A_ScriptDir '\tools\derive_game_offsets.py" --exe "' exe '"' pids ' --out "' GAME_OFFSETS_INI '" --db "' GAME_OFFSETS_DB_DIR '"'
+    newPid:=0
+    try Run(cmd,A_ScriptDir,"Hide",&newPid)
+    catch as err {
+        EventLog("GLOBAL","GAME_OFFSETS_FAIL","無法執行推算工具：" err.Message)
+        return
+    }
+    gameOffsetsResolvePid:=newPid
+    gameOffsetsResolveBuild:=build
+    gameOffsetsResolveStart:=A_TickCount
+    gameOffsetsResolveKind:="derive"
+    EventLog("GLOBAL","GAME_OFFSETS_DERIVE","game.exe 版本 " build "｜沒有 Game.pdb 可用，改由執行中的遊戲推算資料位置")
+    AddRecentEvent("🔎 遊戲版本 " build " 沒有 Game.pdb，正在由執行中的遊戲推算資料位置")
+    SetTimer GameOffsetsResolveTick,500
+}
+
 GameOffsetsResolveTick() {
-    global gameOffsets,gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,GAME_OFFSETS_RESOLVE_TIMEOUT_MS,profiles
+    global gameOffsets,gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,GAME_OFFSETS_RESOLVE_TIMEOUT_MS,profiles,gameOffsetsResolveKind
     if GameOffsetsResolving() {
         if A_TickCount-gameOffsetsResolveStart<GAME_OFFSETS_RESOLVE_TIMEOUT_MS
             return
@@ -319,7 +368,8 @@ GameOffsetsResolveTick() {
     SetTimer GameOffsetsResolveTick,0
     gameOffsetsResolvePid:=0
     if LoadGameOffsets() && gameOffsets["Build"]=gameOffsetsResolveBuild {
-        EventLog("GLOBAL","GAME_OFFSETS_OK","Build=" gameOffsets["Build"] "｜Gaea=" gameOffsets["GaeaInstanceRva"] "｜HP=Char+" gameOffsets["HpNowOffset"] "｜Money=Char+" gameOffsets["MoneyOffset"])
+        EventLog("GLOBAL",gameOffsetsResolveKind="derive" ? "GAME_OFFSETS_DERIVED" : "GAME_OFFSETS_OK","Build=" gameOffsets["Build"] "｜Gaea=" gameOffsets["GaeaInstanceRva"] "｜HP=Char+" gameOffsets["HpNowOffset"] "｜Money=Char+" gameOffsets["MoneyOffset"]
+            . (gameOffsetsResolveKind="derive" ? "｜由 " gameOffsets.Get("DerivedFrom","?") " 推算（沒有 Game.pdb）" : ""))
         AddRecentEvent("✓ 已取得新版遊戲資料位置（HP / 金幣 / 背包），不需要校正")
         ; 讓目前的 session 改用新位置，並重新走「連續讀到合理 HP 才啟用死亡判定」。
         for p in profiles {
@@ -330,8 +380,19 @@ GameOffsetsResolveTick() {
         }
     } else {
         err:=gameOffsets.Has("Error") ? gameOffsets["Error"] : "沒有產生結果"
-        EventLog("GLOBAL","GAME_OFFSETS_FAIL",err "｜HP 改用動態校正")
-        AddRecentEvent("⚠ Game.pdb 解析失敗，HP 改用動態校正（詳見 Log）")
+        EventLog("GLOBAL","GAME_OFFSETS_FAIL",(gameOffsetsResolveKind="derive" ? "推算：" : "") err "｜HP 改用動態校正")
+        AddRecentEvent(gameOffsetsResolveKind="derive" ? "⚠ 無法由遊戲推算新版資料位置，HP 改用動態校正（詳見 Log）" : "⚠ Game.pdb 解析失敗，HP 改用動態校正（詳見 Log）")
+        ; Game.pdb 那條路失敗：立刻接著用遊戲記憶體推算
+        if gameOffsetsResolveKind="pdb" {
+            for p in profiles {
+                try {
+                    if p.pid && ProfileGameAlive(p) && GameBuildOf(p.pid)=gameOffsetsResolveBuild {
+                        GameOffsetsStartDerive(p.pid,gameOffsetsResolveBuild)
+                        break
+                    }
+                }
+            }
+        }
     }
 }
 
