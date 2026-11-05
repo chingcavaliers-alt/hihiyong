@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.69.0",
+  "version": "v1.3.70.0",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "63715430d9bc37a360741e6fe399be795c3965975d836cfb09fd356cd051e784"
+      "sha256": "da35a31db52e18437ea5832703b25b05f12c5171577111c7d88e7e7163e7105e"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -47,7 +47,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "0388d06e1c2ab0cdb28e1922ee51fe07584020522c01fa431cb5c6896fee7646"
+      "sha256": "d399d0d4c7651aecc6a0aa0f5ab50f7cb412961b3c5098a7bfba126ac9ed87c6"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -167,7 +167,7 @@
     },
     {
       "path": "modules\\GameData.ahk",
-      "sha256": "8a18dc8fcec4b6084b0988fdc3149d2afd1fe8f44458d34396c10f1868406fca"
+      "sha256": "8d83fb284a84e3991f1f698eec4cfdee4b18c98a277d40e79393edbb79076b9b"
     },
     {
       "path": "modules\\InventoryStats.ahk",
@@ -314,8 +314,12 @@
       "sha256": "69479d9ccb8eccf015c9b2a38b276f8e18ec2b85d5f41186167d8217e290e490"
     },
     {
+      "path": "tools\\static_offsets.py",
+      "sha256": "b2744a27cedca169f7a9db50172769912066d66697b23da02b61c8a2bfd4d867"
+    },
+    {
       "path": "ui\\index.html",
-      "sha256": "284da0d74b4c4ea2a538ef90371321ecb97d9b4c56017fa2d0344f72bb80dcc4"
+      "sha256": "80dd3dc5920e2aa846762c9072042f0584ebd7b3931db6f5f39e6f1d1dfbc8fc"
     }
   ]
 }

@@ -33,6 +33,7 @@ global gameOffsetsResolveTried := Map() ; build → 已自動嘗試過（失敗�
 ; 沒有 Game.pdb（或 pdb 解析失敗）時的後備：tools\derive_game_offsets.py 拿上一個已知版本的位置資料，從執行中的遊戲推算新位置
 global gameOffsetsResolveKind := "pdb"   ; 目前背景工作是 "pdb"（Game.pdb 解析）還是 "derive"（遊戲記憶體推算）
 global gameOffsetsDeriveTried := Map()   ; build → 上次開始推算的 A_TickCount
+global gameOffsetsRefKept := Map(), gameOffsetsStaticTried := Map()   ; build → 已保留參考 exe / 已啟動離線比對
 global GAME_OFFSETS_DERIVE_RETRY_MS := 300000
 ; 沒有這個版本的位置資料時，從 GitHub（offsets_db\<Build>.ini）補抓；還沒上傳就每 10 分鐘再試
 global GAME_OFFSETS_REMOTE_RETRY_MS := 600000
@@ -105,16 +106,120 @@ GameOffsetsReady(pid) {
     if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build {
         if gameOffsetsWaitBuild=build
             gameOffsetsWaitBuild:=""
+        GameOffsetsKeepRef(pid,build)
         return true
     }
     ; 沒有 Game.pdb 的電腦：先找隨程式附上的「已知版本」位置資料
     if GameOffsetsUseKnownBuild(build) {
         gameOffsetsWaitBuild:=""
+        GameOffsetsKeepRef(pid,build)
         return true
     }
     gameOffsetsWaitBuild:=build
+    GameOffsetsStartStatic(pid,build)
     StartGameOffsetsResolve(pid,build)
     return false
+}
+
+; ---------------------------------------------------------------- 離線比對 game.exe（不用登入）
+; 每個已有位置資料的版本，把它的 game.exe 留一份在 game_ref\<版本>.exe（只留最新 3 份，不隨發佈包 / 更新發出）。
+; 下次遊戲更新、新版位置資料還沒有時，tools\static_offsets.py 拿最新的參考 exe 和新 exe 比對，
+; 先算出「候選」位置（game_ref\<新版>.static.ini，不會被採用）；等有人登入、由遊戲推算完成後，兩邊互相核對並寫進日誌。
+GameOffsetsKeepRef(pid,build) {
+    global GAME_OFFSETS_DB_DIR,gameOffsetsRefKept
+    if gameOffsetsRefKept.Has(build) || !RegExMatch(build,"^[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*\z")
+        return
+    gameOffsetsRefKept[build]:=1
+    dir:=A_ScriptDir "\game_ref",dst:=dir "\" build ".exe"
+    exe:=""
+    try exe:=ProcessGetPath(pid)
+    if exe="" || FileExist(dst) || !FileExist(GAME_OFFSETS_DB_DIR "\" build ".ini")
+        return
+    try {
+        DirCreate dir
+        FileCopy exe,dst ".part",true
+        FileMove dst ".part",dst,true
+        names:=[]
+        Loop Files dir "\*.exe"
+            names.Push(A_LoopFileName)
+        if names.Length>3 {
+            names:=GameOffsetsSortNames(names)
+            Loop names.Length-3 {
+                SplitPath names[A_Index],,,,&nm
+                try FileDelete dir "\" names[A_Index]
+                try FileDelete dir "\" nm ".static.ini"
+            }
+        }
+        EventLog("GLOBAL","GAME_OFFSETS_REF","已保留版本 " build " 的 game.exe 當離線比對參考")
+    }
+}
+
+GameOffsetsSortNames(names) {
+    s:=""
+    for n in names
+        s.=n "`n"
+    return StrSplit(Sort(RTrim(s,"`n")),"`n")
+}
+
+GameOffsetsReadMap(path) {
+    m:=Map()
+    try {
+        for line in StrSplit(IniRead(path,"GameOffsets"),"`n","`r") {
+            pos:=InStr(line,"=")
+            if pos
+                m[SubStr(line,1,pos-1)]:=SubStr(line,pos+1)
+        }
+    }
+    return m
+}
+
+GameOffsetsStartStatic(pid,build) {
+    global gameOffsetsStaticTried,GAME_OFFSETS_DB_DIR
+    if gameOffsetsStaticTried.Has(build) || !RegExMatch(build,"^[0-9A-F]+-[0-9A-F]*[1-9A-F][0-9A-F]*\z")
+        return
+    gameOffsetsStaticTried[build]:=1
+    python:=FindPythonLauncher()
+    exe:=""
+    try exe:=ProcessGetPath(pid)
+    tool:=A_ScriptDir "\tools\static_offsets.py",dir:=A_ScriptDir "\game_ref"
+    if python="" || exe="" || !FileExist(tool) || !DirExist(dir)
+        return
+    names:=[]
+    Loop Files dir "\*.exe"
+        if FileExist(GAME_OFFSETS_DB_DIR "\" SubStr(A_LoopFileName,1,-4) ".ini")
+            names.Push(A_LoopFileName)
+    if !names.Length
+        return
+    names:=GameOffsetsSortNames(names)
+    refBuild:=SubStr(names[names.Length],1,-4)
+    out:=dir "\" build ".static.ini",log:=dir "\" build ".static.log"
+    cmd:=A_ComSpec ' /c ' python ' -I "' tool '" --ref-exe "' dir "\" refBuild '.exe" --ref-ini "' GAME_OFFSETS_DB_DIR "\" refBuild '.ini" --exe "' exe '" --out "' out '" > "' log '" 2>&1'
+    try Run(cmd,A_ScriptDir,"Hide")
+    catch
+        return
+    EventLog("GLOBAL","GAME_OFFSETS_STATIC","版本 " build "｜用 " refBuild " 的 game.exe 離線比對推算候選位置（不用登入，只當佐證）")
+}
+
+; 遊戲推算完成後：和離線候選互相核對，結果寫進日誌。
+GameOffsetsCompareStatic(build) {
+    global gameOffsets
+    cand:=A_ScriptDir "\game_ref\" build ".static.ini"
+    if !FileExist(cand)
+        return
+    c:=GameOffsetsReadMap(cand)
+    if c.Get("Status","")!="OK" {
+        EventLog("GLOBAL","GAME_OFFSETS_STATIC_CMP","離線候選：" c.Get("Error","沒有結果") "（略過核對）")
+        return
+    }
+    diff:="",n:=0
+    for k,v in c {
+        if !RegExMatch(k,"Rvas?$")
+            continue
+        n++
+        if !gameOffsets.Has(k) || gameOffsets[k]!=v
+            diff.=" " k
+    }
+    EventLog("GLOBAL","GAME_OFFSETS_STATIC_CMP",diff="" ? "離線候選與遊戲推算的 " n " 項位置完全一致" : "離線候選與遊戲推算不一致：" Trim(diff))
 }
 
 ; 登入座標 / 開始監控被擋時要顯示的說明：遊戲剛更新、還在等新版位置資料時回傳說明文字，否則空字串。
@@ -371,6 +476,8 @@ GameOffsetsResolveTick() {
         EventLog("GLOBAL",gameOffsetsResolveKind="derive" ? "GAME_OFFSETS_DERIVED" : "GAME_OFFSETS_OK","Build=" gameOffsets["Build"] "｜Gaea=" gameOffsets["GaeaInstanceRva"] "｜HP=Char+" gameOffsets["HpNowOffset"] "｜Money=Char+" gameOffsets["MoneyOffset"]
             . (gameOffsetsResolveKind="derive" ? "｜由 " gameOffsets.Get("DerivedFrom","?") " 推算（沒有 Game.pdb）" : ""))
         AddRecentEvent("✓ 已取得新版遊戲資料位置（HP / 金幣 / 背包），不需要校正")
+        if gameOffsetsResolveKind="derive"
+            GameOffsetsCompareStatic(gameOffsets["Build"])
         ; 讓目前的 session 改用新位置，並重新走「連續讀到合理 HP 才啟用死亡判定」。
         for p in profiles {
             if !p.HasOwnProp("memHpStale") || !ProfileGameAlive(p)
