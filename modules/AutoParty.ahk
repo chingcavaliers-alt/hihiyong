@@ -229,7 +229,7 @@ ApBlockerRaw() {
     if IsObject(recorder)
         return "示範錄製中"
     if autoSwitchRunning
-        return "「遊戲視窗自動切換」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
+        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
     if setupMode
         return "8 點登入座標設定還沒做完（到「設定」按「取消設定」，或把 8 點記完）"
     return ""

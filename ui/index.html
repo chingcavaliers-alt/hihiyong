@@ -390,7 +390,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.70.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.71.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -419,7 +419,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🔔</span></span>最近事件</div><div class="events compact-events" id="events"><div class="event"><span>--:--:--</span><i class="dot"></i><span>等待監控事件</span></div></div></div>
 </section>
 <section class="page" id="roles">
-<div class="subtabs"><button data-sub="roleCards" class="active">👥 角色狀態</button><button data-sub="daily">🎁 每日道具</button><button data-sub="recovery">🔁 重新登入</button></div>
+<div class="subtabs"><button data-sub="roleCards" class="active">👥 角色狀態</button><button data-sub="daily">🎁 每日道具</button><button data-sub="recovery">🔁 重新登入</button><button data-sub="companion">🐾 寵物雇傭兵</button><button data-sub="lagtab">📉 流暢度偵測</button></div>
 <div class="subpage" id="roleCards">
 <div id="hpCards" class="role-grid"><div class="hint">等待角色資料…</div></div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>角色血量監控：</b>直接讀取遊戲中的角色血量（目前 / 最大），不需要把遊戲視窗保持在最前面，也不受其他視窗遮蔽影響。活動圖顯示最近約 30 秒的血量變化。<br><b>今日死亡：</b>每個角色當天死亡的次數（午夜換日重新計算），會保留每天的紀錄。</div><div class="hint"><b>假在線判定：</b>血量、經驗值、金幣或背包任一項有變化，都代表角色正在活動；全部長時間沒有變化時先標示「疑似假在線」，持續不變才會標示「已確認假在線」。只有開啟「自動恢復」的角色才會進行重新登入。</div><div class="tech-note">遊戲維修更新後會自動重新準備讀取位置；只有一直讀不到血量時，才需要到「設定 → 啟動與登入」按「重新校正血量讀取」。</div></div></details>
@@ -446,7 +446,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="card" style="margin-top:14px">
  <div class="section-title"><span class="ni"><span class="emo">🎬</span></span>示範錄製 <span class="pill" id="recBadge">未錄製</span></div>
- <div class="hint">需要教程式新的操作時使用：按「開始錄製」後照平常方式手動操作一次，完成後按「停止錄製」。只會記錄這個遊戲視窗的滑鼠點擊與畫面，不會操作遊戲。開始前請先停止「遊戲視窗切換」。</div>
+ <div class="hint">需要教程式新的操作時使用：按「開始錄製」後照平常方式手動操作一次，完成後按「停止錄製」。只會記錄這個遊戲視窗的滑鼠點擊與畫面，不會操作遊戲。開始前請先停止「視窗按鍵精靈」。</div>
  <div class="inv-toolbar" style="margin-top:10px">
   <label>角色 <select id="recRole"></select></label>
   <button class="btn primary" id="recStartBtn" onclick="send('recstart',{value:document.getElementById('recRole').value})">⏺ 開始錄製</button>
@@ -458,6 +458,33 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="subpage" id="recovery">
 <div class="card" id="recStatsCard"><div class="section-title"><span class="ni"><span class="emo">🔁</span></span>重新登入成功率（7 天）<span class="pill" id="recStatsPill">—</span></div><div id="recStatsBars"><div class="hint">等待資料…</div></div><div class="table-wrap" style="margin-top:12px" id="recStatsRoles"></div><div class="account-sub" id="recStatsTop" style="margin-top:8px"></div></div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>怎麼算：</b>從日誌找出每一次「開始重新登入」，看最後是成功還是失敗（「需要人工處理」也算失敗）。成功率 = 成功 ÷（成功 + 失敗），手動中止和還在進行中的不算。</div><div class="hint"><b>最常卡住：</b>失敗的那幾次，最後停在哪一步（例如選角畫面、進入遊戲）。同一步一直出現，就是最該改善的地方。</div><div class="tech-note">只讀日誌，不影響任何自動操作；資料最多 1 分鐘更新一次。</div></div></details>
+</div>
+<div class="subpage" id="companion">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐾</span></span>寵物 / 雇傭兵 / 魔法娃娃監測 <span class="pill" id="cwPill">—</span></div>
+ <div class="hint">掛機中發現寵物、雇傭兵或魔法娃娃不在外面，就按道具快捷欄裡那一張卡的鍵叫出來。三種卡都是「開關」，在外面再按會收起來，所以<b>只在遊戲資料確認「不在外面」時才按</b>：連續確認 10 秒才算（換地圖時它們會暫時消失）、按之前再確認、按完確認真的出現、同一種兩分鐘內不重按、失敗的休息時間越來越長。快捷欄找不到那張卡就不按。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="cwEnabled" onchange="saveCompanion()"> 啟用監測</label>
+  <label class="toggle"><input type="checkbox" id="cwPet" onchange="saveCompanion()"> 寵物</label>
+  <label class="toggle"><input type="checkbox" id="cwMerc" onchange="saveCompanion()"> 雇傭兵</label>
+  <label class="toggle"><input type="checkbox" id="cwDoll" onchange="saveCompanion()"> 魔法娃娃</label>
+ </div>
+ <div class="account-sub" id="cwBlocker" style="margin-top:8px"></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>各角色狀態</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th><th>魔法娃娃</th></tr></thead><tbody id="cwRows"><tr><td colspan="4" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>不打擾你：</b>需要把遊戲視窗切到前面按鍵，做完切回原本的視窗；你正在用鍵盤滑鼠時（停 5 秒後才動作）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 組隊 / 示範錄製 / 輪流切換視窗執行中、死亡中、按下緊急停止時都不會動作。</div><div class="hint"><b>注意：</b>遊戲的聊天框正在輸入時按鍵會打進聊天框，請不要把聊天框一直開著輸入狀態。雇傭兵卡如果是限時（例如 [1D]）道具，過期消失後快捷欄就找不到，程式不會亂按。</div></div></details>
+</div>
+<div class="subpage" id="lagtab">
+<div class="card">
+<div class="section-title"><span class="ni"><span class="emo">📉</span></span>流暢度偵測</div>
+ <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>久掛延遲量測：</b>只讀，不碰遊戲。每個視窗約每 30 秒記一次記憶體、CPU、視窗回應時間、登入至今多久，存成 <code>Logs\LagProbe_日期.csv</code>。看到動作變慢、寵物撿東西變慢時，按「標記 Lag」，方便之後比對過圖前後的資料（診斷包會一起收）。</div>
+ <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lagOn" onchange="send('lagset',{value:this.checked?1:0})"> 啟用量測</label><button class="btn soft" onclick="send('lagmark',{value:0});showToast('已標記 Lag（全部視窗）')">標記 Lag（全部視窗）</button><span id="lagMarkInfo" class="hint"></span></div>
+ <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>登入至今</th><th>記憶體</th><th>CPU</th><th>視窗回應</th><th>前景</th><th>最後量測</th><th></th></tr></thead><tbody id="lagRows"><tr><td colspan="8" class="hint">還沒有資料</td></tr></tbody></table></div>
+ <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>變慢自動過圖：</b>視窗回應連續偏慢時，自動按起點傳送卡 → 等冷卻 → 前點傳送卡，回到原本的野外地圖。<b>會操作遊戲（按鍵）</b>，預設關閉。一次一個視窗、視窗之間隔 60 秒、同一視窗每小時最多一次；前點沒回去會重試、通知，並列入救援。需要道具快捷欄同時有起點卡和前點卡。</div>
+ <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lfOn" onchange="saveLagFix()"> 變慢時自動過圖</label><label class="toggle">視窗回應 ≥ <input type="number" id="lfMs" min="30" max="2000" step="10" value="100" style="width:70px" onchange="saveLagFix()"> ms 視為變慢（連續 6 次量測的中位數）</label></div>
+ <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>目前回應</th><th>過圖次數</th><th>狀態</th><th></th></tr></thead><tbody id="lfRows"><tr><td colspan="5" class="hint">還沒有資料</td></tr></tbody></table></div>
+</div>
 </div>
 </section>
 <section class="page" id="invstats">
@@ -503,7 +530,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="companion">🐾 寵物雇傭兵</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="skillcombo">⚡ 技能組合</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="lagtab">📉 流暢度偵測</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -517,39 +544,9 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">👥</span></span>要開命運箱子的角色</div>
  <div class="table-wrap"><table><thead><tr><th>開</th><th>角色</th><th>開啟鍵</th><th>下次</th><th>背包命運箱子</th><th>狀態</th></tr></thead><tbody id="mboxRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
 </div>
-<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的命運箱子數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。命運箱子快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「🔄 視窗切換」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的命運箱子數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。命運箱子快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「⌨️ 視窗按鍵精靈」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
 </div>
-<div class="subpage" id="skillcombo">
-<div class="card">
- <div class="section-title"><span class="ni"><span class="emo">⚡</span></span>技能組合快速施法 <span class="pill" id="scPill">—</span></div>
- <div class="hint">按一個鍵，用最快速度連續送出幾個技能鍵。例如設「觸發鍵 1、技能鍵 1,2,3」：你按 1，程式就把 1、2、3 一口氣送給遊戲。<b>只在遊戲視窗在最前面、而且沒有其他自動操作在用遊戲時才會攔截</b>；其他時候按鍵照常交給遊戲。F7 / F10 是停止鍵，不能拿來用。</div>
- <div class="inv-toolbar" style="margin-top:12px">
-  <label class="toggle"><input type="checkbox" id="scEnabled" onchange="saveSCCfg()"> 啟用技能組合</label>
-  <label title="打字聊天時按一下暫停，再按一下恢復（不填就沒有暫停鍵）">暫停鍵 <input id="scPauseKey" type="text" maxlength="12" placeholder="例如 Pause" style="width:110px" onchange="saveSCCfg()"></label>
-  <span class="account-sub" id="scState"></span>
- </div>
-</div>
-<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎛️</span></span>組合清單</div>
- <div class="table-wrap"><table><thead><tr><th>開</th><th>名稱</th><th>觸發鍵</th><th>送出的技能鍵（逗號分隔，依序）</th><th>送法</th><th title="每個鍵按住幾毫秒（最少 30；太短遊戲會漏掉鍵）">按住 ms</th><th title="依序送時，兩個鍵之間隔幾毫秒">間隔 ms</th><th title="按住觸發鍵就一直重複">連發</th><th></th></tr></thead><tbody id="scRows"><tr><td colspan="9" class="hint">讀取中…</td></tr></tbody></table></div>
- <div class="inv-toolbar" style="margin-top:10px"><button class="btn soft" onclick="scAdd()">＋ 新增組合</button><span class="account-sub">最多 12 組。改完會自動儲存。</span></div>
-</div>
-<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
-</div><div class="subpage" id="companion">
-<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐾</span></span>寵物 / 雇傭兵 / 魔法娃娃監測 <span class="pill" id="cwPill">—</span></div>
- <div class="hint">掛機中發現寵物、雇傭兵或魔法娃娃不在外面，就按道具快捷欄裡那一張卡的鍵叫出來。三種卡都是「開關」，在外面再按會收起來，所以<b>只在遊戲資料確認「不在外面」時才按</b>：連續確認 10 秒才算（換地圖時它們會暫時消失）、按之前再確認、按完確認真的出現、同一種兩分鐘內不重按、失敗的休息時間越來越長。快捷欄找不到那張卡就不按。</div>
- <div class="inv-toolbar" style="margin-top:12px">
-  <label class="toggle"><input type="checkbox" id="cwEnabled" onchange="saveCompanion()"> 啟用監測</label>
-  <label class="toggle"><input type="checkbox" id="cwPet" onchange="saveCompanion()"> 寵物</label>
-  <label class="toggle"><input type="checkbox" id="cwMerc" onchange="saveCompanion()"> 雇傭兵</label>
-  <label class="toggle"><input type="checkbox" id="cwDoll" onchange="saveCompanion()"> 魔法娃娃</label>
- </div>
- <div class="account-sub" id="cwBlocker" style="margin-top:8px"></div>
-</div>
-<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>各角色狀態</div>
- <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th><th>魔法娃娃</th></tr></thead><tbody id="cwRows"><tr><td colspan="4" class="hint">讀取中…</td></tr></tbody></table></div>
-</div>
-<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>不打擾你：</b>需要把遊戲視窗切到前面按鍵，做完切回原本的視窗；你正在用鍵盤滑鼠時（停 5 秒後才動作）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 組隊 / 示範錄製 / 輪流切換視窗執行中、死亡中、按下緊急停止時都不會動作。</div><div class="hint"><b>注意：</b>遊戲的聊天框正在輸入時按鍵會打進聊天框，請不要把聊天框一直開著輸入狀態。雇傭兵卡如果是限時（例如 [1D]）道具，過期消失後快捷欄就找不到，程式不會亂按。</div></div></details>
-</div><div class="subpage" id="dailyhunt">
+<div class="subpage" id="dailyhunt">
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>每日討伐 <span class="pill" id="dhPill">—</span></div>
  <div class="hint">讀遊戲的每日任務（T 視窗），自動搭公車去勾選的地圖、走到你記錄的打怪點、按 F6 自動打怪，打滿 1000 隻換下一張；全部打滿後回起點，並通知 Discord。每一步都先讀遊戲資料確認，對不上就停手；你開始操作電腦、按緊急停止（F10）時會暫停。重開程式一定是停止狀態。</div>
  <div class="dh-run">
@@ -593,44 +590,13 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>兩台電腦組隊：</b>隊長那台在「另一台電腦的角色」填對方的遊戲內名稱（對方要先是隊長的遊戲好友，而且在線上）；對方那台勾選該角色的「自動接受邀請」。兩台各自開著管理程式、各自啟用自動組隊即可，不需要網路連線。</div><div class="hint"><b>怎麼設定：</b>先勾「隊長」，再勾這位隊長要帶的隊員。隊員必須已經是隊長的遊戲好友（程式不會幫你加好友）。每位隊長各自設定，同一個角色可以同時是別人的隊員。</div><div class="hint"><b>什麼時候組隊：</b>重新登入、載入全部做完，再等上面設定的秒數，才由隊長開始邀請；之後隊員掉線重登回來，會自動補邀。也可以按「立即組隊」馬上做一次。</div><div class="hint"><b>會跳過並通知：</b>隊員已經在別人的隊伍裡（不會叫對方退隊）、離線、不在好友名單、還沒登入完成；同一件事只通知一次。邀請失敗會每分鐘重試，連續 3 次失敗會通知你並休息 10 分鐘。</div><div class="hint"><b>不打擾你：</b>遊戲不接受背景按鍵與滑鼠，所以需要把視窗切到前面操作，做完切回原本的視窗與滑鼠位置；你正在用鍵盤滑鼠時（停 5 秒後才開始）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 示範錄製 / 輪流切換視窗執行中、按下緊急停止時都不會動作，進行到一半遇到也會停手。</div></div></details>
 </div>
-<div class="subpage" id="layout">
+<div class="subpage" id="switcher">
 <div class="card">
- <div class="section-title"><span class="ni"><span class="emo">🗂️</span></span>遊戲視窗配置</div>
- <div class="hint">每個角色的視窗位置與大小都會保存。開始監控或重新登入成功後，會依照已記錄的位置自動還原。</div>
+ <div class="section-title"><span class="ni"><span class="emo">⌨️</span></span>視窗按鍵精靈</div>
+ <div class="hint">自己挑要加入的遊戲視窗，每個視窗可自由設定「停留幾秒」和「切過去之後要按哪些鍵」，依清單順序輪流切換並按鍵；沒加入的視窗不會被切到。自動登入或恢復期間會暫停，避免互相干擾。</div>
  <div class="actions" style="margin-top:14px">
-  <label class="toggle"><input id="layoutAuto" type="checkbox" onchange="setLayoutAuto(this.checked)"> 啟動監控時自動還原</label>
-  <button class="btn soft" onclick="send('layoutSave')">📍 記錄目前全部位置</button>
-  <button class="btn primary" onclick="send('layoutRestore')">↺ 立即全部還原</button>
- </div>
- <div class="status-pill" id="layoutStatus" style="margin-top:12px">待命</div>
- <div class="hint" style="margin-top:10px">如果記錄的位置在目前沒接上的螢幕，該視窗會先略過，不會被搬到看不到的地方。</div>
-</div>
-<div class="card table-card" style="margin-top:14px">
- <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
- <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
-</div>
-</div>
-<div class="subpage" id="lagtab">
-<div class="card">
-<div class="section-title"><span class="ni"><span class="emo">📉</span></span>流暢度偵測</div>
- <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>久掛延遲量測：</b>只讀，不碰遊戲。每個視窗約每 30 秒記一次記憶體、CPU、視窗回應時間、登入至今多久，存成 <code>Logs\LagProbe_日期.csv</code>。看到動作變慢、寵物撿東西變慢時，按「標記 Lag」，方便之後比對過圖前後的資料（診斷包會一起收）。</div>
- <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lagOn" onchange="send('lagset',{value:this.checked?1:0})"> 啟用量測</label><button class="btn soft" onclick="send('lagmark',{value:0});showToast('已標記 Lag（全部視窗）')">標記 Lag（全部視窗）</button><span id="lagMarkInfo" class="hint"></span></div>
- <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>登入至今</th><th>記憶體</th><th>CPU</th><th>視窗回應</th><th>前景</th><th>最後量測</th><th></th></tr></thead><tbody id="lagRows"><tr><td colspan="8" class="hint">還沒有資料</td></tr></tbody></table></div>
- <div class="hint" style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><b>變慢自動過圖：</b>視窗回應連續偏慢時，自動按起點傳送卡 → 等冷卻 → 前點傳送卡，回到原本的野外地圖。<b>會操作遊戲（按鍵）</b>，預設關閉。一次一個視窗、視窗之間隔 60 秒、同一視窗每小時最多一次；前點沒回去會重試、通知，並列入救援。需要道具快捷欄同時有起點卡和前點卡。</div>
- <div class="actions" style="margin-top:8px"><label class="toggle"><input type="checkbox" id="lfOn" onchange="saveLagFix()"> 變慢時自動過圖</label><label class="toggle">視窗回應 ≥ <input type="number" id="lfMs" min="30" max="2000" step="10" value="100" style="width:70px" onchange="saveLagFix()"> ms 視為變慢（連續 6 次量測的中位數）</label></div>
- <div class="table-wrap" style="margin-top:8px"><table><thead><tr><th>角色</th><th>目前回應</th><th>過圖次數</th><th>狀態</th><th></th></tr></thead><tbody id="lfRows"><tr><td colspan="5" class="hint">還沒有資料</td></tr></tbody></table></div>
-</div>
-</div>
-<div class="subpage" id="devzone">
-<div class="card" style="margin-bottom:14px"><div class="section-title"><span class="ni"><span class="emo">🚧</span></span>開發中</div><div class="hint">這裡的功能還在調整，可能不夠穩定；要用的話建議先在單一角色上試用。</div>
-<div class="chips dev-tabs" style="margin-top:10px"><button class="chip active" data-dev="switcher" onclick="devShow('switcher')">🔄 視窗切換</button><button class="chip" data-dev="inventory" onclick="devShow('inventory')">🧹 背包清理</button></div></div>
-<div class="dev-part active" id="switcher">
-<div class="card">
- <div class="section-title"><span class="ni"><span class="emo">🔄</span></span>遊戲視窗自動切換</div>
- <div class="hint">依設定順序輪流顯示各角色遊戲視窗。每個角色可設定停留時間與切換後自動按鍵；自動登入或恢復期間會暫停切換，避免互相干擾。</div>
- <div class="actions" style="margin-top:14px">
-  <button class="btn primary" onclick="send('switchAutoStart');showToast('▶ 已啟動遊戲視窗自動切換')">▶ 啟動自動切換</button>
-  <button class="btn danger" onclick="send('switchAutoStop');showToast('■ 已停止遊戲視窗自動切換')">■ 停止自動切換</button>
+  <button class="btn primary" onclick="send('switchAutoStart');showToast('▶ 已啟動視窗按鍵精靈')">▶ 啟動</button>
+  <button class="btn danger" onclick="send('switchAutoStop');showToast('■ 已停止視窗按鍵精靈')">■ 停止</button>
   <button class="btn soft" onclick="send('switchNext')">立即切換下一個</button>
   <span id="switchStatus" class="status-pill">● 停止</span>
  </div>
@@ -658,7 +624,42 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>切換清單</div><div class="table-wrap"><table><thead><tr><th>帳號</th><th>遊戲視窗</th><th>加入切換</th><th>停留</th><th>切換後按鍵</th></tr></thead><tbody id="switchRows"></tbody></table></div></div>
 </div>
-<div class="dev-part" id="inventory">
+<div class="subpage" id="layout">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">🗂️</span></span>遊戲視窗配置</div>
+ <div class="hint">每個角色的視窗位置與大小都會保存。開始監控或重新登入成功後，會依照已記錄的位置自動還原。</div>
+ <div class="actions" style="margin-top:14px">
+  <label class="toggle"><input id="layoutAuto" type="checkbox" onchange="setLayoutAuto(this.checked)"> 啟動監控時自動還原</label>
+  <button class="btn soft" onclick="send('layoutSave')">📍 記錄目前全部位置</button>
+  <button class="btn primary" onclick="send('layoutRestore')">↺ 立即全部還原</button>
+ </div>
+ <div class="status-pill" id="layoutStatus" style="margin-top:12px">待命</div>
+ <div class="hint" style="margin-top:10px">如果記錄的位置在目前沒接上的螢幕，該視窗會先略過，不會被搬到看不到的地方。</div>
+</div>
+<div class="card table-card" style="margin-top:14px">
+ <div class="section-title"><span class="ni"><span class="emo">📍</span></span>目前記錄位置</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
+</div>
+</div>
+<div class="subpage" id="devzone">
+<div class="card" style="margin-bottom:14px"><div class="section-title"><span class="ni"><span class="emo">🚧</span></span>開發中</div><div class="hint">這裡的功能還在調整，可能不夠穩定；要用的話建議先在單一角色上試用。</div>
+<div class="chips dev-tabs" style="margin-top:10px"><button class="chip active" data-dev="skillcombo" onclick="devShow('skillcombo')">⚡ 技能組合</button><button class="chip" data-dev="inventory" onclick="devShow('inventory')">🧹 背包清理</button></div></div>
+<div class="dev-part active" id="skillcombo">
+<div class="card">
+ <div class="section-title"><span class="ni"><span class="emo">⚡</span></span>技能組合快速施法 <span class="pill" id="scPill">—</span></div>
+ <div class="hint">按一個鍵，用最快速度連續送出幾個技能鍵。例如設「觸發鍵 1、技能鍵 1,2,3」：你按 1，程式就把 1、2、3 一口氣送給遊戲。<b>只在遊戲視窗在最前面、而且沒有其他自動操作在用遊戲時才會攔截</b>；其他時候按鍵照常交給遊戲。F7 / F10 是停止鍵，不能拿來用。</div>
+ <div class="inv-toolbar" style="margin-top:12px">
+  <label class="toggle"><input type="checkbox" id="scEnabled" onchange="saveSCCfg()"> 啟用技能組合</label>
+  <label title="打字聊天時按一下暫停，再按一下恢復（不填就沒有暫停鍵）">暫停鍵 <input id="scPauseKey" type="text" maxlength="12" placeholder="例如 Pause" style="width:110px" onchange="saveSCCfg()"></label>
+  <span class="account-sub" id="scState"></span>
+ </div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎛️</span></span>組合清單</div>
+ <div class="table-wrap"><table><thead><tr><th>開</th><th>名稱</th><th>觸發鍵</th><th>送出的技能鍵（逗號分隔，依序）</th><th>送法</th><th title="每個鍵按住幾毫秒（最少 30；太短遊戲會漏掉鍵）">按住 ms</th><th title="依序送時，兩個鍵之間隔幾毫秒">間隔 ms</th><th title="按住觸發鍵就一直重複">連發</th><th></th></tr></thead><tbody id="scRows"><tr><td colspan="9" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="inv-toolbar" style="margin-top:10px"><button class="btn soft" onclick="scAdd()">＋ 新增組合</button><span class="account-sub">最多 12 組。改完會自動儲存。</span></div>
+</div>
+<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
+</div><div class="dev-part" id="inventory">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🧹</span></span>① 選擇要清理的角色</div>
  <div class="hint">背包清理有自己的清單。可以從已連接的帳號加入，也可以直接選開著的遊戲視窗；不確定是哪個角色時，先按「顯示視窗」確認。</div>
@@ -950,6 +951,7 @@ function showSub(page,sub){
  onSubShown(sub);
 }
 function onSubShown(sub){
+ if(sub==='devzone')send('skillcombostate');
  if(sub==='daily'||sub==='roleCards')send('dailystate');
  if(sub==='recovery')send('recstats');
  if(sub==='dropRates')send('dropindex');
@@ -1295,8 +1297,8 @@ function renderAccounts(a){
  el.innerHTML=a.map(x=>{const f=friendlyState(x);return `<tr><td><input type="checkbox" ${x.launch?'checked':''} onchange="send('launchcheck',{value:'${x.index}~'+(this.checked?1:0)})" title="套用於批次啟動帳號"></td><td><div class="account-name">${f[0]} ${esc(x.name)}</div></td><td class="${f[2]}">${esc(f[1])}${x.autoAttack===0?'<div class="account-sub warn">💤 自動攻擊關閉</div>':''}${!x.hwnd&&x.enabled?'<div class="account-sub warn" title="到「設定 → 帳號」按「自動連接遊戲視窗」">⚠ 沒有連接遊戲視窗</div>':''}</td><td data-hp-index="${x.index}" class="${x.memHpReadOk?'ok':'muted'}">${homeHpText(x)}</td><td>${esc(x.location||'-')}</td><td><label class="monitor-switch"><input type="checkbox" ${x.enabled?'checked':''} onchange="send('monitorcheck',{value:'${x.index}~'+(this.checked?1:0)});showToast('${esc(x.name)} 監控 '+(this.checked?'ON':'OFF'))">${x.enabled?'ON':'OFF'}</label></td></tr>`}).join('');
 }
 // v1.3.22.0 首頁「目前啟動的功能」：每個功能一個標籤，點了跳到設定
-function devShow(id){document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
-function goTo(page,sub){document.querySelector(`.side [data-page="${page}"]`)?.click();if(page==='tools'&&(sub==='switcher'||sub==='inventory')){showSub('tools','devzone');devShow(sub);return;}if(sub)showSub(page,sub);}
+function devShow(id){if(id==='skillcombo')send('skillcombostate');document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
+function goTo(page,sub){document.querySelector(`.side [data-page="${page}"]`)?.click();if(page==='tools'&&(sub==='skillcombo'||sub==='inventory')){showSub('tools','devzone');devShow(sub);return;}if(sub)showSub(page,sub);}
 function renderFeatures(s){
  const el=document.getElementById('featList'); if(!el)return;
  const a=s.accounts||[], en=a.filter(x=>x.enabled), auto=en.filter(x=>x.softAutoRecover).length;

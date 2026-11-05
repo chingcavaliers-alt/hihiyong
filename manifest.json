@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.70.0",
+  "version": "v1.3.71.0",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "da35a31db52e18437ea5832703b25b05f12c5171577111c7d88e7e7163e7105e"
+      "sha256": "c91809480c7d8ff98641e10fa1eb828ab9b25a78830d0a70f7b0b47b926254ff"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -47,7 +47,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "d399d0d4c7651aecc6a0aa0f5ab50f7cb412961b3c5098a7bfba126ac9ed87c6"
+      "sha256": "e32a932ec4cd7bf47ca1a90a0d929778c4cb093e51123ea12b0cc3c289c27999"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -127,7 +127,7 @@
     },
     {
       "path": "modules\\AutoParty.ahk",
-      "sha256": "12dfb0fe952057d5562be6e46a8e8e88cbb2509eec9afd66e18274d6480f82fa"
+      "sha256": "bb2305adce8f885e3801896f554f31cf62ab97e294de979473b04acac890ed82"
     },
     {
       "path": "modules\\CompanionWatch.ahk",
@@ -135,7 +135,7 @@
     },
     {
       "path": "modules\\DailyHunt.ahk",
-      "sha256": "52f5a3de1a8c8080ef6c815a51b2fbc204dde1ecc2ce6cae93cbf8eaeee804b1"
+      "sha256": "0db5e5cadd0f1794007d7185ff3d1128bdef287e6c575efd42ba31fa2539248b"
     },
     {
       "path": "modules\\DailyItems.ahk",
@@ -195,7 +195,7 @@
     },
     {
       "path": "modules\\MBox.ahk",
-      "sha256": "62156148070c1327f788f410ef9f824ab8e1fdeed1d5dd6bc9d66b30efb897c6"
+      "sha256": "421c0d5842fd6435f6052380b8a76bacf4ec6669fff47c8acab95a4d3b433eda"
     },
     {
       "path": "modules\\Mining.ahk",
@@ -211,7 +211,7 @@
     },
     {
       "path": "modules\\Recorder.ahk",
-      "sha256": "2d92cca32eaa3ff5018acc36afef693e2aba3086f04188f08308fe4ba0b66d8c"
+      "sha256": "74cc7c0033086b1a60f9767b927f5040ed94ef42481b785f73d6f060315365a3"
     },
     {
       "path": "modules\\RecoveryBatch.ahk",
@@ -319,7 +319,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "80dd3dc5920e2aa846762c9072042f0584ebd7b3931db6f5f39e6f1d1dfbc8fc"
+      "sha256": "1259305ca135373756bc1b772e2f858716d337951aa308a34c32cadc14d3d27f"
     }
   ]
 }

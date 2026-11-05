@@ -1,4 +1,4 @@
-﻿; ============================================================================
+; ============================================================================
 ; DailyHunt：每日討伐（T 視窗任務：指定地圖的怪各打 1000 隻）自動跑圖。
 ; 按「▶ 啟動」才會動（不存檔：程式重開一定是停止）；「勾選」是選要跑哪幾個角色（可多個，各自獨立進行，
 ; 同一時間只有一個角色在用前景視窗，其他角色在掛機打怪時不需要視窗）。要跑哪幾張圖也可以另外勾。
@@ -59,6 +59,7 @@ DhParseChars(text) {
     return out
 }
 global DH_RUNNING := 0                      ; 啟動 / 停止（不存檔）
+global DH_START_IDLE_MS := 2000                ; 啟動 / 換下一步之前，鍵盤滑鼠要停多久才算你沒在用電腦
 global DH_TEST := 0                         ; 測試流程（不存檔）：只傳送到勾選的圖、走到固定點就算完成、回起點、下一張，不打怪
 global DH_CHARS := DhParseChars(DhIniGet("Chars", DhIniGet("Char", "")))   ; 舊版只有單一角色（Char）
 global DH_MAPS_ON := DhParseMaps(DhIniGet("Maps", ""))
@@ -424,7 +425,7 @@ DailyHuntTick() {
             todo := {p: p, d: d}
     }
     if todo {
-        busy := ApBlocker()   ; 含「等你停止操作鍵盤滑鼠」
+        busy := ApBlocker(DH_START_IDLE_MS)   ; 含「等你停止操作鍵盤滑鼠」：每日討伐只等 2 秒（不跟自動組隊共用 5 秒）
         if busy != "" {
             DhSt(todo.p).text := "等待中：" busy
             return

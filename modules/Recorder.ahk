@@ -25,7 +25,7 @@ RecorderStart(idx) {
     else if !GameOffsetsReady(p.pid)
         reason:="尚未取得 Game.pdb 資料位置"
     else if autoSwitchRunning
-        reason:="請先停止「遊戲視窗自動切換」，避免錄製途中切走視窗"
+        reason:="請先停止「視窗按鍵精靈」，避免錄製途中切走視窗"
     else if invRunning
         reason:="背包清理正在執行"
     else if processingQueue || foregroundOwner!=""

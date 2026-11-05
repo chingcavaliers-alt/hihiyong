@@ -143,7 +143,7 @@ MBoxBlocker() {
     if IsObject(recorder)
         return "示範錄製中"
     if autoSwitchRunning
-        return "「遊戲視窗自動切換」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
+        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
     if setupMode
         return "8 點登入座標設定還沒做完（到「設定」按「取消設定」，或把 8 點記完）"
     ; 閒置時間會被我們自己送出的按鍵 / 切視窗歸零（沒有裝輸入鉤子時分不出來），所以只有「我們最後一次動作之後」
