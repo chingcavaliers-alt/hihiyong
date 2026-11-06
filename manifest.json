@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.77.0",
+  "version": "v1.3.78.0",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "899d3dc715a46adb5c76b410a7c6a65221d9c052edfebea0bb7fab7353dc8061"
+      "sha256": "01a2238df3dd5aaae1bf73329ad2b24efe171c28b3cca9311755dec24657e9f9"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -47,7 +47,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "64a54c4f1f17763d10b15f3dd20d1b72c930c93d952ef0fad9aea06396876372"
+      "sha256": "a9ab447ad54d138afd6830e83029257fd368cef360485def488a72912a504910"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -275,7 +275,7 @@
     },
     {
       "path": "offsets_db\\6AEDB170-2137000.ini",
-      "sha256": "dc2be3706f3cce53ab5c0b70b701cc5fc0abb7473e4cfed10b2f01fb38ffa5a7"
+      "sha256": "ecefd5542fe5942db05699aa7498773ea7a7a600be58105f7fb42054bbd3f8f2"
     },
     {
       "path": "README_v1.3.13.0.txt",
@@ -291,7 +291,7 @@
     },
     {
       "path": "tools\\derive_game_offsets.py",
-      "sha256": "008e4ffbf0dc7f68bc13bb36d736175dbc3c8833bdfad6b525510b1677aeb593"
+      "sha256": "c3062d82e7876924a4922769326004e56e5369f1ffdbbcbbce8a7292dc5e958d"
     },
     {
       "path": "tools\\droprates\\droprates.py",
@@ -431,7 +431,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "a81551311b59e85b315f119acc59e5f0766fc2c3ca76280bdff1a938853b25d5"
+      "sha256": "1c9684b72a6c5d7854e17b4486cc11233b6fecb9022a784ae3bd3f9d28531aab"
     }
   ]
 }

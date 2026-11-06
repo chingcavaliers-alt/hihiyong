@@ -324,6 +324,14 @@ class Finder:
         v = struct.unpack("<%di" % n, d)
         return all(0 < x < 256 for x in v) and len(set(v)) == len(v)
 
+    def v_quick_strict(self, rva):
+        """在 v_quick 之外，還要求前面 24 位元組是已知的固定開頭（1,1,1.0f,1.0f,2,3）。
+        11/06 發現只看「6 個不重複的掃描碼」會誤中旁邊另一張表（差 0x60），按錯鍵。"""
+        if not self.v_quick(rva):
+            return False
+        d = rd(self.g.h, self.g.base + rva - 24, 24)
+        return bool(d) and struct.unpack("<6i", d) == (1, 1, 0x3F800000, 0x3F800000, 2, 3)
+
 
 # ----------------------------------------------------------------- 虛擬函式表
 def crow_vft(g, f, land, list_key="LandCrowListOffset"):
@@ -392,7 +400,9 @@ def derive_one(g, ref):
         raise Derive("對不上 OuterInstanceRva")
     # 快捷鍵：有固定的 6 個掃描碼
     if "QuickKeysRva" in ref:
-        d = f.nearest("QuickKeysRva", f.v_quick, dg)
+        d = f.nearest("QuickKeysRva", f.v_quick_strict, dg)
+        if d is None:   # 這版沒有那個固定開頭：退回只看掃描碼
+            d = f.nearest("QuickKeysRva", f.v_quick, dg)
         if d is None:
             raise Derive("對不上 QuickKeysRva")
         deltas["QuickKeysRva"] = d
