@@ -306,6 +306,16 @@ class Finder:
         sz = H("PartyEntrySize")
         return isptr(g.h, vb) and ve >= vb and (ve - vb) % sz == 0 and (ve - vb) // sz <= 16
 
+    def v_daily(self, rva):
+        """每日任務狀態：日期（從 1970 起的第幾天）合理、列數合理。要開過 T 視窗才有資料，沒開過全是 0 → 不算。"""
+        today = self.data_u64(rva + self.H("DailyTodayOffset"))
+        cnt = self.data_u64(rva + self.H("DailyCountOffset"))
+        if today is None or cnt is None:
+            return False
+        today &= 0xFFFFFFFF
+        cnt &= 0xFFFFFFFF
+        return 19000 < today < 30000 and 1 <= cnt <= self.H("DailyRowCount")
+
     def v_quick(self, rva):
         n = self.H("QuickKeysCount")
         d = rd(self.g.h, self.g.base + rva, 4 * n)
@@ -396,6 +406,10 @@ def derive_one(g, ref):
             dhi = min(hi)[1]
             if dlo == dhi:
                 deltas["DailyStateRva"] = dlo
+            else:   # 前後平移量不同（這版小幅改動）：夾在兩者之間逐格試，資料看起來像每日任務（日期合理、列數合理）且只有一個才採用
+                good = [d for d in range(min(dlo, dhi), max(dlo, dhi) + 1, 8) if f.v_daily(old + d)]
+                if len(good) == 1:
+                    deltas["DailyStateRva"] = good[0]
     # 虛擬函式表
     vdelta = {}
     old_v = lambda key: [int(x, 16) for x in ref[key].split("|")]
