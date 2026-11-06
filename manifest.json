@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.75.0",
+  "version": "v1.3.76.0",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "9200d169a0b0c8753580755799466ec39a3250f3d29d7478db432ac17f927f1d"
+      "sha256": "4bd1022fd24bf5d1e7c9deaec43dd2a9d33dedf882663caa55d600697ed1072f"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -47,7 +47,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "7ac1f319d344b0219273269c7a6a119e723fae40220882d4ad26722ebe1cf7c5"
+      "sha256": "b73ffda6fd3a8c499d4452ba14fa54f70d7b9e67a4bfde3897a68ac1cbfa3917"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -427,7 +427,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "e4ea90560fabcbe770c7d219a87b39a33e353abb7aa95e1c07d386d6ce70044c"
+      "sha256": "02797095dd7a59dbd39e19e89d544dade4fe89e8c30f3b6707143ed21b782f32"
     }
   ]
 }

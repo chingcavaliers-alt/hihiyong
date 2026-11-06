@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.75.0"
+global APP_VERSION := "v1.3.76.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -3878,6 +3878,8 @@ WaitBootLoadingSafe(hwnd,profileName,timeoutSec:=45,minWaitSec:=10,stableSec:=2)
         ; Server 畫面可能有動畫，因此不再要求整張畫面連續完全靜止。
         ; 最短保護期後，只要畫面已相對初始 Loading 發生足夠大的轉場並維持 1.4 秒，即視為 Ready。
         if elapsed>=minWaitSec && dist>=3 {
+            if lastSig!="" && BootSignatureDistance(lastSig,sig)>=2
+                changedSince:=0   ; 畫面還在大幅變動（轉場中途 / 載入動畫），重新計時，避免最短等待縮短後提早放行
             if !changedSince
                 changedSince:=A_TickCount
             if A_TickCount-changedSince>=1400 {
@@ -4128,7 +4130,7 @@ RecoverProfile(idx, &asyncLoading:=false) {
             throw Error("伺服器畫面尚未 Ready；已禁止執行 server 座標並保留 game.exe。")
     } else {
         EventLog(p.name,"SCREEN_GATE_FALLBACK","缺少 server 畫面樣板｜改用 Boot Loading Safe，不會立即失敗或提前點座標")
-        if !WaitBootLoadingSafe(hwnd,p.name,45,10,2)
+        if !WaitBootLoadingSafe(hwnd,p.name,45,4,2)
             throw Error("Boot Loading Safe Timeout；已保留 game.exe，不執行 server 座標。")
     }
     ; Server Ready 後才解除 Boot 階段保護；後續仍沿用既有 Recovery 錯誤處理。
