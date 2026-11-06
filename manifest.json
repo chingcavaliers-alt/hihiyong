@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.71.0",
+  "version": "v1.3.74.0",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "c91809480c7d8ff98641e10fa1eb828ab9b25a78830d0a70f7b0b47b926254ff"
+      "sha256": "a7a6aae52b929609c551007533a299f4b0b14b3ceddc8f34a58b5ce961019654"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -47,7 +47,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "e32a932ec4cd7bf47ca1a90a0d929778c4cb093e51123ea12b0cc3c289c27999"
+      "sha256": "4294dca8779341acdd7a155c4e8fcc46b8e9219904e80e6968a4f0602ac7ce1b"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -127,7 +127,7 @@
     },
     {
       "path": "modules\\AutoParty.ahk",
-      "sha256": "bb2305adce8f885e3801896f554f31cf62ab97e294de979473b04acac890ed82"
+      "sha256": "a76752d02877cc2662457dd476757a862d61f676917eca969d27932755cd5f8c"
     },
     {
       "path": "modules\\CompanionWatch.ahk",
@@ -135,7 +135,7 @@
     },
     {
       "path": "modules\\DailyHunt.ahk",
-      "sha256": "0db5e5cadd0f1794007d7185ff3d1128bdef287e6c575efd42ba31fa2539248b"
+      "sha256": "c37cf690275a48d847e760d40d3363da48ba503018c625fc161428ed92898fed"
     },
     {
       "path": "modules\\DailyItems.ahk",
@@ -191,7 +191,7 @@
     },
     {
       "path": "modules\\LoginUi.ahk",
-      "sha256": "bdf3ed492488f3940d316689d3f8b53e10aa1dae7825c5ef39afbc3f0e72269d"
+      "sha256": "c6c315504473b4fb33ee3a6ec1af503706f80ba8a2c1b8c0470317654fcc2037"
     },
     {
       "path": "modules\\MBox.ahk",
@@ -200,6 +200,10 @@
     {
       "path": "modules\\Mining.ahk",
       "sha256": "197f48710607ece9ad0550cbb78a9c4375967911a96e174fa749bf4481a0ec7c"
+    },
+    {
+      "path": "modules\\MiniWindow.ahk",
+      "sha256": "39aa63dc0a57d2bbff966a219f53e66f3c8176ba272fc421dca74df42f019467"
     },
     {
       "path": "modules\\NetGuard.ahk",
@@ -274,6 +278,10 @@
       "sha256": "df0999b1021cdd85609163fa4a284e6339a9f9ab430f9677db8c847b95c8e7f3"
     },
     {
+      "path": "tools\\build_guide.py",
+      "sha256": "123bf1a5308de18f1d338f8eb10c879abc54ee1141729f8041e9e7e4549fc6eb"
+    },
+    {
       "path": "tools\\derive_game_offsets.py",
       "sha256": "a25d98fdb8ef8ec034a252a570efa81cbc0b7fa23ad7e498348851bc24dfbb76"
     },
@@ -318,8 +326,104 @@
       "sha256": "b2744a27cedca169f7a9db50172769912066d66697b23da02b61c8a2bfd4d867"
     },
     {
+      "path": "ui\\guide\\dc_a_gear.png",
+      "sha256": "84a49ea4be7165809658603e44f58899ddbb7c8c2e09eeba35cfe0a646446fd3"
+    },
+    {
+      "path": "ui\\guide\\dc_b_menu.png",
+      "sha256": "b89a2e563c208c811ded915b20a0d920e2494cce0dba0d7bb3cb7e4b8282e7ea"
+    },
+    {
+      "path": "ui\\guide\\dc_c_integrations.png",
+      "sha256": "41fdc8898ca8c4775a9ccd7ffb17180c810ee3128f688b460493d3a9b84f04e9"
+    },
+    {
+      "path": "ui\\guide\\dc_d_webhook.png",
+      "sha256": "475413449fe7f9d00881fba4f9019ee833165af1fd15f499cda85785fcd8126b"
+    },
+    {
+      "path": "ui\\guide\\gd1_01.png",
+      "sha256": "7b2b025fb7bb074acf18b648d596a900767390aebd0fbd6a5e3a3073202f7823"
+    },
+    {
+      "path": "ui\\guide\\gd2_02.png",
+      "sha256": "fd7d908a22950337b3ab3af16c26b81886b3d639f4c0ed270dbe28b2ab76601d"
+    },
+    {
+      "path": "ui\\guide\\gd2_03.png",
+      "sha256": "fd7d908a22950337b3ab3af16c26b81886b3d639f4c0ed270dbe28b2ab76601d"
+    },
+    {
+      "path": "ui\\guide\\gd3_04.png",
+      "sha256": "da1aff0598eff5705265c2ac0624461ebf2a9c0ea9df723fa6026af15a51fd36"
+    },
+    {
+      "path": "ui\\guide\\gd3_05.png",
+      "sha256": "6e04880e4e59b53352a8f6d455aacd04e5bed7f048cbe3cc7d6b87a4ffae0dc1"
+    },
+    {
+      "path": "ui\\guide\\gd4_06.png",
+      "sha256": "4266a90c277bbb7726cebcba8abccb854c682fd458f099160fd030d0cfda8a93"
+    },
+    {
+      "path": "ui\\guide\\gd4_07.png",
+      "sha256": "4266a90c277bbb7726cebcba8abccb854c682fd458f099160fd030d0cfda8a93"
+    },
+    {
+      "path": "ui\\guide\\gd5_08.png",
+      "sha256": "7b2b025fb7bb074acf18b648d596a900767390aebd0fbd6a5e3a3073202f7823"
+    },
+    {
+      "path": "ui\\guide\\gd5_09.png",
+      "sha256": "c8ddc654df48cddb991c00f65f92a79aa9358076ae071aa6f521652981975db6"
+    },
+    {
+      "path": "ui\\guide\\gd6_10.png",
+      "sha256": "a4f1aa9b5dad56fa13abe4828304034b75d527aace37f4bb3bbd39f73fdac6ac"
+    },
+    {
+      "path": "ui\\guide\\gd6_11.png",
+      "sha256": "bd395c1e02565962a28b35347335fdf299bb1e1ea91224a5b614ce1a18e0c1e7"
+    },
+    {
+      "path": "ui\\guide\\gd6_12.png",
+      "sha256": "93fa2d4368c445d9bd64c97a79de523b56b2e2f8a3c3257c2b7692712abf3ce6"
+    },
+    {
+      "path": "ui\\guide\\gd6_13.png",
+      "sha256": "ce6ea7b5d88e1de9f64bb2db5a0411f188e5a2cd049e93a1a6c5f4bb9c4c0b79"
+    },
+    {
+      "path": "ui\\guide\\gd7_14.png",
+      "sha256": "8cb063e750ac2d67d1859c4934057954209e4c376badeec6a5a073c192c1be6b"
+    },
+    {
+      "path": "ui\\guide\\gd7_15.png",
+      "sha256": "41681fee529d0fd11881df0d391dc3ec7d5d085800f950526daab7725a71b1ff"
+    },
+    {
+      "path": "ui\\guide\\gd7_16.png",
+      "sha256": "54a1bd04dd8e1b41206232726ba6af59f0c4ef17351514dbf0fdbeb310586439"
+    },
+    {
+      "path": "ui\\guide\\gd7_17.png",
+      "sha256": "165de167a449f5be690d23c128b82915d0660dcaba1bc30bbad76d0b7b8da95b"
+    },
+    {
+      "path": "ui\\guide\\gd7_18.png",
+      "sha256": "2ce954e59649b526bbc3d3c0720d8ab5e69df806629cbd72cd89a11a26ceeb83"
+    },
+    {
+      "path": "ui\\guide\\gd7_19.png",
+      "sha256": "b89d443b8313cb97cca77a071de8b291425bd82f21c469e8d774d670136dc8b8"
+    },
+    {
+      "path": "ui\\guide\\gd8_20.png",
+      "sha256": "8a5d658eaf2927f9d3d6b95474ec51a9840ca3e75c7bb41c665baae028b0e8ee"
+    },
+    {
       "path": "ui\\index.html",
-      "sha256": "1259305ca135373756bc1b772e2f858716d337951aa308a34c32cadc14d3d27f"
+      "sha256": "9fa958ee45f3c50acddc8e8cc7861f740498cc192446a2d6196a9dae175e6edd"
     }
   ]
 }

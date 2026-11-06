@@ -292,6 +292,8 @@ tbody tr:hover td{background:var(--surface-2)}
 .dh-msg>div:empty{display:none}
 .dh-msg .dh-status{font-weight:600;color:var(--text)}
 .dh-msg .dh-note{background:var(--surface-2);border-radius:8px;padding:7px 11px;color:var(--text-2)}
+.dh-no{display:inline-grid;place-items:center;min-width:22px;height:22px;margin:0 6px 0 8px;border-radius:11px;background:var(--accent,#2a5bd7);color:#fff;font-size:12px;font-weight:700}
+.dh-mv{border:1px solid var(--line,#ccc);background:transparent;color:inherit;border-radius:5px;padding:0 5px;margin-right:2px;font-size:10px;line-height:18px;cursor:pointer}.dh-mv:hover{background:var(--chip,#eef)}
 .dh-spot{font-variant-numeric:tabular-nums;white-space:nowrap}
 .dh-spot .dh-xy{display:inline-block;min-width:118px;text-align:left;margin-right:10px}
 .dh-spot .btn{min-width:52px;margin-right:6px;text-align:center}
@@ -383,6 +385,21 @@ tbody tr:hover td{background:var(--surface-2)}
 /* H-015 掉落率長條（長度用開根號，小機率也看得到） */
 .drop-barbox{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden}.drop-bar{height:8px;background:var(--accent);border-radius:4px}
 @media (max-width:1000px){.daily-cfg-row{grid-template-columns:1fr}}
+/*GUIDE-CSS-START*/
+.gd-step{background:var(--surface,#fff);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.gd-step h3{margin:0 0 8px;font-size:16px}
+.gd-step p,.gd-step li{line-height:1.75}
+.gd-step ul,.gd-step ol{padding-left:22px;margin:8px 0}
+.gd-shot{position:relative;margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;line-height:0}
+.gd-shot img{width:100%;display:block}
+.gd-box{position:absolute;border:3px solid #e11d48;border-radius:6px;box-shadow:0 0 0 2px rgba(255,255,255,.85);pointer-events:none}
+.gd-box b{position:absolute;left:-3px;top:-11px;transform:translateY(-50%);background:#e11d48;color:#fff;border-radius:999px;min-width:20px;height:20px;line-height:20px;font-size:12px;text-align:center;padding:0 4px;font-weight:700}
+.gd-legend{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:6px}
+.gd-legend li{display:flex;gap:10px;align-items:flex-start;line-height:1.6}
+.gd-legend li b{flex:none;background:#e11d48;color:#fff;border-radius:999px;min-width:20px;height:20px;line-height:20px;font-size:12px;text-align:center;font-weight:700}
+.gd-tip{background:var(--chip,#eef4ff);border-radius:10px;padding:10px 14px;margin-top:10px;line-height:1.7}
+.gd-warn{background:#fff1f2;color:#9f1239;border:1px solid #fecdd3;border-radius:10px;padding:10px 14px;margin-top:10px;line-height:1.7}
+/*GUIDE-CSS-END*/
 </style>
 </head>
 <body><div class="app">
@@ -390,8 +407,8 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.71.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
-<nav class="nav" id="navBottom"><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
+<div class="foot">v1.3.74.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
 <section class="page active" id="home">
@@ -709,6 +726,269 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </div>
 </section>
+<!--GUIDE-START-->
+<section class="page" id="guide">
+<div class="subtabs"><button data-sub="gd1" class="active">① 開始前</button><button data-sub="gd2">② 第一次設定</button><button data-sub="gd3">③ Discord 通知</button><button data-sub="gd4">④ 新增帳號</button><button data-sub="gd5">⑤ 開始掛機</button><button data-sub="gd6">⑥ 角色頁</button><button data-sub="gd7">⑦ 功能頁</button><button data-sub="gd8">⑧ 統計與維護</button></div>
+<div class="subpage" id="gd1">
+<div class="gd-step"><h3>需要準備什麼</h3>
+<ul>
+<li><b>遊戲</b>：已安裝好、手動登入過一次，確認可以正常進入遊戲。</li>
+<li><b>遊戲畫面大小</b>：視窗模式 <b>1024×768</b>，Windows 顯示縮放建議 <b>100%</b>（不是 100% 時程式會自動換算，但請不要用其他解析度）。</li>
+<li><b>遊戲帳號</b>：想掛幾隻角色就準備幾組帳號密碼（密碼存在這台電腦、用 Windows 加密，不會上傳）。</li>
+<li><b>Discord</b>（想收通知才需要）：一個自己能管理的伺服器和文字頻道，下一章會教你建立 Webhook。</li>
+<li><b>授權</b>：第一次使用請到「設定 → 其他 → 使用授權」輸入授權碼。</li>
+</ul>
+<div class="gd-tip">教學裡每張圖都是這支程式的真實畫面，<b>紅框＋編號</b>就是這一步要看 / 要按的地方；編號對應圖下方的說明。</div>
+</div>
+<div class="gd-step"><h3>認識主畫面</h3>
+<p>第一次打開會看到「首頁」。左邊是選單：首頁、角色、收益統計、功能、操作教學（就是這裡）、設定。</p>
+<div class="gd-shot"><img src="guide/gd1_01.png" alt="認識主畫面" loading="lazy">
+<i class="gd-box" style="left:0.441%;top:8.537%;width:14.706%;height:20.732%"><b>1</b></i>
+<i class="gd-box" style="left:68.390%;top:11.341%;width:28.595%;height:5.305%"><b>2</b></i>
+<i class="gd-box" style="left:17.059%;top:19.451%;width:81.471%;height:11.159%"><b>3</b></i>
+<i class="gd-box" style="left:18.456%;top:37.866%;width:78.676%;height:20.488%"><b>4</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>左側選單：換頁用。設定在最下面。</span></li><li><b>2</b><span>三個大按鈕：啟動勾選帳號、開始監控、F10 停止自動操作。</span></li><li><b>3</b><span>「目前啟動的功能」：綠色＝開著，灰色＝關閉，點一下跳到該功能的設定。</span></li><li><b>4</b><span>角色列表：狀態、血量、所在地圖，每個角色可以分開開關「監控」。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd2">
+<div class="gd-step"><h3>啟動與登入設定</h3>
+<p>到「設定 → 🚀 啟動與登入」。最上面的「設定檢查」會自己檢查目前設定能不能用，<b>只有沒通過的項目才需要處理</b>。</p>
+<div class="gd-shot"><img src="guide/gd2_02.png" alt="啟動與登入設定" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:15.466%;width:78.676%;height:5.000%"><b>1</b></i>
+<i class="gd-box" style="left:18.456%;top:25.339%;width:78.676%;height:7.458%"><b>2</b></i>
+<i class="gd-box" style="left:18.456%;top:64.958%;width:8.529%;height:3.686%"><b>3</b></i>
+<i class="gd-box" style="left:18.456%;top:33.136%;width:8.529%;height:3.686%"><b>4</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>設定檢查：遊戲程式、登入位置、角色血量，三項都亮綠燈就可以用了。</span></li><li><b>2</b><span>六個步驟：帳號 → 遊戲視窗 → 登入位置 → 角色血量 → 所在地圖 → 開始監控，照順序做。</span></li><li><b>3</b><span>按這裡選擇遊戲的啟動程式（遊戲資料夾裡的 Launcher.exe）。自動登入、重新登入時會用它開遊戲。</span></li><li><b>4</b><span>改完設定後按這個，重新檢查一次。</span></li></ul>
+</div>
+<div class="gd-step"><h3>登入後選擇角色</h3>
+<p>如果一個遊戲帳號底下有多隻角色，在「登入後選擇角色」指定重新登入後要進哪一隻（依順序或依角色名稱）。選項要等該帳號的遊戲開著時才讀得到，讀過一次就會記住。</p>
+<div class="gd-shot"><img src="guide/gd2_03.png" alt="登入後選擇角色" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:70.763%;width:81.471%;height:7.119%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>登入後選擇角色：每個帳號各一列。登入畫面的位置是直接讀遊戲，不需要先記點。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd3">
+<div class="gd-step"><h3>Webhook 是什麼？</h3>
+<p>Webhook 是 Discord 頻道給的一組<b>專屬網址</b>：程式把訊息丟到這個網址，那個頻道就會收到通知（斷線、死亡、每日報表…）。下面用 Discord 電腦版的<b>實際畫面</b>示範，約 1 分鐘就能完成。</p>
+<div class="gd-tip">沒有自己的伺服器？在 Discord 左側按「＋」→「親自建立」→「僅供我和我的朋友使用」，建一個專用的伺服器和文字頻道就好。要有「管理 Webhook」權限（自己建的伺服器預設就有）。</div>
+</div>
+<div class="gd-step"><h3>步驟 1：打開要收通知的頻道的設定</h3>
+<p>進入伺服器，把滑鼠移到要收通知的<b>文字頻道</b>上，右邊會出現兩個小圖示，按<b>⚙（編輯頻道）</b>。</p>
+<div class="gd-shot" style="max-width:472px"><img src="guide/dc_a_gear.png" alt="步驟 1：打開要收通知的頻道的設定" loading="lazy">
+<i class="gd-box" style="left:87.458%;top:26.316%;width:10.847%;height:33.684%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>按 ⚙「編輯頻道」。（建議另外建一個專門收通知的頻道，例如 #通知。）</span></li></ul>
+</div>
+<div class="gd-step"><h3>步驟 2：選「整合」</h3>
+<p>頻道設定的左邊選單裡點<b>整合</b>。</p>
+<div class="gd-shot" style="max-width:408px"><img src="guide/dc_b_menu.png" alt="步驟 2：選「整合」" loading="lazy">
+<i class="gd-box" style="left:1.176%;top:58.605%;width:95.686%;height:17.674%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>點「整合」。</span></li></ul>
+</div>
+<div class="gd-step"><h3>步驟 3：建立 Webhook</h3>
+<p>在「Webhook」那一列按<b>建立 Webhook</b>（如果這個頻道已經有 Webhook，按左上角的「新 Webhook」）。</p>
+<div class="gd-shot"><img src="guide/dc_c_integrations.png" alt="步驟 3：建立 Webhook" loading="lazy">
+<i class="gd-box" style="left:79.423%;top:53.158%;width:11.346%;height:10.000%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>按「建立 Webhook」。</span></li></ul>
+</div>
+<div class="gd-step"><h3>步驟 4：命名、確認頻道、複製網址</h3>
+<p>Discord 會建立一個 Webhook（預設名字很怪，可以改）。</p>
+<div class="gd-shot"><img src="guide/dc_d_webhook.png" alt="步驟 4：命名、確認頻道、複製網址" loading="lazy">
+<i class="gd-box" style="left:42.596%;top:72.857%;width:23.269%;height:7.857%"><b>1</b></i>
+<i class="gd-box" style="left:67.404%;top:72.857%;width:23.269%;height:7.857%"><b>2</b></i>
+<i class="gd-box" style="left:42.596%;top:88.750%;width:14.038%;height:6.429%"><b>3</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>名稱：改成你認得的，例如 HIHIYONG；通知裡會用這個名字發言。</span></li><li><b>2</b><span>頻道：確認是要收通知的那個頻道，可以從這裡換。</span></li><li><b>3</b><span>按「複製 Webhook 網址」。接著切回本程式貼上（下一步）；改了名稱要先按下方的「儲存變更」。</span></li></ul>
+<div class="gd-warn"><b>Webhook 網址等於這個頻道的「發言密碼」</b>：不要貼到公開地方、不要截圖給別人（所以上面的畫面刻意沒有顯示網址）。程式儲存後會加密保存，畫面上也只顯示成圓點。想把「斷線通知」和「死亡通知」分開收，就在兩個頻道各建一個 Webhook；不分的話兩邊貼同一個網址也可以。</div>
+</div>
+<div class="gd-step"><h3>把網址貼進程式</h3>
+<p>到「設定 → 💬 通知與報表」，照編號填：</p>
+<div class="gd-shot"><img src="guide/gd3_04.png" alt="把網址貼進程式" loading="lazy">
+<i class="gd-box" style="left:18.750%;top:25.427%;width:1.765%;height:2.927%"><b>1</b></i>
+<i class="gd-box" style="left:38.235%;top:25.061%;width:19.338%;height:5.732%"><b>2</b></i>
+<i class="gd-box" style="left:58.015%;top:25.061%;width:19.338%;height:5.732%"><b>3</b></i>
+<i class="gd-box" style="left:78.088%;top:25.427%;width:1.765%;height:2.927%"><b>4</b></i>
+<i class="gd-box" style="left:18.456%;top:34.085%;width:19.338%;height:5.732%"><b>5</b></i>
+<i class="gd-box" style="left:18.456%;top:55.488%;width:10.433%;height:5.305%"><b>6</b></i>
+<i class="gd-box" style="left:28.889%;top:55.488%;width:11.397%;height:5.305%"><b>7</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>勾選「啟用」＝斷線 / 自動重新登入時發通知。</span></li><li><b>2</b><span>這台電腦的名稱：多台電腦各自設定時，通知裡會顯示是哪一台。</span></li><li><b>3</b><span>貼上「斷線通知」用的 Webhook 網址（貼上後顯示成圓點）。</span></li><li><b>4</b><span>勾選＝角色死亡 / 復活時發通知。</span></li><li><b>5</b><span>貼上「死亡通知」用的 Webhook 網址。</span></li><li><b>6</b><span>填完一定要按這個才會存。</span></li><li><b>7</b><span>按測試，Discord 頻道收到訊息就成功了；死亡通知也有自己的測試鈕。</span></li></ul>
+</div>
+<div class="gd-step"><h3>每日報表與截圖（選用）</h3>
+<p>報表和截圖會發到<b>斷線通知</b>那個頻道：每天固定時間送出前一天的收益報表、定時把所有遊戲視窗拼成一張圖、異常時附上當下畫面。</p>
+<div class="gd-shot"><img src="guide/gd3_05.png" alt="每日報表與截圖（選用）" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:79.207%;width:25.931%;height:5.732%"><b>1</b></i>
+<i class="gd-box" style="left:44.828%;top:79.207%;width:25.932%;height:5.732%"><b>2</b></i>
+<i class="gd-box" style="left:71.495%;top:80.427%;width:1.588%;height:2.927%"><b>3</b></i>
+<i class="gd-box" style="left:18.456%;top:85.427%;width:11.363%;height:5.305%"><b>4</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>每日報表發送時間，例如 08:00；留空不發。</span></li><li><b>2</b><span>定時截圖：不發送，或每 30 分鐘到 4 小時一次。</span></li><li><b>3</b><span>異常時截圖：斷線、假在線、卡復活等狀況附上畫面。</span></li><li><b>4</b><span>設定完按這裡儲存；旁邊兩顆可以立即發一份測試。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd4">
+<div class="gd-step"><h3>建立帳號並設定選項</h3>
+<p>到「設定 → 🔑 帳號」。新增的帳號預設<b>不</b>納入監控，填好資料、連上遊戲視窗後再開。</p>
+<div class="gd-shot"><img src="guide/gd4_06.png" alt="建立帳號並設定選項" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:23.654%;width:7.837%;height:5.577%"><b>1</b></i>
+<i class="gd-box" style="left:38.235%;top:33.205%;width:19.338%;height:6.026%"><b>2</b></i>
+<i class="gd-box" style="left:58.015%;top:33.205%;width:19.338%;height:6.026%"><b>3</b></i>
+<i class="gd-box" style="left:77.794%;top:33.205%;width:19.338%;height:6.026%"><b>4</b></i>
+<i class="gd-box" style="left:18.456%;top:39.744%;width:78.676%;height:8.205%"><b>5</b></i>
+<i class="gd-box" style="left:26.293%;top:23.654%;width:6.618%;height:5.577%"><b>6</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>按這裡新增一個空白帳號。</span></li><li><b>2</b><span>名稱（顯示用）：隨你取，建議和遊戲角色名一樣，自動連接視窗時會依角色名配對。</span></li><li><b>3</b><span>遊戲帳號。</span></li><li><b>4</b><span>遊戲密碼（加密保存；之後修改其他選項時留空就會保留原密碼）。</span></li><li><b>5</b><span>各種開關：納入監控、批次啟動、死亡偵測 / 通報 / 警報音、假在線偵測與自動恢復、優先重新登入（隊長）。</span></li><li><b>6</b><span>全部填好按「儲存帳號」。</span></li></ul>
+</div>
+<div class="gd-step"><h3>這些選項怎麼選</h3>
+<ul>
+<li><b>納入監控</b>：開了才會被偵測死亡、斷線、假在線。</li>
+<li><b>批次啟動時開啟</b>：按首頁「啟動勾選帳號」時，會一起把這個帳號的遊戲開起來並自動登入。</li>
+<li><b>死亡偵測 / 死亡通報 / 死亡警報音</b>：死亡超過 30 秒沒復活才會響警報；通報會發到 Discord。</li>
+<li><b>假在線偵測 / 假在線自動恢復</b>：角色看起來在線但其實沒動（血量、經驗、金幣、背包都沒變）時提醒，自動恢復會重新登入。建議只對長時間掛機打怪的角色開自動恢復。</li>
+<li><b>優先重新登入（隊長）</b>：大家一起斷線時，勾了的角色最先登回來。</li>
+</ul>
+</div>
+<div class="gd-step"><h3>連接遊戲視窗</h3>
+<p>帳號存好、遊戲也開著之後，在下面的「遊戲視窗綁定」把帳號和遊戲視窗配對。一般按「自動連接」就好。</p>
+<div class="gd-shot"><img src="guide/gd4_07.png" alt="連接遊戲視窗" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:74.872%;width:10.441%;height:5.577%"><b>1</b></i>
+<i class="gd-box" style="left:58.015%;top:68.077%;width:39.118%;height:6.026%"><b>2</b></i>
+<i class="gd-box" style="left:52.574%;top:74.872%;width:8.529%;height:5.577%"><b>3</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>依遊戲中的角色名稱自動配對。</span></li><li><b>2</b><span>配錯時，手動從這裡選遊戲視窗，再按「連接選定視窗」。</span></li><li><b>3</b><span>不確定是哪一個視窗時，按這個把它顯示出來確認。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd5">
+<div class="gd-step"><h3>啟動、監控、緊急停止</h3>
+<ol class="gd-steps">
+<li>回到「首頁」。在角色列表勾選要啟動的角色（「啟動」欄）。</li>
+<li>按<b>啟動勾選帳號</b>：程式會開遊戲、自動登入、連接視窗。已經開著遊戲的話可以跳過這步。</li>
+<li>按<b>開始監控</b>：開始偵測死亡、斷線、假在線，並在需要時自動重新登入。</li>
+<li>任何時候想停下所有自動操作，按<b>F10</b>（鍵盤）或畫面上的紅色按鈕；遊戲不會被關閉。</li>
+</ol>
+<div class="gd-shot"><img src="guide/gd5_08.png" alt="啟動、監控、緊急停止" loading="lazy">
+<i class="gd-box" style="left:68.390%;top:11.341%;width:9.616%;height:5.305%"><b>1</b></i>
+<i class="gd-box" style="left:78.007%;top:11.341%;width:7.705%;height:5.305%"><b>2</b></i>
+<i class="gd-box" style="left:85.711%;top:11.341%;width:11.274%;height:5.305%"><b>3</b></i>
+<i class="gd-box" style="left:18.456%;top:42.317%;width:78.676%;height:15.976%"><b>4</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>開遊戲、自動登入。</span></li><li><b>2</b><span>開始偵測與自動恢復。</span></li><li><b>3</b><span>緊急停止（也可以直接按鍵盤 F10）。</span></li><li><b>4</b><span>每個角色的「監控」欄可以單獨開關。</span></li></ul>
+</div>
+<div class="gd-step"><h3>縮小程式也能看狀態（小窗）</h3>
+<p>想把程式縮小又想看狀態：到「設定 → 🧰 其他」勾選「縮小程式時顯示小窗」。縮小主視窗後，螢幕右下角會出現一個永遠在最上面的小窗，<b>滑鼠滾輪或 ◀ ▶ 切頁</b>：① 概況 ② 角色清單 ③ 功能開關（忘記勾的功能可以直接在小窗開）。</p>
+<div class="gd-shot"><img src="guide/gd5_09.png" alt="縮小程式也能看狀態（小窗）" loading="lazy">
+<i class="gd-box" style="left:18.750%;top:28.415%;width:1.765%;height:2.927%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>勾選就啟用小窗。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd6">
+<div class="gd-step"><h3>角色狀態</h3>
+<p>「角色」→「👥 角色狀態」：每個角色一張卡，看血量、活動圖、今日死亡次數、是否假在線。</p>
+<div class="gd-shot"><img src="guide/gd6_10.png" alt="角色狀態" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:15.732%;width:81.471%;height:6.037%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>每個角色的血量卡片（連接遊戲後才有資料）。</span></li></ul>
+</div>
+<div class="gd-step"><h3>每日道具 / 重新登入</h3>
+<p>「🎁 每日道具」處理每天要領的道具；「🔁 重新登入」統計自動重新登入的成功率與最常卡住的步驟，不影響任何自動操作。</p>
+<div class="gd-shot"><img src="guide/gd6_11.png" alt="每日道具 / 重新登入" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:14.333%;width:81.471%;height:30.889%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>每日道具設定與狀態。</span></li></ul>
+</div>
+<div class="gd-step"><h3>寵物 / 雇傭兵 / 魔法娃娃監測</h3>
+<p>掛機中發現寵物、雇傭兵或魔法娃娃不在外面，就按快捷欄裡那張卡叫出來。<b>只在遊戲資料確認「不在外面」時才按</b>，避免「開關型」的卡被按成收起來。</p>
+<div class="gd-shot"><img src="guide/gd6_12.png" alt="寵物 / 雇傭兵 / 魔法娃娃監測" loading="lazy">
+<i class="gd-box" style="left:25.882%;top:23.049%;width:1.765%;height:2.927%"><b>1</b></i>
+<i class="gd-box" style="left:18.493%;top:41.341%;width:78.603%;height:5.915%"><b>2</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>勾選要監測的種類：寵物、雇傭兵、魔法娃娃。</span></li><li><b>2</b><span>每個角色目前的狀態。</span></li></ul>
+</div>
+<div class="gd-step"><h3>流暢度偵測</h3>
+<p>「久掛延遲量測」每 30 秒記錄記憶體、CPU、視窗回應時間；看到動作變慢時按「標記 Lag」方便比對。「變慢自動過圖」偵測到變慢會自動換圖恢復。</p>
+<div class="gd-shot"><img src="guide/gd6_13.png" alt="流暢度偵測" loading="lazy">
+<i class="gd-box" style="left:18.750%;top:21.361%;width:1.765%;height:2.667%"><b>1</b></i>
+<i class="gd-box" style="left:18.750%;top:44.444%;width:1.765%;height:2.667%"><b>2</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>久掛延遲量測開關。</span></li><li><b>2</b><span>變慢自動過圖開關（預設關閉）。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd7">
+<div class="gd-step"><h3>🎁 命運箱子</h3>
+<p>定時自動開命運箱子：切到遊戲視窗按快捷鍵、確認背包數量減少才算成功、再切回原本視窗。每個角色可自選。你正在操作鍵盤滑鼠時不會切視窗（停手一段時間才動作）。</p>
+<div class="gd-shot"><img src="guide/gd7_14.png" alt="🎁 命運箱子" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:20.156%;width:81.471%;height:20.469%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>開關、間隔秒數、每個角色的按鍵。</span></li></ul>
+</div>
+<div class="gd-step"><h3>🤝 自動組隊</h3>
+<p>全部登入完成後，由隊長邀請設定好的隊員；隊員斷線重登會自動補邀。可設定兩台電腦組隊（對方要先是好友）。預設關閉。</p>
+<div class="gd-shot"><img src="guide/gd7_15.png" alt="🤝 自動組隊" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:11.727%;width:81.471%;height:11.909%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>先勾隊長，再勾這位隊長要帶的隊員。</span></li></ul>
+</div>
+<div class="gd-step"><h3>🎯 每日討伐</h3>
+<p>自動完成每日討伐：搭公車到目標地圖、走到固定點、開自動打怪、看進度換圖，死亡會復活後繼續。選角色與地圖後按啟動；<b>啟動前會等你停手 2 秒</b>。</p>
+<div class="gd-shot"><img src="guide/gd7_16.png" alt="🎯 每日討伐" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:11.727%;width:81.471%;height:22.318%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>選角色、選地圖、啟動 / 停止。</span></li></ul>
+</div>
+<div class="gd-step"><h3>⌨️ 視窗按鍵精靈</h3>
+<p>自己挑要加入的遊戲視窗，每個視窗可自由設定<b>停留秒數</b>和<b>切過去後要按的鍵</b>（多個鍵用逗號，例如 H,W,P），依清單順序輪流切換並按鍵。</p>
+<div class="gd-shot"><img src="guide/gd7_17.png" alt="⌨️ 視窗按鍵精靈" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:16.773%;width:5.793%;height:3.955%"><b>1</b></i>
+<i class="gd-box" style="left:58.015%;top:46.682%;width:19.338%;height:4.273%"><b>2</b></i>
+<i class="gd-box" style="left:77.794%;top:46.682%;width:19.338%;height:4.273%"><b>3</b></i>
+<i class="gd-box" style="left:18.456%;top:59.636%;width:9.485%;height:3.955%"><b>4</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>啟動 / 停止。</span></li><li><b>2</b><span>這個視窗停留幾秒。</span></li><li><b>3</b><span>切過去之後按哪些鍵。</span></li><li><b>4</b><span>每個視窗設好都要儲存。</span></li></ul>
+</div>
+<div class="gd-step"><h3>🗂️ 視窗位置</h3>
+<p>記錄每個遊戲視窗的位置與大小，開始監控或重新登入後自動還原，避免視窗亂跑。</p>
+<div class="gd-shot"><img src="guide/gd7_18.png" alt="🗂️ 視窗位置" loading="lazy">
+<i class="gd-box" style="left:18.750%;top:30.352%;width:1.765%;height:3.750%"><b>1</b></i>
+<i class="gd-box" style="left:30.588%;top:28.828%;width:12.017%;height:6.797%"><b>2</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>啟動監控時自動還原。</span></li><li><b>2</b><span>排好視窗後按這個記下來。</span></li></ul>
+</div>
+<div class="gd-step"><h3>🚧 開發中：技能組合 / 背包清理</h3>
+<p>還在調整的功能，建議先在單一角色試用。<b>技能組合</b>：設定觸發鍵，一鍵連按一組技能；<b>背包清理</b>：依序清理多個角色的背包。</p>
+<div class="gd-shot"><img src="guide/gd7_19.png" alt="🚧 開發中：技能組合 / 背包清理" loading="lazy">
+<i class="gd-box" style="left:18.456%;top:20.278%;width:78.676%;height:4.778%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>切換：技能組合 / 背包清理。</span></li></ul>
+</div>
+</div>
+<div class="subpage" id="gd8">
+<div class="gd-step"><h3>收益統計</h3>
+<p>「收益統計」：每 5 秒讀各角色背包 / 銀行 / 裝備，和上次比較，統計每天打怪拾取、金幣與道具變化；角色之間互相轉移的不會重複計算。可匯出 CSV；「掉落率」讀遊戲掉落表（已套用伺服器倍率）。</p>
+<div class="gd-shot"><img src="guide/gd8_20.png" alt="收益統計" loading="lazy">
+<i class="gd-box" style="left:17.059%;top:15.732%;width:81.471%;height:66.768%"><b>1</b></i>
+</div>
+<ul class="gd-legend"><li><b>1</b><span>每日收益。</span></li></ul>
+</div>
+<div class="gd-step"><h3>遊戲改版後會怎樣</h3>
+<p>遊戲更新後，程式會自動準備新版的資料位置：先看有沒有內建、再到 GitHub 下載、再用 Game.pdb 解析，都沒有時由已登入的遊戲自動推算。期間畫面會顯示「正在等待新版資料位置」，約每 10 分鐘重試；也可以按左下角「檢查更新」。</p>
+</div>
+<div class="gd-step"><h3>遇到問題怎麼辦</h3>
+<ul>
+<li>「設定 → 🚀 啟動與登入」→ <b>系統自檢</b>：檢查常見問題。</li>
+<li>「設定 → 🧰 其他」→ <b>開啟執行紀錄</b>：看程式做了什麼；<b>匯出診斷包</b>可以打包成 zip 給協助的人（<b>不含帳號密碼、通知網址、授權檔</b>）。</li>
+<li>血量一直讀不到：「啟動與登入」→ 重新校正血量讀取。</li>
+<li>換電腦後自動登入點錯位置：先確認遊戲視窗大小和 Windows 顯示縮放與原本一樣。</li>
+<li>任何時候覺得不對勁：按 <b>F10</b> 停止所有自動操作。</li>
+</ul>
+</div>
+</div>
+</section>
+<!--GUIDE-END-->
 <section class="page" id="setup">
 <div class="subtabs"><button data-sub="accounts" class="active">🔑 帳號</button><button data-sub="monitor">🚨 監控</button><button data-sub="settings">🚀 啟動與登入</button><button data-sub="notifyTab">💬 通知與報表</button><button data-sub="logs">🧰 其他</button></div>
 <div class="subpage" id="accounts">
@@ -785,7 +1065,7 @@ tbody tr:hover td{background:var(--surface-2)}
  <div class="hint" style="margin-top:8px">報表內容：每個角色的金幣、打怪拾取、死亡次數、自動重新登入次數，以及當天拾取最多的道具。截圖不需要把遊戲視窗切到最上層。</div>
 </div></div>
 </div>
-<div class="subpage" id="logs"><div class="card"><div class="section-title"><span class="ni"><span class="emo">🧰</span></span>記錄與工具</div><div class="actions"><button class="btn soft" onclick="send('openLog')">開啟執行紀錄</button><button class="btn soft" onclick="send('equipdump');showToast('📄 正在匯出角色資料')">匯出角色裝備 / 背包 / 銀行</button></div><div class="hint" style="margin-top:8px">遇到問題時，把執行紀錄或匯出的角色資料提供給協助你的人即可。匯出只讀取資料，不會操作遊戲。</div></div>
+<div class="subpage" id="logs"><div class="card"><div class="section-title"><span class="ni"><span class="emo">🧰</span></span>記錄與工具</div><div class="actions"><button class="btn soft" onclick="send('openLog')">開啟執行紀錄</button><button class="btn soft" onclick="send('equipdump');showToast('📄 正在匯出角色資料')">匯出角色裝備 / 背包 / 銀行</button></div><div class="actions" style="margin-top:12px"><label class="toggle"><input id="miniWin" type="checkbox" onchange="send('minicfg',{value:this.checked?1:0})"> 縮小程式時顯示小窗（監控狀態、功能開關；滾輪或 ◀ ▶ 切頁）</label></div><div class="hint" style="margin-top:8px">遇到問題時，把執行紀錄或匯出的角色資料提供給協助你的人即可。匯出只讀取資料，不會操作遊戲。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🎨</span></span>介面風格</div><div class="hint">只改變管理程式的配色與字體，不影響任何功能。選了馬上套用。</div>
  <div class="theme-list" id="themeList"></div></div>
 <div class="card" id="licenseCard"><div class="section-title"><span class="ni"><span class="emo">🔑</span></span>使用授權 <span class="pill" id="licensePill">讀取中…</span></div>
@@ -800,7 +1080,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <script>
 // v1.3.18.7 統一彩色 emoji 圖示（Windows 10 內建的 Segoe UI Emoji 都有）
 const ICONS={
- home:'🏠',hpmonitor:'❤️',invstats:'📦',daily:'🎁',switcher:'🔄',inventory:'🧹',layout:'🗂️',
+ home:'🏠',guide:'📖',hpmonitor:'❤️',invstats:'📦',daily:'🎁',switcher:'🔄',inventory:'🧹',layout:'🗂️',
  accounts:'🔑',monitor:'🚨',settings:'⚙️',logs:'🧰',people:'👥',window:'🎮',alert:'⚠️',wifi:'🌐',
  coin:'💰',trend:'📈',shield:'🛡️',skull:'💀'
 };
@@ -808,7 +1088,7 @@ function icon(name){return `<span class="emo" aria-hidden="true">${ICONS[name]||
 function applyIcons(root=document){root.querySelectorAll('[data-icon]').forEach(e=>{if(!e.dataset.iconDone){e.innerHTML=icon(e.dataset.icon);e.dataset.iconDone='1';}});}
 applyIcons();
 
-const titles={home:'首頁',roles:'角色',invstats:'收益統計',tools:'功能',setup:'設定'};
+const titles={home:'首頁',roles:'角色',invstats:'收益統計',tools:'功能',guide:'操作教學',setup:'設定'};
 
 
 function normalizePrimaryMonitorControls(){
@@ -1118,6 +1398,7 @@ function renderSwitchPage(s){
 
 
 const la=document.getElementById('layoutAuto');if(la)la.checked=!!s.layoutAutoRestore;
+const mw=document.getElementById('miniWin');if(mw&&document.activeElement!==mw)mw.checked=!!s.miniWindow;
 const lst=document.getElementById('layoutStatus');if(lst)lst.textContent=s.layoutStatus||'待命';
 const lr=document.getElementById('layoutRows');if(lr)lr.innerHTML=(s.accounts||[]).map(x=>`<tr><td>${esc(x.name)}</td><td>${x.hwnd?'✓ 已連接':'未連接'}</td><td>${x.hasPos?`X ${x.winX} / Y ${x.winY}`:'未記錄'}</td><td>${x.hasPos?`${x.winW} × ${x.winH}`:'-'}</td><td>${esc(x.state||'')}</td></tr>`).join('');
 
@@ -1676,7 +1957,7 @@ function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;sen
 let dhOn=new Set(),dhTasks=[],dhChars=[],dhRunning=false,dhTest=false;
 function dhEditing(){return false;}
 function renderDailyHunt(d){
- dhTasks=d.tasks||[];dhOn=new Set(d.selected||[]);dhChars=d.chars||[];dhRunning=!!d.running;dhTest=!!d.test;{const tc=document.getElementById('dhTest');if(tc)tc.checked=dhTest;}
+ dhTasks=d.tasks||[];{const on=dhTasks.map((t,i)=>({t,i})).filter(x=>x.t.on).sort((a,b)=>a.t.rank-b.t.rank||a.i-b.i).map(x=>x.t.map);const rest=(d.selected||[]).filter(id=>!on.includes(id));dhOn=new Set([...on,...rest]);}dhChars=d.chars||[];dhRunning=!!d.running;dhTest=!!d.test;{const tc=document.getElementById('dhTest');if(tc)tc.checked=dhTest;}
  const btn=document.getElementById('dhRun'),box0=document.getElementById('dhChars'),pill=document.getElementById('dhPill'),st=document.getElementById('dhStatus'),box=document.getElementById('dhRows');
  if(btn){btn.textContent=dhRunning?'■ 停止':'▶ 啟動';}
  [['dhNpc',d.npc],['dhCard',d.card],['dhRow',d.row]].forEach(([id,v])=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&v!==undefined)e.value=v;});
@@ -1686,13 +1967,16 @@ function renderDailyHunt(d){
  const sm=document.getElementById('dhSpotMsg');if(sm)sm.textContent=d.spotMsg||'';
  const bd=document.getElementById('dhBuild');if(bd){bd.textContent=d.build||'';bd.style.color=(d.build||'').includes('⚠')?'#c0392b':'';}
  if(st)st.textContent=d.status||(d.using?`顯示角色：${d.using}｜勾選且未完成：${d.pending} 張圖`:'');
- if(box)box.innerHTML=dhTasks.length?dhTasks.map(t=>{const full=t.done>=t.target;const note=!t.runnable?'尚未支援（只能自己打）':(t.claimed?'已領獎':(full?'已打滿':''));return `<tr><td><input type="checkbox" ${dhOn.has(t.map)?'checked':''} ${t.runnable?'':'disabled'} onchange="dhToggle(${t.map},this.checked)"></td><td class="account-name">${esc(t.name.split(' / ')[0])}</td><td class="account-sub">${esc(t.name.split(' / ')[1]||'')}</td><td class="account-sub">${t.done} / ${t.target}${full?' ✓':''}</td><td class="account-sub">${esc(t.group)}</td><td class="account-sub">${note}</td><td class="account-sub dh-spot">${t.runnable?`<span class="dh-xy">${t.spot?`<b>${esc(t.spot)}</b>`:'自動找怪'}</span><button class="btn" onclick="dhSpot(${t.map},'teach')">記錄</button><button class="btn" style="${t.spot?'':'visibility:hidden'}" ${t.spot?'':'tabindex="-1" disabled'} onclick="dhSpot(${t.map},'clear')">清除</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="7" class="hint">還沒有任務資料：勾選角色並按「▶ 啟動」後程式會自己按 T 讀取，或在遊戲裡按 T 打開一次。</td></tr>';
+ const dhNo=dhOrderMap();if(box)box.innerHTML=dhTasks.length?dhTasks.map(t=>{const full=t.done>=t.target;const note=!t.runnable?'尚未支援（只能自己打）':(t.claimed?'已領獎':(full?'已打滿':''));return `<tr><td><input type="checkbox" ${dhOn.has(t.map)?'checked':''} ${t.runnable?'':'disabled'} onchange="dhToggle(${t.map},this.checked)">${dhNo.has(t.map)?`<span class="dh-no" title="執行順序（沒打滿的先跑，再跑已打滿的）">${dhNo.get(t.map)}</span><button class="dh-mv" title="提早執行" onclick="dhMove(${t.map},-1)">▲</button><button class="dh-mv" title="延後執行" onclick="dhMove(${t.map},1)">▼</button>`:''}</td><td class="account-name">${esc(t.name.split(' / ')[0])}</td><td class="account-sub">${esc(t.name.split(' / ')[1]||'')}</td><td class="account-sub">${t.done} / ${t.target}${full?' ✓':''}</td><td class="account-sub">${esc(t.group)}</td><td class="account-sub">${note}</td><td class="account-sub dh-spot">${t.runnable?`<span class="dh-xy">${t.spot?`<b>${esc(t.spot)}</b>`:'自動找怪'}</span><button class="btn" onclick="dhSpot(${t.map},'teach')">記錄</button><button class="btn" style="${t.spot?'':'visibility:hidden'}" ${t.spot?'':'tabindex="-1" disabled'} onclick="dhSpot(${t.map},'clear')">清除</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="7" class="hint">還沒有任務資料：勾選角色並按「▶ 啟動」後程式會自己按 T 讀取，或在遊戲裡按 T 打開一次。</td></tr>';
 }
 function dhNpcPick(){const sel=document.getElementById('dhNpcSel'),inp=document.getElementById('dhNpc');if(sel.value==='__other'){inp.style.display='';inp.focus();return;}inp.style.display='none';inp.value=sel.value;saveDailyHunt();}
 function dhSpot(map,what){send('dailyhuntspot',{value:`${map}~${what}`});}
 function dhCharToggle(i,on){if(dhChars[i])dhChars[i].on=on;saveDailyHunt();}
 function dhToggleRun(){dhRunning=!dhRunning;saveDailyHunt();}function dhToggle(id,on){if(on)dhOn.add(id);else dhOn.delete(id);saveDailyHunt();}
-function dhPick(mode){dhTasks.forEach(t=>{if(!t.runnable)return;const want=mode==='all'||(mode==='todo'&&t.done<t.target);if(want)dhOn.add(t.map);else dhOn.delete(t.map);});saveDailyHunt();}
+function dhPick(mode){dhOn=new Set(dhTasks.filter(t=>t.runnable&&(mode==='all'||(mode==='todo'&&t.done<t.target))).map(t=>t.map));saveDailyHunt();}
+function dhExecList(){const a=[...dhOn],on=dhTasks.filter(t=>t.runnable&&dhOn.has(t.map)).sort((x,y)=>a.indexOf(x.map)-a.indexOf(y.map));return [...on.filter(t=>t.done<t.target),...on.filter(t=>t.done>=t.target)];}
+function dhOrderMap(){const m=new Map();dhExecList().forEach((t,i)=>m.set(t.map,i+1));return m;}
+function dhMove(map,dir){const l=dhExecList(),i=l.findIndex(t=>t.map===map),j=i+dir;if(i<0||j<0||j>=l.length)return;if((l[i].done>=l[i].target)!==(l[j].done>=l[j].target))return;const a=[...dhOn],x=a.indexOf(l[i].map),y=a.indexOf(l[j].map);[a[x],a[y]]=[a[y],a[x]];dhOn=new Set(a);saveDailyHunt();}
 function saveDailyHunt(){const g=id=>{const e=document.getElementById(id);return e?e.value:''};send('dailyhuntset',{value:`${dhRunning?1:0}~${dhChars.filter(c=>c.on).map(c=>c.name).join('|')}~${[...dhOn].join(',')}~${g('dhNpc')}~${g('dhCard')}~${g('dhRow')}~${(document.getElementById('dhTest')||{}).checked?1:0}`});}
 let partyAcceptSig='';
 function savePartyRemote(el){const tr=el.closest('tr');el.value=el.value.replace(/~/g,'');send('partyremote',{value:`${tr.dataset.idx}~${el.value.trim()}~${tr.dataset.name}`});}

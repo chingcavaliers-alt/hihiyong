@@ -41,6 +41,7 @@ global AP_LEADER_ACCEPT_IDLE_MS := 1500   ; 隊長被邀回的邀請視窗只開
 global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, AP_DESIGN_H := 768
 ; 測試用：設成物件時，讀記憶體 / 切視窗 / 按鍵 / 點擊都交給它（不動真正的遊戲、視窗與鍵盤）。
 global apTestDriver := 0
+global apSmooth := false   ; 開著時 ApClick / ApHover / ApScrollMany 用平順移動（每日討伐搭公車點 NPC、選地圖）
 global apIdleMs := () => A_TimeIdlePhysical
 global dhCurProfile := 0   ; 每日討伐這一回合正在操作的角色（死亡時整輪要馬上停，不能繼續點，更不能卡著前景讓復活動作做不了）
 
@@ -731,6 +732,29 @@ ApKey(p, k) {
     apLastOwn := A_TickCount
 }
 
+; 平順移動游標：從目前位置沿緩入緩出的曲線移到 (px,py)（螢幕座標），最後停一下讓遊戲收到 hover。
+; 只有 apSmooth 開著（每日討伐搭公車：點 NPC、選地圖）才用；回傳 false 表示沒開，呼叫端走原本的「靠近再移上去」。
+ApGlide(px, py, settleMs := 60) {
+    global apSmooth, apLastOwn
+    if !apSmooth
+        return false
+    pt := Buffer(8, 0)
+    DllCall("GetCursorPos", "Ptr", pt)
+    x0 := NumGet(pt, 0, "Int"), y0 := NumGet(pt, 4, "Int")
+    dist := Sqrt((px - x0) ** 2 + (py - y0) ** 2)
+    steps := Min(22, Max(6, Round(dist / 28)))
+    Loop steps {
+        t := A_Index / steps, e := t * t * (3 - 2 * t)
+        DllCall("SetCursorPos", "Int", Round(x0 + (px - x0) * e), "Int", Round(y0 + (py - y0) * e))
+        apLastOwn := A_TickCount
+        Sleep 8
+    }
+    DllCall("SetCursorPos", "Int", px, "Int", py)
+    apLastOwn := A_TickCount
+    Sleep settleMs
+    return true
+}
+
 ; 在遊戲畫面（Client）座標 x,y 點一下（實測可用：先靠近再移上去，按住 90 毫秒）。
 ; holdMs：按住多久（預設 90 毫秒；遊戲畫面更新比這慢時會漏掉那一下，公車清單用 220 以上）
 ApClick(p, x, y, holdMs := 90) {
@@ -752,12 +776,14 @@ ApClick(p, x, y, holdMs := 90) {
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要點的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
-            DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
-            apLastOwn := A_TickCount
-            Sleep 80
-            DllCall("SetCursorPos", "Int", px, "Int", py)
-            apLastOwn := A_TickCount
-            Sleep 150
+            if !ApGlide(px, py) {
+                DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
+                apLastOwn := A_TickCount
+                Sleep 80
+                DllCall("SetCursorPos", "Int", px, "Int", py)
+                apLastOwn := A_TickCount
+                Sleep 150
+            }
             ; 按下去之前最後確認一次：視窗還在前面、游標真的在目標位置、游標下面的視窗就是這個遊戲視窗
             ApGuard(p)
             if !ApCursorOn(p, px, py)
@@ -829,12 +855,14 @@ ApScrollMany(p, x, y, dir, count, gapMs := 20) {
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要捲動的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
-            DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
-            apLastOwn := A_TickCount
-            Sleep 60
-            DllCall("SetCursorPos", "Int", px, "Int", py)
-            apLastOwn := A_TickCount
-            Sleep 120
+            if !ApGlide(px, py) {
+                DllCall("SetCursorPos", "Int", px - 6, "Int", py - 3)
+                apLastOwn := A_TickCount
+                Sleep 60
+                DllCall("SetCursorPos", "Int", px, "Int", py)
+                apLastOwn := A_TickCount
+                Sleep 120
+            }
             ApGuard(p)
             if !ApCursorOn(p, px, py)
                 ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")
@@ -874,12 +902,14 @@ ApHover(p, x, y) {
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要移過去的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
-            DllCall("SetCursorPos", "Int", px - 4, "Int", py - 2)
-            apLastOwn := A_TickCount
-            Sleep 40
-            DllCall("SetCursorPos", "Int", px, "Int", py)
-            apLastOwn := A_TickCount
-            Sleep 70
+            if !ApGlide(px, py, 25) {
+                DllCall("SetCursorPos", "Int", px - 4, "Int", py - 2)
+                apLastOwn := A_TickCount
+                Sleep 40
+                DllCall("SetCursorPos", "Int", px, "Int", py)
+                apLastOwn := A_TickCount
+                Sleep 70
+            }
             ApGuard(p)
             if !ApCursorOn(p, px, py)
                 ApStop("游標不在預期位置，或游標下面不是 " p.name " 的遊戲視窗（被別的視窗蓋住？）")

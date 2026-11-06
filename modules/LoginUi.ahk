@@ -257,6 +257,21 @@ LoginMemoryGate(hwnd, key, profileName, timeoutSec:=60) {
     throw Error(stage " Timeout：" timeoutSec " 秒內未確認畫面 Ready（記憶體）。")
 }
 
+; 點完伺服器後等分流清單出現。遊戲剛進入時（尤其連開好幾隻）第一下點擊偶爾被吃掉，分流清單永遠不出現；
+; 5 秒內沒等到就重點一次伺服器（最多重點 2 次），最後一輪才用完整逾時。回傳值同 LoginMemoryGate。
+LoginChannelGate(hwnd, profileName, timeoutSec:=60) {
+    Loop 3 {
+        try
+            return LoginMemoryGate(hwnd,"channel",profileName,A_Index<3 ? 5 : timeoutSec)
+        catch as e {
+            if A_Index>=3 || !InStr(e.Message,"Timeout")
+                throw e
+            EventLog(profileName,"LOGIN_SERVER_RECLICK","點了伺服器但 5 秒內分流清單沒出現，重點一次（第 " A_Index "/2 次）")
+            ClickPoint(hwnd,"server")
+        }
+    }
+}
+
 ; 設定值轉成第幾隻（從 0 算）：「#2」= 依順序第 2 隻；其他 = 依角色名稱。找不到回傳 -1。
 LoginTargetOf(lc, want) {
     if RegExMatch(want,"^#(\d{1,2})$",&m)

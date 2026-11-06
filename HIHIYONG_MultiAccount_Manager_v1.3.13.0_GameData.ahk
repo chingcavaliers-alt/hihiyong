@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.71.0"
+global APP_VERSION := "v1.3.74.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -115,6 +115,8 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
 #Include modules\SkillCombo.ahk
+; 縮小小窗：主視窗縮小時顯示監控狀態與功能開關（設定頁勾選才啟用）。
+#Include modules\MiniWindow.ahk
 #Include modules\NetGuard.ahk
 #Include modules\License.ahk
 #Include modules\Diagnostics.ahk
@@ -4140,7 +4142,7 @@ RecoverProfile(idx, &asyncLoading:=false) {
     FastTrace(p.name,"01 Server Click",_t)
     recoveryStage[idx]:="伺服器已選擇"
 
-    if LoginMemoryGate(hwnd,"channel",p.name,60) {
+    if LoginChannelGate(hwnd,p.name,60) {
         ; 記憶體已確認分流清單
     } else if FileExist(ScreenTemplatePath("channel")) {
         if !WaitScreenReady(hwnd,"channel",p.name,60)
@@ -5487,6 +5489,7 @@ InitWebUI(*) {
 
 WebResize(guiObj,minMax,w,h) {
     global WVController
+    try MiniSync(minMax)
     if !WVController
         return
     try {
@@ -5591,6 +5594,8 @@ WebRunAction(action,value:=0,rawValue:="") {
         SaveAllCurrentWindowPositions()
     } else if action="layoutauto" {
         SetLayoutAutoRestore(rawValue)
+    } else if action="minicfg" {
+        MiniSetEnabled(rawValue)
     } else if action="uitheme" {
         ; v1.3.22.0 介面風格（只影響畫面）
         if RegExMatch(rawValue,"^[a-z]{0,20}$")
@@ -6558,6 +6563,7 @@ PushWebState(*) {
         . ',"autoSwitchTotalSeconds":' swInfo.total
         . ',"switchStopHotkey":"' JsonEscapeWeb(switchStopHotkey) '"'
         . ',"layoutAutoRestore":' (layoutAutoRestore ? "true":"false")
+        . ',"miniWindow":' (MINI_ENABLED ? "true":"false")
         . ',"uiTheme":"' JsonEscapeWeb(IniRead(INI,"UI","Theme","")) '"'
         . ',"layoutStatus":"' JsonEscapeWeb(layoutStatus) '"'
         . ',"layoutRestored":' layoutRestored

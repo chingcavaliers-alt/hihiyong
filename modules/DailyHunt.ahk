@@ -42,13 +42,24 @@ DhIniGet(key, def := "") {
     try return IniRead(INI, "DailyHunt", key, def)
     return def
 }
-; 勾選的地圖編號（逗號分隔字串 → Map(編號, 1)）；設定檔被改壞的項目略過
+; 勾選的地圖編號（逗號分隔字串 → Map(編號, 執行順序))；字串裡的先後就是執行順序（1 起算）；設定檔被改壞的項目略過
 DhParseMaps(text) {
     out := Map()
     for part in StrSplit(text, ",", " `t")
-        if IsInteger(part) && Integer(part) > 0
-            out[Integer(part)] := 1
+        if IsInteger(part) && Integer(part) > 0 && !out.Has(Integer(part))
+            out[Integer(part)] := out.Count + 1
     return out
+}
+; 勾選的地圖編號，照執行順序排好的陣列（順序值相同的，照編號小到大）
+DhOrderedIds(sel) {
+    ids := []
+    for id, rank in sel {
+        pos := ids.Length + 1
+        while pos > 1 && (sel[ids[pos - 1]] > rank)
+            pos -= 1
+        ids.InsertAt(pos, id)
+    }
+    return ids
 }
 ; 勾選的角色（| 分隔字串 → Map(名字, 1)）
 DhParseChars(text) {
@@ -83,9 +94,23 @@ DhPending(tasks, selected, skip := 0) {
                 continue
             (g.done >= g.target ? full : open).Push({map: g.map, name: g.name, done: g.done, target: g.target, row: DH_MAPS[g.map][2]})
         }
+    DhSortByRank(open, selected), DhSortByRank(full, selected)
     for g in full
         open.Push(g)
     return open
+}
+; 照使用者排的執行順序（selected 的值）穩定排序；順序相同的維持任務原本的順序
+DhSortByRank(list, selected) {
+    i := 2
+    while i <= list.Length {
+        cur := list[i], r := selected[cur.map], j := i - 1
+        while j >= 1 && selected[list[j].map] > r {
+            list[j + 1] := list[j]
+            j -= 1
+        }
+        list[j + 1] := cur
+        i += 1
+    }
 }
 
 ; ---------------------------------------------------------------- 固定打怪點
@@ -198,7 +223,7 @@ DhSpotDo(rawValue) {
 ; 每個角色自己的進行狀態（放在角色物件上，和寵物監測一樣）
 DhSt(p) {
     if !p.HasOwnProp("dh")
-        p.dh := {next: 0, fails: 0, hunted: 0, refreshedAt: 0, skip: Map(), prog: Map(), stalls: 0, lastDay: 0, text: "", done: false, testDone: Map(), seen: Map(), notified: Map()}
+        p.dh := {next: 0, fails: 0, hunted: 0, refreshedAt: 0, skip: Map(), prog: Map(), stalls: 0, staleN: 0, lock: 0, keepPlace: false, lastDay: 0, text: "", done: false, testDone: Map(), seen: Map(), notified: Map()}
     return p.dh
 }
 
@@ -241,7 +266,7 @@ DailyHuntSet(rawValue) {
     for n, _ in DH_CHARS
         names .= (names = "" ? "" : "|") n
     ids := ""
-    for id, _ in DH_MAPS_ON
+    for id in DhOrderedIds(DH_MAPS_ON)
         ids .= (ids = "" ? "" : ",") id
     if parts.Length >= 6 {
         DH_NPC_NAME := DhCleanName(parts[4], "護士"), DH_START_CARD := DhCleanName(parts[5], "起點傳送卡"), DH_NPC_ROW := DhRowOf(parts[6])
@@ -292,11 +317,11 @@ DailyHuntPushWeb() {
             for g in r.goals {
                 rows .= (rows = "" ? "" : ",") '{"map":' g.map ',"name":"' JsonEscapeWeb(g.name) '","done":' g.done ',"target":' g.target
                     . ',"group":"' JsonEscapeWeb(r.name) '","claimed":' (r.claimed ? "true" : "false") ',"runnable":' (DH_MAPS.Has(g.map) ? "true" : "false")
-                    . ',"on":' (DH_MAPS_ON.Has(g.map) ? "true" : "false") ',"spot":"' (DH_SPOTS.Has(g.map) ? Round(DH_SPOTS[g.map].x) "," Round(DH_SPOTS[g.map].z) : "") '"}'
+                    . ',"on":' (DH_MAPS_ON.Has(g.map) ? "true" : "false") ',"rank":' DH_MAPS_ON.Get(g.map, 0) ',"spot":"' (DH_SPOTS.Has(g.map) ? Round(DH_SPOTS[g.map].x) "," Round(DH_SPOTS[g.map].z) : "") '"}'
             }
     }
     sel := ""
-    for id, _ in DH_MAPS_ON
+    for id in DhOrderedIds(DH_MAPS_ON)
         sel .= (sel = "" ? "" : ",") id
     pending := 0   ; 畫面上「勾選且未完成」：打滿的也能跑，但不算在這裡
     for g in DhPending(tasks, DH_MAPS_ON, p ? DhSt(p).skip : 0)
@@ -356,6 +381,13 @@ DhDecide(st) {
     if allDone   ; 勾選的全部打滿了：回起點、通報完成（不再留在地圖上繼續打）
         return {action: "finish", goal: 0}
     goal := pend[1]   ; 沒打滿的排在前面
+    ; 正在跑的那張圖還沒打滿、也還勾著：跑完它再換。跑到一半才勾選順序在前面的圖（例如電算室），不會被拉回去，排在它後面
+    if st.HasOwnProp("lockMap") && st.lockMap
+        for g in pend
+            if g.map = st.lockMap && g.done < g.target {
+                goal := g
+                break
+            }
     if st.curMap != goal.map
         return {action: "travel", goal: goal}
     if st.huntedMap != goal.map || st.autoHunt = 0
@@ -434,24 +466,49 @@ DailyHuntTick() {
     }
 }
 
+; 現在是「第幾天」（從 1970-01-01 起算，本機日期；遊戲的每日任務也是這種算法，00:00 換日）
+global DH_CHECK_STALE_DAY := true
+DhRealDay() => DateDiff(A_Now, "19700101", "Days")
+; 遊戲裡的任務資料是不是前一天（或更早）的
+DhIsStaleDay(gameDay, realDay) {
+    global DH_CHECK_STALE_DAY
+    return DH_CHECK_STALE_DAY && IsInteger(gameDay) && gameDay > 0 && gameDay < realDay
+}
 ; 這個角色現在該做什麼（讀資料，不動遊戲）
 DhPlan(p) {
     global DH_MAPS_ON, DH_TEST
     pid := p.pid, st := DhSt(p)
     tasks := 0
     try tasks := ReadGameDailyTasks(pid)
+    ; 00:00 換日後，遊戲裡的任務資料還是前一天的（昨天打滿的進度），要按 T 打開任務視窗遊戲才會更新。
+    ; 不處理的話會把昨天的進度當成今天「全部完成」，點啟動後什麼都不做：視為還沒讀到，先去開 T 更新。
+    if IsObject(tasks) && DhIsStaleDay(tasks.today, DhRealDay()) {
+        st.staleN += 1
+        st.text := "遊戲的任務資料還是前一天的，開 T 更新（第 " st.staleN " 次）"
+        if st.staleN = 1
+            EventLog(p.name, "DH_STALE_DAY", "遊戲的任務資料是第 " tasks.today " 天，現在是第 " DhRealDay() " 天｜開 T 讓遊戲更新")
+        else if st.staleN >= 6 {
+            st.refreshedAt := 0, st.next := A_TickCount + 60000
+            st.text := "遊戲的任務資料一直沒換成今天（試了 " st.staleN " 次），1 分鐘後再試；仍不行請重新登入這個角色"
+        }
+        tasks := 0
+    } else if IsObject(tasks)
+        st.staleN := 0
     if IsObject(tasks) && tasks.today != st.lastDay {   ; 新的一天（00:00 換任務）：重新來過
-        st.lastDay := tasks.today, st.skip := Map(), st.prog := Map(), st.stalls := 0, st.hunted := 0, st.done := false
+        st.lastDay := tasks.today, st.skip := Map(), st.prog := Map(), st.stalls := 0, st.hunted := 0, st.lock := 0, st.done := false
     }
     if IsObject(tasks) && !DH_TEST
         DhNoteProgress(p, tasks)
-    return DhDecide({test: DH_TEST, testDone: st.testDone, tasks: tasks, selected: DH_MAPS_ON, skip: st.skip, curMap: DhMapMain(pid), autoHunt: ReadGameAutoHunt(pid)
-        , huntedMap: st.hunted, now: A_TickCount, refreshedAt: st.refreshedAt})
+    d := DhDecide({test: DH_TEST, testDone: st.testDone, tasks: tasks, selected: DH_MAPS_ON, skip: st.skip, curMap: DhMapMain(pid), autoHunt: ReadGameAutoHunt(pid)
+        , huntedMap: st.hunted, now: A_TickCount, refreshedAt: st.refreshedAt, lockMap: st.lock})
+    if !DH_TEST && IsObject(d.goal) && d.goal.done < d.goal.target
+        st.lock := d.goal.map   ; 記住現在在跑的圖
+    return d
 }
 
 ; 打怪中：只看進度。進度很久沒動（自動打怪開著但沒有在打）→ 重新跑去怪那邊，連續 3 次就略過這張圖。
 DhMonitor(p, g) {
-    global DH_STALL_MS
+    global DH_STALL_MS, DH_SPOTS, DH_AWAY_DIST
     st := DhSt(p)
     if g.done >= g.target {   ; 已打滿：進度不會再增加，不能用「進度沒動」判斷卡住
         st.text := "已打滿，繼續打：" g.name "｜" g.done " / " g.target
@@ -467,8 +524,12 @@ DhMonitor(p, g) {
         if st.stalls >= 3 {
             st.skip[g.map] := 1, st.stalls := 0
             AddRecentEvent("🎯 " p.name "：" g.name " 一直打不到，先略過這張圖")
-        } else
+        } else {
             st.hunted := 0
+            ; 第一次卡住、而且人物不在固定點附近（你手動換了位置）：不要硬拉回固定點（那邊可能有人），就地找怪
+            if st.stalls = 1 && DhIsAway(MiningCharState(p.pid), DH_SPOTS.Get(g.map, 0), DH_AWAY_DIST)
+                st.keepPlace := true
+        }
         return
     }
     st.text := "打怪中：" g.name "｜" g.done " / " g.target
@@ -497,7 +558,9 @@ DhRun(p, d) {
             DhActTravel(p, g)
         } else if d.action = "starthunt" {
             st.text := "到怪物那邊開始自動打怪：" g.name
-            DhActStartHunt(p, g)
+            ; 這張圖本來就在打、只是自動打怪被關掉了（你手動走開時遊戲會自己關）：人物不在固定點附近就留在原地繼續，不拉回去
+            DhActStartHunt(p, g, st.hunted = g.map || st.keepPlace)
+            st.keepPlace := false
             st.hunted := g.map
         } else if d.action = "testwalk" {
             st.text := "（測試）走到固定點：" g.name
@@ -960,8 +1023,17 @@ DhBusPickGate(p) {
     }
     EventLog(p.name, "DH_BUS_GATE", "點了入口三次，清單仍沒有選取，照舊按確定")
 }
-; 回起點 → 點麗娜 → 公車站2號線 → 捲到最底 → 點地圖 → 點入口 → 確定 → 等換圖
+; 搭公車這一段（點 NPC、選地圖、點入口、確定）游標用平順移動，不是瞬間跳過去。
 DhActTravel(p, g) {
+    global apSmooth
+    apSmooth := true
+    try
+        DhActTravelCore(p, g)
+    finally
+        apSmooth := false
+}
+; 回起點 → 點麗娜 → 公車站2號線 → 捲到最底 → 點地圖 → 點入口 → 確定 → 等換圖
+DhActTravelCore(p, g) {
     global DH_NPC_NAME, DH_START_CARD, DH_BUS_OPTION_X, DH_BUS_LIST_X, DH_BUS_ROW0_Y, DH_BUS_ROW_H, DH_BUS_OK_X, DH_BUS_OK_Y, DH_BUS_BOTTOM_ROWS, DH_NPC_ROW, DH_BUS_OPTION_Y0, DH_BUS_OPTION_PITCH
     pid := p.pid
     DhSt(p).hunted := 0
@@ -993,7 +1065,7 @@ DhActTravel(p, g) {
     if !opened
         throw Error("點了「" DH_NPC_NAME "」但對話框沒有出現")
     ; 3. 「公車站2號線」→ 公車視窗
-    ApWait(() => (ApGuardAny(), false), 900)   ; 對話框剛出現，選項還在長出來：多等一下再點
+    ApWait(() => (ApGuardAny(), false), 600)   ; 對話框剛出現，選項還在長出來：多等一下再點
     busOpen := false
     for hold in [200, 300, 400] {   ; 沒開就換更長的按住時間再點一次
         ApClick(p, DH_BUS_OPTION_X, DH_BUS_OPTION_Y0 + (DH_NPC_ROW - 1) * DH_BUS_OPTION_PITCH, hold)
@@ -1006,7 +1078,8 @@ DhActTravel(p, g) {
     }
     if !busOpen
         throw Error("點了公車站但公車視窗沒有出現")
-    ApWait(() => (ApGuardAny(), false), 1200)   ; 公車清單載入要時間
+    ApWait(() => (ApGuardAny(), (b0 := ReadGameBusWindow(pid)) != 0 && b0.maps.Length > 0), 3000)   ; 公車清單載入要時間：讀到清單就往下，不死等
+    ApWait(() => (ApGuardAny(), false), 250)
     ; 4. 從遊戲讀公車清單，算出目標地圖在最底那頁的第幾格
     bus := ReadGameBusWindow(pid)
     if !IsObject(bus) || !bus.maps.Length
@@ -1020,7 +1093,7 @@ DhActTravel(p, g) {
     if idx < 0
         throw Error("公車清單裡沒有 " g.name)
     DhBusSelect(p, g, idx, bus.maps.Length)
-    ApWait(() => (ApGuardAny(), false), 700)   ; 選好之後停一下再按確定
+    ApWait(() => (ApGuardAny(), false), 400)   ; 選好之後停一下再按確定
     DhBusPickGate(p)
     arrivedMap := false
     for hold in [220, 320, 450] {   ; 確定沒按到（公車視窗還開著、地圖也沒換）就換更長的按住時間再按
@@ -1533,8 +1606,13 @@ DhMoved(pid, from, dist) {
 ; 到了目標地圖：先關掉自動打怪（它開著再按 F6 會變成關掉）→ 走到要打的地方 → 按 F6 → 確認真的開了。
 ;  - 這張圖有固定點：先走到那個位置，**到了再偵測怪**（周圍沒有怪才改去最近的一群）；
 ;  - 沒有固定點：先走一小段讓遊戲送怪物清單，再讀怪，算出要去的地方（密集中心 / 就近一群）。
-DhActStartHunt(p, g) {
-    global DH_SPOTS
+; 人物離固定點超過 lim（沒有固定點也算）= 你自己走到別的地方了
+DhIsAway(me, spot, lim) => IsObject(me) && (!IsObject(spot) || (spot.x - me.x) ** 2 + (spot.z - me.z) ** 2 > lim ** 2)
+global DH_AWAY_DIST := 150
+
+; keepPlace：這次是「接著打」（不是剛到這張圖）。此時人物若不在固定點附近，就留在現在的位置繼續（不走回固定點）。
+DhActStartHunt(p, g, keepPlace := false) {
+    global DH_SPOTS, DH_AWAY_DIST
     pid := p.pid
     mob := DhMobName(g)   ; 只在讀不到怪物種類（舊的位置資料）時才用來過濾
     if ReadGameAutoHunt(pid) = 1 {
@@ -1543,7 +1621,9 @@ DhActStartHunt(p, g) {
             throw Error("按 F6 想先關掉自動打怪，但它還是開著")
     }
     spot := DH_SPOTS.Get(g.map, 0)
-    if IsObject(spot)
+    if keepPlace && DhIsAway(MiningCharState(pid), spot, DH_AWAY_DIST)
+        DhStartInPlace(p, g, mob)
+    else if IsObject(spot)
         DhStartAtSpot(p, g, spot, mob)
     else
         DhStartByCluster(p, g, mob)
@@ -1552,6 +1632,14 @@ DhActStartHunt(p, g) {
         throw Error("按了 F6 但自動打怪沒有開起來")
     EventLog(p.name, "DH_HUNT", "開始自動打怪：" g.name "｜" g.done " / " g.target)
     AddRecentEvent("🎯 " p.name "：開始打 " g.name)
+}
+
+; 留在現在的位置接著打：程式完全不走路（怪物座標可能隔著牆 / 圍欄，程式的點擊尋路走不到），直接開遊戲自己的自動打怪，
+; 由遊戲自己找怪、走過去。這裡打不到（3 分鐘進度沒動）的話，第二次卡住會照原本流程走回固定點。
+DhStartInPlace(p, g, mob) {
+    me := MiningCharState(p.pid)
+    if IsObject(me)
+        EventLog(p.name, "DH_INPLACE", g.name "｜人物不在固定點附近，留在現在的位置 (" Round(me.x) "," Round(me.z) ") 直接開自動打怪，不走回固定點、也不另外尋路")
 }
 
 ; 固定點：先走到那個位置（大地圖點擊），到了再偵測怪；周圍 400 單位內沒有怪、但這張圖別處有，才改去最近的一群。
