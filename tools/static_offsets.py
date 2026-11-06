@@ -165,7 +165,7 @@ def main():
         return 1
     lines = ["[GameOffsets]", "Status=OK", f"ToolVersion={TOOL_VERSION}", f"ResolvedAt={datetime.now():%Y-%m-%d %H:%M:%S}", f"Build={build}"]
     for k, v in ref.items():
-        if k in ("Status", "ToolVersion", "ResolvedAt", "Build", "Error", "DerivedFrom", "Method", "Verified", "DailyError"):
+        if k in ("Status", "ToolVersion", "ResolvedAt", "Build", "Error", "DerivedFrom", "Method", "Verified", "DailyError", "MaterialError"):
             continue
         lines.append(f"{k}={result.get(k, v)}")
     lines += [f"DerivedFrom={ref['Build']}", "Method=static", "Verified=0"]

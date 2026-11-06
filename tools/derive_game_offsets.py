@@ -316,10 +316,10 @@ class Finder:
 
 
 # ----------------------------------------------------------------- 虛擬函式表
-def crow_vft(g, f, land):
-    """怪物清單裡第一隻怪的虛擬函式表。"""
+def crow_vft(g, f, land, list_key="LandCrowListOffset"):
+    """怪物（或採集物，list_key 換成 LandMaterialListOffset）清單裡最常見的虛擬函式表。"""
     H = f.H
-    lst = land + H("LandCrowListOffset")
+    lst = land + H(list_key)
     amt = i32(g.h, lst)
     node = u64(g.h, lst + H("CrowListHeadOffset"))
     vs = {}
@@ -426,6 +426,15 @@ def derive_one(g, ref):
         d = vft_delta(old_v("CrowVftableRvas"), q)
         if d is not None:
             vdelta["CrowVftableRvas"] = d
+    # 採集物：附近有採集物就直接看它的虛擬函式表（各個虛擬函式表的平移量不一定相同，這版 Material 就和別的不一樣）
+    if "MaterialVftableRvas" in ref and "MaterialVftableRvas" not in vdelta and isptr(g.h, land):
+        try:
+            q = crow_vft(g, f, land, "LandMaterialListOffset")
+        except KeyError:
+            q = None
+        d = vft_delta(old_v("MaterialVftableRvas"), q) if q is not None else None
+        if d is not None:
+            vdelta["MaterialVftableRvas"] = d
     # 沒有物件可看的（這張圖沒有怪 / 沒有採集物）：用其他已驗證的平移量當候選，只有「看起來像虛擬函式表」的候選才採用
     for key in ("CrowVftableRvas", "MaterialVftableRvas"):
         if key in vdelta or key not in ref:
@@ -433,6 +442,8 @@ def derive_one(g, ref):
         cands = sorted(set(vdelta.values()))
         ok = [c for c in cands if g.looks_like_vft(old_v(key)[0] + c)]
         if len(ok) != 1:
+            if key == "MaterialVftableRvas":   # 只有採集功能用：附近沒有採集物又對不上就先留空，其他功能照常用
+                continue
             raise Derive(f"無法確認 {key}（候選 {len(ok)} 個）")
         vdelta[key] = ok[0]
     return deltas, vdelta
@@ -451,6 +462,9 @@ def compose(ref, deltas, vdelta, build):
         elif re.search(r"Rvas?$", k):
             unhandled.append(k)
             if k == "DailyStateRva":
+                continue
+            if k == "MaterialVftableRvas":
+                out["MaterialError"] = "新版推算時附近沒有採集物，無法確認採集物位置（採集功能暫不可用）"
                 continue
             raise Derive(f"無法推算 {k}")
         else:
