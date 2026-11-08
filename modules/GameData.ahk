@@ -571,7 +571,9 @@ ReadGameServerTime(pid,&serverTime) {
         return false
     inst:=GameGaeaBase(pid)
     v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("ServerTimeOffset"),"Int64") : ""
-    if v=""
+    ; 讀到 0 / 不合理的數字 = 這個遊戲版本的位置不對（實測 6AF0283E 四個視窗全部讀到 0）：當作讀不到。
+    ; 否則伺服器時間永遠「沒更新」，每個帳號都被判「疑似假在線」，嚴重時還會把正常的遊戲關掉重登。
+    if v="" || v<1000000000 || v>4000000000
         return false
     serverTime:=v
     return true
