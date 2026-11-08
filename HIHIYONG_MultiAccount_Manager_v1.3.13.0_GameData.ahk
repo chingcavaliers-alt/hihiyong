@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.81.0"
+global APP_VERSION := "v1.3.82.0"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -2494,16 +2494,22 @@ StopAutoWindowSwitch(*) {
 
 AutoWindowSwitchTick(*) {
     global autoSwitchRunning,autoSwitchNextAt,processingQueue,activeRecoveryHwnd,setupMode,emergencyStop
-    global autoSwitchRecoveryPaused,autoSwitchPausedRemainMs
+    global autoSwitchRecoveryPaused,autoSwitchPausedRemainMs,foregroundOwner,apBusy
     if !autoSwitchRunning || emergencyStop || setupMode
         return
 
     ; Recovery / 自動登入擁有最高前景優先權：完整凍結 HWND 切換與自動按鍵倒數。
-    if processingQueue || activeRecoveryHwnd {
+    ; 其他功能（每日討伐 / 組隊 / 寵物監測 / MBox / 變慢過圖…）正在操作遊戲視窗時也讓路，不搶前景。
+    busyWhy:=""
+    if processingQueue || activeRecoveryHwnd
+        busyWhy:="Recovery / 自動登入執行中"
+    else if foregroundOwner!="" || apBusy
+        busyWhy:="其他功能正在操作遊戲視窗"
+    if busyWhy!="" {
         if !autoSwitchRecoveryPaused {
             autoSwitchPausedRemainMs:=autoSwitchNextAt>A_TickCount ? autoSwitchNextAt-A_TickCount : 0
             autoSwitchRecoveryPaused:=true
-            AddRecentEvent("視窗自動切換暫停：Recovery / 自動登入執行中")
+            AddRecentEvent("視窗自動切換暫停：" busyWhy)
         }
         return
     }
@@ -2513,7 +2519,7 @@ AutoWindowSwitchTick(*) {
         autoSwitchNextAt:=A_TickCount + Max(0,autoSwitchPausedRemainMs)
         autoSwitchRecoveryPaused:=false
         autoSwitchPausedRemainMs:=0
-        AddRecentEvent("視窗自動切換恢復：Recovery / 自動登入已完成")
+        AddRecentEvent("視窗自動切換恢復：前景已空出")
     }
 
     if autoSwitchNextAt && A_TickCount < autoSwitchNextAt
