@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.11",
+    "version":  "v1.3.90.12",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "21443407293c4ff480ef44e797fc88ddc196af6a6bb5e212d0d93cc8c8951c55"
+                      "sha256":  "bcd798a7c7cf49b7a28927f1ce80899c65f80aa7e73c9d1adde97bb9c84bef3b"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "b0f4ca0188d01e62914ebe2dd5f1db7894e871833af6169db93f8ce43023f178"
+                      "sha256":  "7ea6165d4b8a7508a87664c8e6579c1aad63654d02902c52df90bca05432756f"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -179,7 +179,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "0c725fc391fd8e783dd3fa742e064a527f0db84f6913bd08740c25316cab0eac"
+                      "sha256":  "2fcad0b48e8a835e17682ea35f32f518f75b5340a4c77aad760f239f6f9363ed"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -319,7 +319,7 @@
                   },
                   {
                       "path":  "tools\\derive_game_offsets.py",
-                      "sha256":  "c3062d82e7876924a4922769326004e56e5369f1ffdbbcbbce8a7292dc5e958d"
+                      "sha256":  "35e483372a7f1aa976a3c29cb4c6c581799c163c7261cee6db9ff5ffb36a49d1"
                   },
                   {
                       "path":  "tools\\droprates\\droprates.py",
@@ -463,7 +463,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "55684cacbca6ff465122c4e40c9b0eb28967fd854f3cf72a86e7c2ba4811de69"
+                      "sha256":  "5ac6e2b1b1b7b4809dff7153083bfadc245a05e2249e6e04241d50e2b1e2d336"
                   },
                   {
                       "path":  "登入測試.bat",

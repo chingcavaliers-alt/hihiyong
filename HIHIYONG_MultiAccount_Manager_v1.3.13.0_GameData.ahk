@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.11"
+global APP_VERSION := "v1.3.90.12"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -305,6 +305,7 @@ ResetKnownStaleMaxHP() {
 }
 ResetKnownStaleMaxHP()
 LoadGameOffsets()
+GameOffsetsSyncFromDb()   ; 更新帶來的位置資料和使用中的不一樣就改用更新的（見 GameData.ahk）
 LoadItemNameCache()
 InventoryStatsInit()
 KillStatsInit()

@@ -324,6 +324,15 @@ class Finder:
         v = struct.unpack("<%di" % n, d)
         return all(0 < x < 256 for x in v) and len(set(v)) == len(v)
 
+    def v_quick_tail(self, rva):
+        """strict 找不到時的中間一關：快捷鍵表前面緊接著的兩個值一定是 (2, 3)（固定開頭的最後兩項）。
+        只看「6 個不重複的掃描碼」會誤中差 8 位元組的位置：把開頭的 (2, 3) 當成前兩個快捷鍵（變成 1、2），
+        後面每一格都錯兩格，按錯鍵（2026-11-09 另一台電腦實際發生：召喚傭兵按到 E = 命運箱子、召喚寵物按到 W = 前點卡）。"""
+        if not self.v_quick(rva):
+            return False
+        d = rd(self.g.h, self.g.base + rva - 8, 8)
+        return bool(d) and struct.unpack("<2i", d) == (2, 3)
+
     def v_quick_strict(self, rva):
         """在 v_quick 之外，還要求前面 24 位元組是已知的固定開頭（1,1,1.0f,1.0f,2,3）。
         11/06 發現只看「6 個不重複的掃描碼」會誤中旁邊另一張表（差 0x60），按錯鍵。"""
@@ -401,7 +410,9 @@ def derive_one(g, ref):
     # 快捷鍵：有固定的 6 個掃描碼
     if "QuickKeysRva" in ref:
         d = f.nearest("QuickKeysRva", f.v_quick_strict, dg)
-        if d is None:   # 這版沒有那個固定開頭：退回只看掃描碼
+        if d is None:   # 完整開頭對不上：先退到「前面緊接著 (2, 3)」，再不行才退回只看掃描碼
+            d = f.nearest("QuickKeysRva", f.v_quick_tail, dg)
+        if d is None:
             d = f.nearest("QuickKeysRva", f.v_quick, dg)
         if d is None:
             raise Derive("對不上 QuickKeysRva")

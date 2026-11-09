@@ -71,6 +71,51 @@ LoadGameOffsets() {
     return GameOffsetsLoadedOk()
 }
 
+; 隨程式附上的位置資料（offsets_db\<Build>.ini，更新時會換成作者驗證過的版本）和使用中的位置檔不一樣時，改用 offsets_db 的。
+; 原本更新只換 offsets_db 的檔案，使用中的位置檔（HIHIYONG_GameOffsets.ini）要等遊戲版本再變才會重套：
+; 本機推算出錯的位置（2026-11-09 另一台電腦的快捷鍵位置差 8 位元組，按錯鍵）就算更新到正確的檔案也一直留著。
+global gameOffsetsDbSynced := false
+GameOffsetsSyncFromDb() {
+    global gameOffsets,GAME_OFFSETS_INI,GAME_OFFSETS_DB_DIR,GAME_OFFSETS_TOOL_VERSION,gameOffsetsDbSynced
+    if gameOffsetsDbSynced
+        return false
+    gameOffsetsDbSynced:=true
+    if !GameOffsetsLoadedOk()
+        return false
+    build:=gameOffsets.Get("Build","")
+    src:=GAME_OFFSETS_DB_DIR "\" build ".ini"
+    if build="" || !FileExist(src)
+        return false
+    cand:=Map()
+    try {
+        for line in StrSplit(IniRead(src,"GameOffsets"),"`n","`r") {
+            pos:=InStr(line,"=")
+            if pos
+                cand[SubStr(line,1,pos-1)]:=SubStr(line,pos+1)
+        }
+    }
+    if cand.Get("Status","")!="OK" || cand.Get("Build","")!=build
+        || !IsInteger(cand.Get("ToolVersion","")) || Integer(cand["ToolVersion"])<GAME_OFFSETS_TOOL_VERSION
+        return false
+    diff:=""
+    for k,v in cand {
+        if k="ResolvedAt" || k="DerivedFrom"
+            continue
+        if gameOffsets.Get(k,"")!=v
+            diff.=(diff="" ? "" : "、") k
+    }
+    if diff=""
+        return false
+    try FileCopy(src,GAME_OFFSETS_INI,true)
+    catch as err {
+        EventLog("GLOBAL","GAME_OFFSETS_DB_FAIL","位置資料不同步但無法套用 " build "：" err.Message)
+        return false
+    }
+    gameOffsets:=cand
+    EventLog("GLOBAL","GAME_OFFSETS_SYNC","使用中的位置檔和附上的 " build " 不同（" diff "），已改用附上的")
+    return true
+}
+
 GameOffsetsLoadedOk() {
     global gameOffsets,GAME_OFFSETS_TOOL_VERSION
     return gameOffsets.Has("Status") && gameOffsets["Status"]="OK"
