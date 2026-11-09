@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.12"
+global APP_VERSION := "v1.3.90.13"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -675,6 +675,7 @@ LoadProfiles() {
             dailyWeapon: IniRead(PROFILE_INI,sec,"DailyWeapon",""),
             mboxEnabled: Integer(IniRead(PROFILE_INI,sec,"MBoxEnabled","0")),
             mboxKey: IniRead(PROFILE_INI,sec,"MBoxKey","e"),
+            quickKeys: IniRead(PROFILE_INI,sec,"QuickKeys",""),
             partyLeader: Integer(IniRead(PROFILE_INI,sec,"PartyLeader","0")),
             partyMembers: IniRead(PROFILE_INI,sec,"PartyMembers",""),
             partyRemote: IniRead(PROFILE_INI,sec,"PartyRemote",""),
@@ -722,6 +723,7 @@ SaveProfiles() {
         IniWrite DailyWeaponOf(p), PROFILE_INI, sec, "DailyWeapon"
         IniWrite (MBoxOn(p) ? 1 : 0), PROFILE_INI, sec, "MBoxEnabled"
         IniWrite MBoxKeyOf(p), PROFILE_INI, sec, "MBoxKey"
+        IniWrite (p.HasOwnProp("quickKeys") ? p.quickKeys : ""), PROFILE_INI, sec, "QuickKeys"
         IniWrite (ApIsLeader(p) ? 1 : 0), PROFILE_INI, sec, "PartyLeader"
         IniWrite (p.HasOwnProp("partyMembers") ? p.partyMembers : ""), PROFILE_INI, sec, "PartyMembers"
         IniWrite (p.HasOwnProp("partyRemote") ? p.partyRemote : ""), PROFILE_INI, sec, "PartyRemote"
@@ -5813,6 +5815,9 @@ WebRunAction(action,value:=0,rawValue:="") {
         CompanionPushWeb()
     } else if action="companionset" {
         CompanionSet(WebUrlDecode(rawValue))
+        CompanionPushWeb()
+    } else if action="quickkeyset" {
+        CwQuickKeySet(WebUrlDecode(rawValue))
         CompanionPushWeb()
     } else if action="partystate" {
         ApPushWeb()

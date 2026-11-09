@@ -248,16 +248,92 @@ CompanionSet(rawValue) {
     AddRecentEvent("🐾 寵物 / 雇傭兵 / 魔法娃娃監測：" (CW_ENABLED ? "開啟" : "關閉") "｜寵物 " (CW_PET ? "監測" : "不監測") "｜雇傭兵 " (CW_MERC ? "監測" : "不監測") "｜魔法娃娃 " (CW_DOLL ? "監測" : "不監測"))
 }
 
+; 目前讀到的道具快捷欄（畫面下方那排）：每一格的鍵與道具名稱；按鍵位置讀錯時（例如差兩格）能在畫面上一眼看出來。
+; 回傳 JSON 片段：{"keys":"q,w,e,a,s,d","ok":true/false,"slots":[{"k":"q","n":"起點傳送卡","t":"寵物"}…]}；讀不到回傳 ""。
+CwQuickJson(p) {
+    if !p.pid
+        return ""
+    st := "", keys := "", auto := ""
+    try st := ReadGameActionQuick(p.pid)
+    try keys := ReadGameQuickKeys(p.pid)        ; 實際使用的（有手動設定就是手動的）
+    try auto := ReadGameQuickKeys(p.pid, true)  ; 程式自己讀到的
+    if !IsObject(st)
+        return ""
+    manual := p.HasOwnProp("quickKeys") && Trim(p.quickKeys) != ""
+    aj := ""
+    if IsObject(auto)
+        for k in auto
+            aj .= (aj = "" ? "" : ",") k
+    slots := "", kj := ""
+    for i, s in st {
+        nm := ""
+        if s.key != ""
+            try nm := GameItemName(s.key, p.pid)
+        k := IsObject(keys) && i <= keys.Length ? keys[i] : "?"
+        tag := InStr(nm, "寵物卡") ? "寵物" : InStr(nm, "雇傭兵") ? "傭兵" : InStr(nm, "魔法娃娃") ? "娃娃" : (InStr(nm, "命運箱子") && !InStr(nm, "禮")) ? "命運箱子" : ""
+        slots .= (slots = "" ? "" : ",") '{"k":"' JsonEscapeWeb(k) '","n":"' JsonEscapeWeb(s.key = "" ? "（空）" : (nm != "" ? nm : s.key)) '","t":"' tag '"}'
+        kj .= (kj = "" ? "" : ",") k
+    }
+    ; 預設是 Q W E A S D：鍵位和預設不同不一定是錯（你可能自己改過），但讀到的鍵和遊戲實際不符就會按錯卡
+    return '{"manual":' (manual ? "true" : "false") ',"auto":"' JsonEscapeWeb(aj) '","set":"' JsonEscapeWeb(manual ? Trim(p.quickKeys) : "") '","keys":"' JsonEscapeWeb(kj) '","ok":' (SubStr(kj, 1, 11) = "q,w,e,a,s,d" ? "true" : "false") ',"slots":[' slots ']}'
+}
+
+; 「編號~鍵,鍵,…~角色名稱」：手動指定快捷欄 6 格的鍵（空白 = 改回自動讀取）。鍵只收 1～0、a～z、F1～F12。
+CwQuickKeySet(rawValue) {
+    global profiles
+    parts := StrSplit(rawValue, "~")
+    if parts.Length < 3 || !IsInteger(parts[1])
+        return
+    idx := Integer(parts[1])
+    if idx < 1 || idx > profiles.Length
+        return
+    name := parts[3]
+    Loop parts.Length - 3
+        name .= "~" parts[3 + A_Index]
+    p := profiles[idx]
+    if name != p.name
+        return AddRecentEvent("⚠ 快捷欄鍵位沒有儲存：角色清單已變動，請重新整理畫面")
+    txt := Trim(parts[2])
+    if txt = "" {
+        p.quickKeys := ""
+        SaveProfiles()
+        AddRecentEvent(p.name " → 快捷欄鍵位改回自動讀取")
+        EventLog(p.name, "QUICKKEYS_SET", "改回自動讀取")
+        return
+    }
+    out := ""
+    for t in StrSplit(txt, ",") {
+        k := Trim(t)
+        if RegExMatch(k, "i)^F([1-9]|1[0-2])$")
+            k := "F" SubStr(k, 2)
+        else if RegExMatch(k, "i)^[a-z0-9]$")
+            k := StrLower(k)
+        else
+            return AddRecentEvent("⚠ 快捷欄鍵位沒有儲存：「" k "」不是有效的鍵（只收 1～0、A～Z、F1～F12）")
+        out .= (out = "" ? "" : ",") k
+    }
+    n := GameOffset("ActionQuickCount")
+    n := n >= 1 ? n : 6
+    if StrSplit(out, ",").Length != n
+        return AddRecentEvent("⚠ 快捷欄鍵位沒有儲存：要剛好 " n " 個鍵，用逗號分開（例如 q,w,e,a,s,d）")
+    p.quickKeys := out
+    SaveProfiles()
+    AddRecentEvent(p.name " → 快捷欄鍵位手動設定為 " out)
+    EventLog(p.name, "QUICKKEYS_SET", "手動設定 " out)
+}
+
 CompanionPushWeb() {
     global webReady, WVCore, profiles, CW_ENABLED, CW_PET, CW_MERC, CW_DOLL
     if !webReady || !WVCore
         return
     roles := ""
-    for p in profiles {
+    for pi, p in profiles {
         if !p.enabled
             continue
         pt := CW_PET ? CwState(p, "pet").text : "", mt := CW_MERC ? CwState(p, "merc").text : "", dt := CW_DOLL ? CwState(p, "doll").text : ""
-        roles .= (roles = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","pet":"' JsonEscapeWeb(pt) '","merc":"' JsonEscapeWeb(mt) '","doll":"' JsonEscapeWeb(dt) '"}'
+        qj := ""
+        try qj := CwQuickJson(p)
+        roles .= (roles = "" ? "" : ",") '{"index":' pi ',"name":"' JsonEscapeWeb(p.name) '","pet":"' JsonEscapeWeb(pt) '","merc":"' JsonEscapeWeb(mt) '","doll":"' JsonEscapeWeb(dt) '","quick":' (qj = "" ? "null" : qj) '}'
     }
     try WVCore.PostWebMessageAsJson('{"type":"companion","data":{"enabled":' (CW_ENABLED ? "true" : "false") ',"pet":' (CW_PET ? "true" : "false")
         . ',"merc":' (CW_MERC ? "true" : "false") ',"doll":' (CW_DOLL ? "true" : "false") ',"blocker":"' JsonEscapeWeb(ApBlockerRaw()) '","roles":[' roles ']}}')

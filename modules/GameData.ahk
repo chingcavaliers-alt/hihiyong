@@ -988,7 +988,30 @@ ReadGameActionQuick(pid) {
 
 ; 道具快捷欄各格「現在設定的鍵」（遊戲裡「快捷鍵設定」可以改成別的鍵，所以不能假設是 Q W E A S D）。
 ; 回傳 ["q","w","e","a","s","d"]（認不得的掃描碼 = ""）；沒有這組位置資料 / 讀不到回傳 ""。
-ReadGameQuickKeys(pid) {
+; 手動指定的快捷欄鍵位（角色設定 quickKeys，例如 "q,w,e,a,s,d"）：讀到的鍵位不準時，使用者可以在「寵物 / 雇傭兵 / 魔法娃娃」頁面自己改。
+; 回傳陣列（和 ReadGameQuickKeys 一樣的格式）；這個 PID 的角色沒有手動設定回傳 ""。
+GameQuickKeyOverride(pid) {
+    global profiles
+    if !IsSet(profiles) || !IsObject(profiles)
+        return ""
+    for p in profiles {
+        if p.HasOwnProp("pid") && p.pid = pid && p.HasOwnProp("quickKeys") && Trim(p.quickKeys) != "" {
+            arr := StrSplit(Trim(p.quickKeys), ",")
+            out := []
+            for k in arr
+                out.Push(Trim(k))
+            return out
+        }
+    }
+    return ""
+}
+; raw = true：不套用手動設定（畫面上要同時顯示「自動讀到的」）
+ReadGameQuickKeys(pid, raw := false) {
+    if !raw {
+        ov := GameQuickKeyOverride(pid)
+        if IsObject(ov)
+            return ov
+    }
     static names:=Map(2,"1",3,"2",4,"3",5,"4",6,"5",7,"6",8,"7",9,"8",10,"9",11,"0",
         16,"q",17,"w",18,"e",19,"r",20,"t",21,"y",22,"u",23,"i",24,"o",25,"p",
         30,"a",31,"s",32,"d",33,"f",34,"g",35,"h",36,"j",37,"k",38,"l",

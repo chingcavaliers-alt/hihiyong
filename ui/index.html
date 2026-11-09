@@ -407,7 +407,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.12· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.13· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -489,6 +489,11 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">📋</span></span>各角色狀態</div>
  <div class="table-wrap"><table><thead><tr><th>角色</th><th>寵物</th><th>雇傭兵</th><th>魔法娃娃</th></tr></thead><tbody id="cwRows"><tr><td colspan="4" class="hint">讀取中…</td></tr></tbody></table></div>
+</div>
+<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⌨️</span></span>目前讀到的道具快捷欄</div>
+ <div class="hint">程式按「哪一格的鍵」叫出寵物 / 雇傭兵 / 魔法娃娃，用的就是這裡讀到的鍵與道具。<b>和遊戲畫面下方那排不一樣就是讀錯了</b>（會按到別張卡，例如命運箱子、前點傳送卡）；紅色字 = 這一格是命運箱子，程式不應該去按它。</div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>第 1 格</th><th>第 2 格</th><th>第 3 格</th><th>第 4 格</th><th>第 5 格</th><th>第 6 格</th><th>手動指定鍵位</th></tr></thead><tbody id="cwQuickRows"><tr><td colspan="8" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="hint" id="cwQuickWarn" style="color:#c0392b;margin-top:8px"></div>
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>不打擾你：</b>需要把遊戲視窗切到前面按鍵，做完切回原本的視窗；你正在用鍵盤滑鼠時（停 5 秒後才動作）、重新登入 / 換每日道具 / 背包清理 / 命運箱子 / 組隊 / 示範錄製 / 輪流切換視窗執行中、死亡中、按下緊急停止時都不會動作。</div><div class="hint"><b>注意：</b>遊戲的聊天框正在輸入時按鍵會打進聊天框，請不要把聊天框一直開著輸入狀態。雇傭兵卡如果是限時（例如 [1D]）道具，過期消失後快捷欄就找不到，程式不會亂按。</div></div></details>
 </div>
@@ -1981,8 +1986,19 @@ function renderCompanion(d){
  if(me&&document.activeElement!==me)me.checked=!!d.merc;
  if(dl&&document.activeElement!==dl)dl.checked=!!d.doll;
  if(pill)pill.textContent=d.enabled?'監測中':'未啟用';
+ renderCwQuick(d.roles);
  if(bl)bl.textContent=d.enabled&&d.blocker?'⏸ 暫停中：'+d.blocker:'';
  if(box)box.innerHTML=(d.roles||[]).length?d.roles.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td class="account-sub">${d.pet?esc(r.pet||'—'):'不監測'}</td><td class="account-sub">${d.merc?esc(r.merc||'—'):'不監測'}</td><td class="account-sub">${d.doll?esc(r.doll||'—'):'不監測'}</td></tr>`).join(''):'<tr><td colspan="4" class="hint">沒有開啟監控的角色</td></tr>';
+}
+function cwQuickSave(i,name,clear){const el=document.getElementById('cwQk'+i);const v=clear?'':(el?el.value:'');send('quickkeyset',{value:`${i}~${v}~${name}`});}
+function renderCwQuick(roles){
+ const act=document.activeElement;if(act&&act.id&&act.id.startsWith('cwQk'))return;   // 正在輸入時不重畫
+ const box=document.getElementById('cwQuickRows'),warn=document.getElementById('cwQuickWarn');if(!box)return;
+ let bad=[];
+ box.innerHTML=(roles||[]).length?roles.map(r=>{const q=r.quick;if(!q)return `<tr><td class="account-name">${esc(r.name)}</td><td colspan="7" class="account-sub">讀不到（沒有連線 / 這個遊戲版本沒有資料）</td></tr>`;
+  if(!q.ok)bad.push(r.name+'（'+q.keys+'）');
+  return `<tr><td class="account-name">${esc(r.name)}</td>`+q.slots.map(s=>`<td class="account-sub" style="${s.t==='命運箱子'?'color:#c0392b;font-weight:600':''}"><b>${esc((s.k||'?').toUpperCase())}</b> ${esc(s.n)}${s.t?` <span class="pill">${esc(s.t)}</span>`:''}</td>`).join('')+`<td class="account-sub">${q.manual?'<span class="pill">手動</span> ':''}<input type="text" id="cwQk${r.index}" value="${esc(q.set||q.auto||q.keys)}" placeholder="q,w,e,a,s,d" style="width:130px" title="6 格的鍵，用逗號分開；留白按「自動」= 改回程式自己讀"> <button class="btn soft" onclick="cwQuickSave(${r.index},'${esc(r.name).replace(/'/g,"")}',false)">儲存</button> <button class="btn soft" onclick="cwQuickSave(${r.index},'${esc(r.name).replace(/'/g,"")}',true)" title="改回自動讀取">自動</button>${q.manual&&q.auto?`<div class="hint">自動讀到：${esc(q.auto)}</div>`:''}</td></tr>`;}).join(''):'<tr><td colspan="8" class="hint">沒有角色</td></tr>';
+ if(warn)warn.textContent=bad.length?'⚠ 鍵位和預設的 Q W E A S D 不同：'+bad.join('、')+'。如果不是你自己改過按鍵，可能是位置資料讀錯了，請先關掉寵物 / 雇傭兵 / 魔法娃娃監測，並把診斷包給作者。':'';
 }
 function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;send('companionset',{value:`${v('cwEnabled')}~${v('cwPet')}~${v('cwMerc')}~${v('cwDoll')}`});}
 let dhOn=new Set(),dhTasks=[],dhChars=[],dhRunning=false,dhTest=false;
