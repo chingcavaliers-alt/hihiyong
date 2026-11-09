@@ -66,7 +66,8 @@ Lic_AcctHash(machineId, account) => Lic_Sha256Hex("acct|" machineId "|" StrLower
 
 ; ---------- 授權內容 ----------
 ; 作者端用：組出要簽的內容。expires = "forever" 或 yyyyMMdd。
-Lic_BuildPayload(user, machineId, issued, expires, mode, count := 0, accounts := "") {
+; features = 逗號分隔的功能代碼（例如 "mining"）：有簽章保護，沒有這行 = 沒有任何「需要授權的功能」（目前只有自動採礦）。
+Lic_BuildPayload(user, machineId, issued, expires, mode, count := 0, accounts := "", features := "") {
     t := "HIHIYONG-LICENSE 1`n"
     ; 授權編號每次簽發都不同（含時間），撤銷名單才能只撤這一份、不影響之後重新簽發的
     t .= "id=" A_Now A_MSec "-" SubStr(StrReplace(machineId, "-"), 1, 6) "`n"
@@ -75,6 +76,9 @@ Lic_BuildPayload(user, machineId, issued, expires, mode, count := 0, accounts :=
     t .= "issued=" issued "`n"
     t .= "expires=" expires "`n"
     t .= "mode=" mode "`n"
+    features := Lic_CleanFeatures(features)
+    if features != ""
+        t .= "features=" features "`n"
     if mode = "count"
         t .= "count=" Integer(count) "`n"
     if mode = "list" && IsObject(accounts)
@@ -89,7 +93,7 @@ Lic_Parse(text) {
     lines := StrSplit(text, "`n")
     if lines.Length < 2 || !RegExMatch(lines[1], "^HIHIYONG-LICENSE 1\s*$")
         return 0
-    lic := {user: "", machine: "", issued: "", expires: "", mode: "", count: 0, accts: Map(), id: ""}
+    lic := {user: "", machine: "", issued: "", expires: "", mode: "", count: 0, accts: Map(), id: "", features: ""}
     for line in lines {
         p := InStr(line, "=")
         if !p
@@ -107,6 +111,33 @@ Lic_Parse(text) {
     if lic.expires != "forever" && !Lic_ValidDate(lic.expires)
         return 0
     return lic
+}
+
+; 功能清單：只留小寫英數 / 底線，逗號分隔
+Lic_CleanFeatures(s) {
+    out := ""
+    for part in StrSplit(StrLower(s), ",") {
+        f := Trim(part)
+        if RegExMatch(f, "^[a-z0-9_]+$")
+            out .= (out = "" ? "" : ",") f
+    }
+    return out
+}
+; 這台電腦的授權有沒有這個功能（授權要是有效的；舊授權沒有 features 這行 = 沒有）
+Lic_HasFeature(name) {
+    global licState, licInfoCache
+    if !IsObject(licInfoCache) || !IsObject(licState) || licState.state != "ok"
+        return false
+    return InStr("," licInfoCache.features ",", "," StrLower(name) ",") > 0
+}
+Lic_FeatureText(features) {
+    t := ""
+    for f in StrSplit(features, ",") {
+        if f = ""
+            continue
+        t .= (t = "" ? "" : "、") (f = "mining" ? "自動採礦" : f)
+    }
+    return t
 }
 
 Lic_ValidDate(ymd) {
@@ -601,6 +632,7 @@ Lic_PushWeb() {
         . ',"expires":"' (IsObject(lic) ? Lic_DateText(lic.expires) : "") '"'
         . ',"daysLeft":' licState.daysLeft
         . ',"mode":"' (IsObject(lic) ? lic.mode : "") '","count":' (IsObject(lic) ? lic.count : 0)
+        . ',"features":"' JsonEscapeWeb(IsObject(lic) ? Lic_FeatureText(lic.features) : "") '"'
         . ',"blocked":[' names '],"warn":"' JsonEscapeWeb(Lic_WarnText(licState)) '"}}')
 }
 

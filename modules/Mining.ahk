@@ -8,6 +8,8 @@
 ; ============================================================================
 
 global GLAT_GATHERING := 6
+global MINING_GATHER_GRACE_MS := 120000   ; 採集中（約 60 秒不動、血量不變）和採完走向下一顆的空檔，都不算「假在線」
+
 global MINING_MAX_CROWS := 1500   ; 一次最多讀幾隻（大地圖一次幾百隻；擊殺統計的 KILL_MAX_CROWS 是 400，不夠用）
 
 MiningOffsetsOk(pid) {

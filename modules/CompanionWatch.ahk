@@ -43,10 +43,12 @@ CwState(p, kind) {
     return p.cw[kind]
 }
 ; 目前所在地圖（讀不到回傳 0）：確認「不在外面」的這段時間內換了地圖就重新確認（換圖時它們會暫時消失）
+; ReadGameMapId 回傳 "地圖編號-子編號"（例如 "213-0"）。以前用 IsInteger 判斷，字串一律變成 0，等於「永遠同一張圖」：
+; 換地圖後的重新確認、「這張圖叫不出來就換圖再試」都沒有真的動過。
 CwMap(p) {
-    m := 0
+    m := ""
     try m := ReadGameMapId(p.pid)
-    return IsInteger(m) ? m : 0
+    return m != "" ? m : 0
 }
 ; 寵物剛被別的功能（登入後補開）按過：兩邊共用同一個冷卻，不要一個按完、另一個接著又按
 CwPetPressedRecently(p) {
@@ -106,6 +108,18 @@ CompanionTick() {
             map := CwMap(p)
             if !s.since || s.map != map {
                 s.since := now, s.map := map   ; 第一次看到不在外面，或這段時間換了地圖：重新確認
+                s.next := 0, s.fails := 0      ; 換了地圖：之前在別張圖叫不出來的退避不算（例如學院廣場不能召喚，進水晶礦場要馬上再叫）
+            }
+            ; 自動採礦的角色被踢出礦場會回到學院廣場（22-*），那裡不能召喚寵物 / 傭兵 / 娃娃：不按鍵，進礦場後再叫
+            if p.HasOwnProp("mnActive") && p.mnActive && SubStr(map, 1, 3) = "22-" {
+                s.text := "在學院廣場不能召喚，進水晶礦場後再叫"
+                continue
+            }
+            ; 自動採礦的角色：同一張圖連續叫不出來 2 次（水晶礦場「此地圖無法使用傭兵」）就不再按，換地圖再試；
+            ; 一直按會每幾分鐘搶一次前景、白按一下鍵
+            if s.fails >= 2 && s.HasOwnProp("failMap") && s.failMap = map && p.HasOwnProp("mnActive") && p.mnActive {
+                s.text := "叫不出來（連續 " s.fails " 次，這張圖可能不能用），換地圖再試"
+                continue
             }
             if now - s.since < CW_CONFIRM_MS {
                 s.text := "不在外面，確認中 " Round((now - s.since) / 1000) " 秒"
@@ -117,6 +131,16 @@ CompanionTick() {
             }
             if now < s.next {
                 s.text := "不在外面｜休息中（" Ceil((s.next - now) / 1000) " 秒後再試）"
+                continue
+            }
+            ; 功能優先順序：排在前面的功能忙著（例如自動採礦中的角色正在採集——按寵物鍵會把採集停掉）→ 先等
+            fpWhy := "", fpNm := "FpBlocked"
+            try {
+                fpf := %fpNm%
+                fpWhy := fpf("companion", p)
+            }
+            if fpWhy != "" {
+                s.text := "不在外面｜等待：" fpWhy
                 continue
             }
             todo.Push({p: p, kind: kind})
@@ -178,7 +202,7 @@ CompanionRun(p, kind) {
             EventLog(p.name, "CW_OK", label "不在外面｜已按 " StrUpper(info.key) "（快捷欄第 " info.slot " 格）叫出")
             AddRecentEvent("🐾 " p.name "：" label "不在外面，已叫出")
         } else {
-            s.fails += 1
+            s.fails += 1, s.failMap := CwMap(p)
             wait := Min(CW_BACKOFF_MAX_MS, CW_COOLDOWN_MS * (2 ** Min(s.fails - 1, 5)))   ; 指數上限 5：連續失敗很多次也不會整數溢位
             s.next := A_TickCount + wait
             s.since := 0   ; 休息完要重新確認 10 秒，不能直接再按

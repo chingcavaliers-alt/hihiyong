@@ -265,10 +265,36 @@ RecorderStateTick() {
             recorder.mats:=sig
         }
     }
+    ; 王（不是礦石的怪；王的血量欄位讀到的不是 2 億，所以不看血量）：出現 / 消失 / 血量每變 1%～2% / 移動 / 動作變化時列出，附上它在畫面上的位置（身體 / 頭頂 / 更上面，血條大約在頭頂）
+    bosses:=[]
+    all:=0
+    try all:=MiningCrows(pid)
+    if IsObject(all)
+        for m in all
+            if !InStr(m.name,"原石")
+                bosses.Push(m)
+    bsig:=""
+    for m in bosses
+        bsig.=m.glob ":" Floor(m.hp/2000000) ":" m.action ":" Round(m.x/8) ":" Round(m.z/8) ";"
+    if bsig!=(recorder.HasOwnProp("boss") ? recorder.boss : "") {
+        if bosses.Length {
+            text:="[王] " RecorderElapsed() " 王 " bosses.Length " 隻"
+            for m in bosses {
+                dist:=IsObject(st) ? Round(Sqrt((m.x-st.x)**2+(m.z-st.z)**2)) : "?"
+                text.="`r`n    " m.name "#" m.glob "（" m.nid "）位置 (" Round(m.x,1) "," Round(m.y,1) "," Round(m.z,1) ")｜距離 " dist "｜HP " m.hp "｜種類 " m.kind "｜動作 " (GLAT_NAMES.Has(m.action) ? GLAT_NAMES[m.action] : m.action)
+                for h in [0,20,40] {
+                    sc:=GameWorldToScreen(pid,m.x,m.y+h,m.z)
+                    if IsObject(sc)
+                        text.="｜畫面(高+" h ") (" sc.x "," sc.y ")" (sc.visible ? "" : "不在畫面內") (sc.HasOwnProp("vpw") && sc.vpw ? " 遊戲畫面 " sc.vpw "x" sc.vph : "")
+                }
+            }
+            RecorderWrite(text)
+        } else if recorder.HasOwnProp("boss") && recorder.boss!=""
+            RecorderWrite("[王] " RecorderElapsed() " 王消失了（被打死 / 離開範圍）")
+        recorder.boss:=bsig
+    }
     ; 附近怪物總數與最遠距離（了解記憶體裡看得到多遠）：每 10 秒一次
     if A_TickCount-(recorder.HasOwnProp("crowTick") ? recorder.crowTick : 0)>=10000 && IsObject(st) {
-        all:=0
-        try all:=MiningCrows(pid)
         if IsObject(all) {
             far:=0
             for m in all

@@ -142,8 +142,13 @@ MBoxBlocker() {
         return "其他功能正在操作遊戲視窗"
     if IsObject(recorder)
         return "示範錄製中"
-    if autoSwitchRunning
-        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
+    swExcl := true, fpNm := "FpSwitcherExclusive"   ; 功能優先順序：視窗按鍵精靈排在其他功能前面才獨佔
+    try {
+        fpf := %fpNm%
+        swExcl := fpf()
+    }
+    if autoSwitchRunning && swExcl
+        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換，或到「功能優先順序」把它排後面）"
     if setupMode
         return "8 點登入座標設定還沒做完（到「設定」按「取消設定」，或把 8 點記完）"
     ; 閒置時間會被我們自己送出的按鍵 / 切視窗歸零（沒有裝輸入鉤子時分不出來），所以只有「我們最後一次動作之後」
@@ -195,6 +200,13 @@ MBoxTick() {
     now := A_TickCount, pick := 0, pickAt := 0
     for i, p in profiles {
         if !MBoxReady(p)
+            continue
+        fpWhy := "", fpNm := "FpBlocked"   ; 功能優先順序：排在前面的功能忙著就先等
+        try {
+            fpf := %fpNm%
+            fpWhy := fpf("mbox", p)
+        }
+        if fpWhy != ""
             continue
         at := p.HasOwnProp("mboxNextAt") ? p.mboxNextAt : 0
         if at <= now && (!pick || at < pickAt)

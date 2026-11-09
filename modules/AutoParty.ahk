@@ -34,6 +34,7 @@ global apLastActive := 0, apManualAt := 0, AP_MANUAL_TTL_MS := 60000
 ; 遠端隊員：送出邀請後最多等這麼久看對方有沒有加入；接受邀請失敗 / 不符合條件後，這麼久內不再試同一個角色
 global AP_REMOTE_WAIT_MS := 15000, AP_ACCEPT_BACKOFF_MS := 30000, apAcceptPeekAt := 0
 global AP_SCROLL_MAX := 40   ; 目標在好友名單畫面外時，最多滾幾次滾輪（每次確認真的捲動了才繼續）
+global mnBossFight := false   ; 自動採礦正在壓住右鍵打王：優先於重新登入排隊 / 載入中的角色（等打完再處理）
 global apBusy := false, apManual := 0, apSettleSince := 0, apLastOwn := 0, apRunStart := 0
 ; 一輪最長時間（隊員很多時不能一直佔用前景）；手動「立即組隊」要先放開鍵盤滑鼠這麼久才開始；遊戲畫面的設計大小
 global apInferred := Map()
@@ -214,23 +215,31 @@ ApBlockerRaw() {
     global autoSwitchRunning, setupMode, invRunning, fastLoginCritical, asyncLoadingEntries, recoveryQueue, profiles
     if abortRequested || emergencyStop
         return "自動化已停止"
-    if processingQueue || activeRecoveryHwnd || fastLoginCritical || recoveryQueue.Length
+    bossFirst := mnBossFight && foregroundOwner = "mining"   ; 打王期間：已經在排隊 / 載入的角色先等著，打完再處理
+    if processingQueue || activeRecoveryHwnd || fastLoginCritical || (!bossFirst && recoveryQueue.Length)
         return "重新登入中"
-    try if asyncLoadingEntries.Count
-        return "有角色正在載入"
-    for p in profiles
-        if p.enabled && (p.state = "排隊中" || p.state = "載入中" || p.state = "恢復中")
-            return "有角色還沒登入完成"
+    if !bossFirst {
+        try if asyncLoadingEntries.Count
+            return "有角色正在載入"
+        for p in profiles
+            if p.enabled && (p.state = "排隊中" || p.state = "載入中" || p.state = "恢復中")
+                return "有角色還沒登入完成"
+    }
     if dailyRunning != ""
         return "更換每日道具中"
     if invRunning
         return "背包清理中"
-    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion" && foregroundOwner != "dailyhunt"
+    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion" && foregroundOwner != "dailyhunt" && foregroundOwner != "mining"
         return "其他功能正在操作遊戲視窗"
     if IsObject(recorder)
         return "示範錄製中"
-    if autoSwitchRunning
-        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換）"
+    swExcl := true, fpNm := "FpSwitcherExclusive"   ; 功能優先順序：視窗按鍵精靈排在其他功能前面才獨佔
+    try {
+        fpf := %fpNm%
+        swExcl := fpf()
+    }
+    if autoSwitchRunning && swExcl
+        return "「視窗按鍵精靈」執行中（兩個一起用會互搶視窗，請先停止輪流切換，或到「功能優先順序」把它排後面）"
     if setupMode
         return "8 點登入座標設定還沒做完（到「設定」按「取消設定」，或把 8 點記完）"
     return ""
@@ -1097,6 +1106,13 @@ ApPlan(leader) {
 ApTick() {
     global profiles, AP_ENABLED, AP_REJOIN, AP_HANDBACK, AP_SETTLE_SEC, AP_IDLE_SEC, AP_MANUAL_IDLE_MS, AP_MANUAL_TTL_MS, apBusy, apManual, apManualAt, apSettleSince, apIdleMs
     if !AP_ENABLED || apBusy
+        return
+    fpWhy := "", fpNm := "FpBlocked"   ; 功能優先順序：排在前面的功能忙著（例如更換每日道具中）就先等
+    try {
+        fpf := %fpNm%
+        fpWhy := fpf("party")
+    }
+    if fpWhy != ""
         return
     leaders := []
     for i, p in profiles

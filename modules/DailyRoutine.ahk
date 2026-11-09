@@ -126,7 +126,7 @@ DailyRunEnqueue(indexes, reason) {
 }
 
 DailyRunNext() {
-    global dailyRunQueue,foregroundOwner,processingQueue,asyncLoadingEntries,abortRequested,fastLoginCritical
+    global dailyRunQueue,foregroundOwner,processingQueue,asyncLoadingEntries,abortRequested,fastLoginCritical,profiles
     if !dailyRunQueue.Length
         return
     if abortRequested {
@@ -138,7 +138,33 @@ DailyRunNext() {
         SetTimer DailyRunNext,-3000
         return
     }
-    idx:=dailyRunQueue.RemoveAt(1)
+    ; 自動採礦的角色正在採集（站著 60 秒）：等這一顆採完再換（換道具要開背包右鍵別的道具，會把採集停掉）。
+    ; 採礦那邊看到這個角色在排隊更換就不再開始下一顆（MnPlan），所以採完就會輪到更換。
+    ; 功能優先順序（FeaturePriority）：排在「每日更換道具」前面的功能忙著（例如把「自動採礦」排前面，角色還在礦場裡）就繼續等；
+    ; 找第一個可以換的角色。
+    pick:=0
+    for q in dailyRunQueue {
+        pq:=profiles[q]
+        if pq.HasOwnProp("mn") && IsObject(pq.mn) && pq.mn.HasOwnProp("gathering") && pq.mn.gathering
+            continue
+        fpWhy:="",fpNm:="FpBlocked"
+        try {
+            fpf:=%fpNm%
+            fpWhy:=fpf("daily",pq)
+        }
+        if fpWhy!="" {
+            if !pq.HasOwnProp("dailyWaitWhy") || pq.dailyWaitWhy!=fpWhy
+                pq.dailyWaitWhy:=fpWhy,EventLog(pq.name,"DAILY_WAIT","更換每日道具先等：" fpWhy)
+            continue
+        }
+        pick:=A_Index
+        break
+    }
+    if !pick {
+        SetTimer DailyRunNext,-2500
+        return
+    }
+    idx:=dailyRunQueue.RemoveAt(pick)
     DailyRoutineRun(idx)
     if dailyRunQueue.Length
         SetTimer DailyRunNext,-2000
@@ -289,9 +315,10 @@ DailyRoutineSteps(ctx) {
     } else if (town:=DailyTownName(pid))!="" {
         stay:=true
         DailyStep(ctx,"角色已在城裡（" town "），略過 Q 回城，換完 W 前點到怪區")
-    } else if DailyModeOf(ctx.p)="here" || (DailyModeOf(ctx.p)="auto" && !DailyCanReturn(pid)) {
+    } else if DailyModeOf(ctx.p)="here" || (DailyModeOf(ctx.p)="auto" && !DailyCanReturn(pid)) || (ctx.p.HasOwnProp("mnActive") && ctx.p.mnActive) {
         stay:=true,here:=true
-        DailyStep(ctx,DailyModeOf(ctx.p)="auto" ? "原地更換（道具快捷欄沒有起點卡 / 前點卡，自動改成不回城），換完留在原地" : "原地更換（角色設定：不回城），換完留在原地")
+        DailyStep(ctx,(ctx.p.HasOwnProp("mnActive") && ctx.p.mnActive && DailyModeOf(ctx.p)!="here") ? "原地更換（這個角色正在自動採礦，不回城、不離開礦場），換完留在原地"
+            : DailyModeOf(ctx.p)="auto" ? "原地更換（道具快捷欄沒有起點卡 / 前點卡，自動改成不回城），換完留在原地" : "原地更換（角色設定：不回城），換完留在原地")
     } else {
         DailyStep(ctx,"Q 回城（過圖讓到期道具消失）")
         DailyTeleport(ctx,DailyCardKey(ctx,"起點傳送卡",DAILY_START_KEY))

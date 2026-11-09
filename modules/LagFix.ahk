@@ -255,6 +255,15 @@ LagFixTick() {
         st := LfState(p)
         if !p.enabled || !p.pid || p.state != "監控中" || !ProfileGameAlive(p) || now < st.next || now < st.pauseUntil
             continue
+        if p.HasOwnProp("mnActive") && p.mnActive
+            continue   ; 自動採礦中的角色站著採 60 秒，不能被當成「變慢」送去過圖
+        fpWhy := "", fpNm := "FpBlocked"   ; 功能優先順序：排在前面的功能忙著就先等
+        try {
+            fpf := %fpNm%
+            fpWhy := fpf("lagfix", p)
+        }
+        if fpWhy != ""
+            continue
         if IsObject(st.rescue)
             continue   ; 待救援的視窗只走上面的救援流程（還沒到下一輪的時間就等）
         med := LfSlowMedian(p)

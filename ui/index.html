@@ -407,7 +407,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.83.0· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.11· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -547,7 +547,7 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="automining">⛏ 自動採礦</button><button data-sub="priority">⚖️ 功能優先順序</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -563,12 +563,41 @@ tbody tr:hover td{background:var(--surface-2)}
 </div>
 <details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>為什麼要切視窗：</b>遊戲不接受背景按鍵（已實測），一定要在前景才按得到；所以只在「該開了」的那一下切過去、按完馬上切回來。</div><div class="hint"><b>確認與重試：</b>按鍵後讀背包的命運箱子數量，少 1 才算開成功，從那時起算下一次；沒少（例如效果還在、快捷鍵不對、角色在讀圖）30 秒後再試，連續 3 次會通知。命運箱子快用完（10 個以下）或用完會通知。</div><div class="hint"><b>不打擾你：</b>你正在用鍵盤滑鼠時不會切視窗（停 5 秒後才切），切過去按完鍵馬上切回來。<b>不會互搶：</b>重新登入、換每日道具、背包清理、示範錄製時會等它們做完；和「⌨️ 視窗按鍵精靈」的輪流切換不能同時使用（請先停止輪流切換，或把那邊的按鍵 E 拿掉）。</div></div></details>
 </div>
+<div class="subpage" id="priority">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⚖️</span></span>功能優先順序</div>
+ <div class="hint">多個自動功能要用同一個角色 / 前景視窗時，<b>排越前面越優先</b>：前面的功能忙著（進行中或排隊中），後面的就等它做完，不會互相打斷。已經在做的動作不會被中途打斷（採一顆礦 60 秒、打王最多 10 分鐘會做完那一段）。預設「每日更換道具」最優先：自動採礦的角色要換每日道具時，採完手上這一顆就讓出，換完（原地換，不離開礦場）再繼續。如果把「自動採礦」排在「每日更換道具」前面，每日道具要等角色離開礦場（被踢出或跑完趟數）才會換。</div>
+ <div id="fpList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+ <button class="btn" style="margin-top:10px" onclick="fpReset()">還原預設順序</button>
+</div>
+</div>
+<div class="subpage" id="automining">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⛏</span></span>自動採礦（水晶礦場） <span class="pill" id="mnPill">—</span></div>
+ <div class="hint">角色在水晶礦場時，依顏色挑礦（綠 &gt; 紫 &gt; 紅 &gt; 黃 &gt; 藍，同顏色挑最近的）→ 走過去 → 右鍵背包的十字鎬 → 站著採 60 秒 → 下一顆。礦都採完了就等重生（遊戲每 30 分鐘重生一次）。採礦中的角色不會被「假在線」誤判斷線，也不會被「變慢自動過圖」送走。每次開啟程式都是停止。</div>
+ <div class="dh-run">
+  <button class="btn primary" id="mnRun" onclick="mnToggleRun()">▶ 啟動</button>
+  <label class="toggle" title="角色不在水晶礦場時，從背包 / 銀行的「水晶礦場傳送卡(2H)禮盒」開出傳送卡並右鍵傳進去。"><input type="checkbox" id="mnEnter" checked onchange="saveAutoMining()"> 不在水晶礦場時自動進圖（用傳送卡禮盒）</label>
+  <label class="toggle" title="只用道具視窗（I），不開角色視窗（C）。開著時地面點擊會閃開背包區域；關掉則每顆礦開一次、關一次。"><input type="checkbox" id="mnKeep" checked onchange="saveAutoMining()"> 背包一直開著（省每顆礦開關一次）</label>
+  <label class="toggle" title="水晶礦場的王（虹光秘脈礦主，每 2 小時重生）出現在畫面範圍內時，中斷採礦去打：走到王旁邊、游標對準王的身體、壓住右鍵，打完回去採礦。右鍵技能要先設好；開著時請不要同時用鍵盤滑鼠。這個功能還沒在真正的王身上驗證過，預設關閉。"><input type="checkbox" id="mnBoss" onchange="saveAutoMining()"> 王重生時去打王（壓住右鍵）</label>
+  <label class="toggle" title="道具讓角色在礦場待約 2 小時，時間到被踢出後，會自動重新進圖繼續挖。這裡設定總共要進幾趟（第一次進去算第 1 趟）；跑滿後被踢出就不再進圖並通知 Discord。0 = 一直循環。">進礦場趟數 <input type="number" id="mnLoops" min="0" max="99" value="0" style="width:60px" onchange="saveAutoMining()"> <span class="account-sub">（0 = 一直循環）</span></label>
+  <label class="toggle" title="勾選後，管理程式重新開啟（或當掉重開）時，如果上次是「啟動」狀態，會自動接續採礦（趟數也接續），不用人在電腦前按啟動。"><input type="checkbox" id="mnResume" onchange="saveAutoMining()"> 重開程式後自動接續採礦</label>
+  <label class="toggle" title="走不到、走很久（超過 35 秒）、右鍵採不起來的礦，記下它的位置；失敗 2 次或太慢 3 次就當作不好走，之後先挑別顆（沒有別顆才回頭挑）。走得順、採起來了會把次數減回去，24 小時沒再遇到就忘掉。單次走路最多 45 秒。"><input type="checkbox" id="mnSkipHard" checked onchange="saveAutoMining()"> 自動略過不好走的礦 <span class="account-sub" id="mnHardCount"></span> <button class="btn" onclick="mnResetHard()">清除略過紀錄</button></label>
+  <label class="toggle" title="打王前要求技能欄在這一排（預設 F8，第二頁的 F18 也算）；不對程式會按這個 F 鍵切過去，切不過去就不打。選「不檢查」就照目前的技能打。">打王技能欄 <select id="mnBar" onchange="saveAutoMining()"><option value="0">不檢查</option><option value="1">F1</option><option value="2">F2</option><option value="3">F3</option><option value="4">F4</option><option value="5">F5</option><option value="6">F6</option><option value="7">F7</option><option value="8" selected>F8</option><option value="9">F9</option><option value="10">F10</option></select></label>
+  <label class="toggle" title="固定右鍵技能：填技能代碼（例如 15-0），打王前會確認目前的右鍵技能和它完全一樣，不一樣就不打。空白 = 不檢查。按「記下目前的」會填入第一個勾選角色現在的右鍵技能。">右鍵技能代碼 <input type="text" id="mnSkill" maxlength="12" style="width:70px" placeholder="例 15-0" onchange="saveAutoMining()"> <button class="btn" onclick="mnUseCurSkill()">記下目前的</button> <span class="account-sub" id="mnCurSkill"></span></label>
+ </div>
+ <div class="dh-block"><div class="dh-label">要採礦的角色</div><div class="dh-chars" id="mnChars"></div></div>
+ <div class="dh-block"><div class="dh-label">要挖的礦石顏色（由上到下 = 優先順序，用 ▲▼ 調整）</div>
+  <label class="toggle" title="預設：旁邊有選定顏色的礦就先挑旁邊的（顏色順序差一名只當作多 4 秒的走路時間），不會為了顏色多跑幾百單位。勾選後嚴格照上面的顏色順序挑，會多跑遠路。"><input type="checkbox" id="mnStrict" onchange="saveAutoMining()"> 嚴格依顏色順序挑礦（會多跑遠路；預設以距離近的優先）</label><div class="dh-chars" id="mnColors" style="flex-direction:column;align-items:flex-start;gap:6px"></div></div>
+ <div class="dh-block"><div class="dh-label">挖礦統計（累積取得的道具）</div><div id="mnStats" class="hint">還沒有紀錄</div><button class="btn" style="margin-top:8px" onclick="mnResetStats()">清除統計</button></div>
+ <div class="hint">背包裡要有「十字鎬」。傳送卡禮盒在背包或銀行都可以（銀行要先打開過一次分頁才讀得到）。遊戲畫面要是 1024x768。採集時請不要操作鍵盤滑鼠。</div>
+</div>
+</div>
 <div class="subpage" id="dailyhunt">
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>每日討伐 <span class="pill" id="dhPill">—</span></div>
  <div class="hint">讀遊戲的每日任務（T 視窗），自動搭公車去勾選的地圖、走到你記錄的打怪點、按 F6 自動打怪，打滿 1000 隻換下一張；全部打滿後回起點，並通知 Discord。每一步都先讀遊戲資料確認，對不上就停手；你開始操作電腦、按緊急停止（F10）時會暫停。重開程式一定是停止狀態。</div>
  <div class="dh-run">
   <button class="btn primary" id="dhRun" onclick="dhToggleRun()">▶ 啟動</button>
   <label class="toggle" title="只傳送到勾選的地圖、走到打怪點就算完成、回起點、跑下一張；不打怪。每次開啟程式都是關閉。"><input type="checkbox" id="dhTest" onchange="saveDailyHunt()"> 🧪 測試流程（只走路、不打怪）</label>
+  <label class="toggle" title="勾選後，管理程式重新開啟（或當掉重開）時，如果上次是「啟動」狀態，會自動接續每日討伐。遊戲被重新登入（管理程式沒關）時，本來就會自己接續，不需要勾這個。"><input type="checkbox" id="dhResume" onchange="saveDailyHunt()"> 重開程式後自動接續</label>
  </div>
  <div class="dh-block"><div class="dh-label">要跑的角色</div><div class="dh-chars" id="dhChars"></div></div>
  <details class="page-help" style="margin-top:14px"><summary>搭公車設定（NPC、傳送卡、對話框行數）</summary><div class="page-help-body">
@@ -1240,6 +1269,8 @@ function onSubShown(sub){
  if(sub==='party')send('partystate');
  if(sub==='companion')send('companionstate');
  if(sub==='dailyhunt')send('dailyhuntstate');
+ if(sub==='automining')send('autominingstate');
+ if(sub==='priority')send('prioritystate');
  if(sub==='skillcombo')send('skillcombostate');
  if(sub==='settings')send('loginchars');
  if(sub==='invMain')requestInvStats();
@@ -1957,7 +1988,7 @@ function saveCompanion(){const v=id=>document.getElementById(id).checked?1:0;sen
 let dhOn=new Set(),dhTasks=[],dhChars=[],dhRunning=false,dhTest=false;
 function dhEditing(){return false;}
 function renderDailyHunt(d){
- dhTasks=d.tasks||[];{const on=dhTasks.map((t,i)=>({t,i})).filter(x=>x.t.on).sort((a,b)=>a.t.rank-b.t.rank||a.i-b.i).map(x=>x.t.map);const rest=(d.selected||[]).filter(id=>!on.includes(id));dhOn=new Set([...on,...rest]);}dhChars=d.chars||[];dhRunning=!!d.running;dhTest=!!d.test;{const tc=document.getElementById('dhTest');if(tc)tc.checked=dhTest;}
+ dhTasks=d.tasks||[];{const on=dhTasks.map((t,i)=>({t,i})).filter(x=>x.t.on).sort((a,b)=>a.t.rank-b.t.rank||a.i-b.i).map(x=>x.t.map);const rest=(d.selected||[]).filter(id=>!on.includes(id));dhOn=new Set([...on,...rest]);}dhChars=d.chars||[];dhRunning=!!d.running;dhTest=!!d.test;{const rs=document.getElementById('dhResume');if(rs&&document.activeElement!==rs&&d.resume!==undefined)rs.checked=!!d.resume;}{const tc=document.getElementById('dhTest');if(tc)tc.checked=dhTest;}
  const btn=document.getElementById('dhRun'),box0=document.getElementById('dhChars'),pill=document.getElementById('dhPill'),st=document.getElementById('dhStatus'),box=document.getElementById('dhRows');
  if(btn){btn.textContent=dhRunning?'■ 停止':'▶ 啟動';}
  [['dhNpc',d.npc],['dhCard',d.card],['dhRow',d.row]].forEach(([id,v])=>{const e=document.getElementById(id);if(e&&document.activeElement!==e&&v!==undefined)e.value=v;});
@@ -1969,6 +2000,23 @@ function renderDailyHunt(d){
  if(st)st.textContent=d.status||(d.using?`顯示角色：${d.using}｜勾選且未完成：${d.pending} 張圖`:'');
  const dhNo=dhOrderMap();if(box)box.innerHTML=dhTasks.length?dhTasks.map(t=>{const full=t.done>=t.target;const note=!t.runnable?'尚未支援（只能自己打）':(t.claimed?'已領獎':(full?'已打滿':''));return `<tr><td><input type="checkbox" ${dhOn.has(t.map)?'checked':''} ${t.runnable?'':'disabled'} onchange="dhToggle(${t.map},this.checked)">${dhNo.has(t.map)?`<span class="dh-no" title="執行順序（沒打滿的先跑，再跑已打滿的）">${dhNo.get(t.map)}</span><button class="dh-mv" title="提早執行" onclick="dhMove(${t.map},-1)">▲</button><button class="dh-mv" title="延後執行" onclick="dhMove(${t.map},1)">▼</button>`:''}</td><td class="account-name">${esc(t.name.split(' / ')[0])}</td><td class="account-sub">${esc(t.name.split(' / ')[1]||'')}</td><td class="account-sub">${t.done} / ${t.target}${full?' ✓':''}</td><td class="account-sub">${esc(t.group)}</td><td class="account-sub">${note}</td><td class="account-sub dh-spot">${t.runnable?`<span class="dh-xy">${t.spot?`<b>${esc(t.spot)}</b>`:'自動找怪'}</span><button class="btn" onclick="dhSpot(${t.map},'teach')">記錄</button><button class="btn" style="${t.spot?'':'visibility:hidden'}" ${t.spot?'':'tabindex="-1" disabled'} onclick="dhSpot(${t.map},'clear')">清除</button>`:''}</td></tr>`;}).join(''):'<tr><td colspan="7" class="hint">還沒有任務資料：勾選角色並按「▶ 啟動」後程式會自己按 T 讀取，或在遊戲裡按 T 打開一次。</td></tr>';
 }
+let fpOrder=[];
+function renderPriority(d){fpOrder=(d.order||[]);const el=document.getElementById('fpList');if(!el)return;el.innerHTML=fpOrder.map((o,i)=>`<div style="display:flex;align-items:center;gap:8px"><span class="dh-no">${i+1}</span><span style="min-width:200px">${esc(o.name)}</span><span class="dh-mv"><button class="btn" ${i===0?'disabled':''} onclick="fpMove(${i},-1)">▲</button><button class="btn" ${i===fpOrder.length-1?'disabled':''} onclick="fpMove(${i},1)">▼</button></span></div>`).join('');}
+function fpMove(i,dir){const j=i+dir;if(j<0||j>=fpOrder.length)return;[fpOrder[i],fpOrder[j]]=[fpOrder[j],fpOrder[i]];renderPriority({order:fpOrder});send('priorityset',{value:fpOrder.map(o=>o.key).join(',')});}
+function fpReset(){send('priorityset',{value:'daily,switcher,mining,boss,dailyhunt,party,companion,mbox,lagfix'});}
+let mnCur=null,mnChars=[],mnRunning=false,mnColorList=['綠','紫','紅','黃','藍'],mnColorOn=new Set(mnColorList);const mnColorCss={'綠':'#27ae60','紫':'#8e44ad','紅':'#e74c3c','黃':'#f1c40f','藍':'#2980b9'};
+function renderMnColors(){const el=document.getElementById('mnColors');if(!el)return;el.innerHTML=mnColorList.map((c,i)=>{const on=mnColorOn.has(c);const no=on?mnColorList.slice(0,i+1).filter(x=>mnColorOn.has(x)).length:'';return `<div style="display:flex;align-items:center;gap:8px"><label class="toggle"><input type="checkbox" ${on?'checked':''} onchange="mnColorToggle('${c}',this.checked)"> <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${mnColorCss[c]}"></span> ${c}能原石</label>${on?`<span class="dh-no">${no}</span>`:''}<span class="dh-mv"><button class="btn" ${i===0?'disabled':''} onclick="mnColorMove(${i},-1)">▲</button><button class="btn" ${i===mnColorList.length-1?'disabled':''} onclick="mnColorMove(${i},1)">▼</button></span></div>`;}).join('');}
+function mnColorToggle(c,on){if(on)mnColorOn.add(c);else mnColorOn.delete(c);renderMnColors();saveAutoMining();}
+function mnColorMove(i,dir){const j=i+dir;if(j<0||j>=mnColorList.length)return;[mnColorList[i],mnColorList[j]]=[mnColorList[j],mnColorList[i]];renderMnColors();saveAutoMining();}
+function renderAutoMining(d){renderMnStats(d.stats);if(Array.isArray(d.colors)){mnColorOn=new Set(d.colors);mnColorList=[...d.colors,...mnColorList.filter(c=>!d.colors.includes(c))];renderMnColors();}mnChars=d.chars||[];mnRunning=!!d.running;const btn=document.getElementById('mnRun'),box=document.getElementById('mnChars'),pill=document.getElementById('mnPill'),en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),bs=document.getElementById('mnBoss'),br=document.getElementById('mnBar'),sk=document.getElementById('mnSkill'),cs=document.getElementById('mnCurSkill'),sh=document.getElementById('mnSkipHard'),hc=document.getElementById('mnHardCount'),lp=document.getElementById('mnLoops'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume');if(rs&&document.activeElement!==rs&&d.resume!==undefined)rs.checked=!!d.resume;if(lp&&document.activeElement!==lp&&d.loops!==undefined)lp.value=String(d.loops);if(stc&&document.activeElement!==stc&&d.strictColor!==undefined)stc.checked=!!d.strictColor;mnCur=d.curSkill||null;if(sh&&document.activeElement!==sh&&d.skipHard!==undefined)sh.checked=!!d.skipHard;if(hc)hc.textContent=d.hardCount?`（已記下 ${d.hardCount} 個不好走的位置）`:'';if(btn)btn.textContent=mnRunning?'■ 停止':'▶ 啟動';if(pill)pill.textContent=mnRunning?'採礦中':'已停止';if(btn)btn.disabled=d.licensed===false;if(d.licensed===false&&pill)pill.textContent='🔒 這台電腦的授權沒有「自動採礦」功能';if(en&&document.activeElement!==en)en.checked=!!d.autoEnter;if(kp&&document.activeElement!==kp)kp.checked=!!d.keepInv;if(bs&&document.activeElement!==bs)bs.checked=!!d.boss;if(br&&document.activeElement!==br&&d.bossBar!==undefined)br.value=String(d.bossBar);if(sk&&document.activeElement!==sk&&d.bossSkill!==undefined)sk.value=d.bossSkill;if(cs)cs.textContent=mnCur?`目前：${mnCur.name||'（未知技能）'}（${mnCur.id||'—'}）｜技能欄 F${mnCur.bar}`:'';if(box)box.innerHTML=mnChars.length?mnChars.map((c,i)=>{const s=(d.states||[]).find(x=>x.name===c.name);return `<label class="toggle"><input type="checkbox" ${c.on?'checked':''} onchange="mnCharToggle(${i},this.checked)"> ${esc(c.name)} <select title="這個角色打王用技能欄第 1 排的第幾格（按 F1～F10 選）。「依職業」：欸等（職業 8）用右鍵技能代碼，其他職業用第 1 格。" onclick="event.stopPropagation()" onchange="mnSlot(${i},this.value)"><option value="0" ${!c.slot?'selected':''}>打王技能：依職業</option>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${c.slot===n?'selected':''}>打王技能：第 ${n} 格</option>`).join('')}</select>${mnRunning&&c.on&&s&&s.visit?`<span class="account-sub"> ｜${esc(s.visit)}</span>`:''}${mnRunning&&c.on&&s&&s.text?`<span class="account-sub"> ｜${esc(s.text)}</span>`:''}</label>`;}).join(''):'<span class="hint">沒有可用的角色</span>';}
+function renderMnStats(rows){const el=document.getElementById('mnStats');if(!el)return;rows=rows||[];if(!rows.length){el.textContent='還沒有紀錄';return;}const tot={},day={};let g=0,dg=0;rows.forEach(r=>{g+=r.gathers;dg+=r.dayGathers;(r.items||[]).forEach(i=>{tot[i.n]=(tot[i.n]||0)+i.t;day[i.n]=(day[i.n]||0)+i.d;});});const fmt=o=>Object.keys(o).filter(k=>o[k]>0).sort((a,b)=>o[b]-o[a]).map(k=>`${esc(k)} ×${o[k]}`).join('、')||'（沒有）';let h=`<div>累積採集 <b>${g}</b> 顆｜今天 <b>${dg}</b> 顆</div><div style="margin-top:4px">累積取得：${fmt(tot)}</div><div style="margin-top:2px">今天取得：${fmt(day)}</div>`;if(rows.length>1){h+='<div style="margin-top:8px"><table><thead><tr><th>角色</th><th>累積顆數</th><th>今天顆數</th><th>累積取得</th></tr></thead><tbody>'+rows.map(r=>{const o={};(r.items||[]).forEach(i=>o[i.n]=i.t);return `<tr><td>${esc(r.name)}</td><td>${r.gathers}</td><td>${r.dayGathers}</td><td>${fmt(o)}</td></tr>`;}).join('')+'</tbody></table></div>';}el.innerHTML=h;}
+function mnResetHard(){send('autominingresethard',{value:''});}
+function mnResetStats(){if(confirm('確定要清除所有挖礦統計嗎？（累積數字會歸零）'))send('autominingreset',{value:''});}
+function mnUseCurSkill(){if(mnCur&&mnCur.id){const sk=document.getElementById('mnSkill');if(sk)sk.value=mnCur.id;saveAutoMining();}}
+function mnSlot(i,v){if(mnChars[i])mnChars[i].slot=parseInt(v)||0;saveAutoMining();}
+function mnCharToggle(i,on){if(mnChars[i])mnChars[i].on=on;saveAutoMining();}
+function mnToggleRun(){mnRunning=!mnRunning;saveAutoMining();}
+function saveAutoMining(){const en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),bs=document.getElementById('mnBoss'),br=document.getElementById('mnBar'),sk=document.getElementById('mnSkill'),sh=document.getElementById('mnSkipHard'),lp=document.getElementById('mnLoops'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume');send('autominingset',{value:`${mnRunning?1:0}~${mnChars.filter(c=>c.on).map(c=>c.name).join('|')}~${en&&en.checked?1:0}~${kp&&kp.checked?1:0}~${mnColorList.filter(c=>mnColorOn.has(c)).join(',')}~${bs&&bs.checked?1:0}~${br?br.value:8}~${sk?sk.value.trim():''}~${sh&&sh.checked?1:0}~${lp?Math.max(0,Math.min(99,parseInt(lp.value)||0)):0}~${stc&&stc.checked?1:0}~${mnChars.filter(c=>c.slot>0).map(c=>c.name+':'+c.slot).join('|')}~${rs&&rs.checked?1:0}`});}
 function dhNpcPick(){const sel=document.getElementById('dhNpcSel'),inp=document.getElementById('dhNpc');if(sel.value==='__other'){inp.style.display='';inp.focus();return;}inp.style.display='none';inp.value=sel.value;saveDailyHunt();}
 function dhSpot(map,what){send('dailyhuntspot',{value:`${map}~${what}`});}
 function dhCharToggle(i,on){if(dhChars[i])dhChars[i].on=on;saveDailyHunt();}
@@ -1977,7 +2025,7 @@ function dhPick(mode){dhOn=new Set(dhTasks.filter(t=>t.runnable&&(mode==='all'||
 function dhExecList(){const a=[...dhOn],on=dhTasks.filter(t=>t.runnable&&dhOn.has(t.map)).sort((x,y)=>a.indexOf(x.map)-a.indexOf(y.map));return [...on.filter(t=>t.done<t.target),...on.filter(t=>t.done>=t.target)];}
 function dhOrderMap(){const m=new Map();dhExecList().forEach((t,i)=>m.set(t.map,i+1));return m;}
 function dhMove(map,dir){const l=dhExecList(),i=l.findIndex(t=>t.map===map),j=i+dir;if(i<0||j<0||j>=l.length)return;if((l[i].done>=l[i].target)!==(l[j].done>=l[j].target))return;const a=[...dhOn],x=a.indexOf(l[i].map),y=a.indexOf(l[j].map);[a[x],a[y]]=[a[y],a[x]];dhOn=new Set(a);saveDailyHunt();}
-function saveDailyHunt(){const g=id=>{const e=document.getElementById(id);return e?e.value:''};send('dailyhuntset',{value:`${dhRunning?1:0}~${dhChars.filter(c=>c.on).map(c=>c.name).join('|')}~${[...dhOn].join(',')}~${g('dhNpc')}~${g('dhCard')}~${g('dhRow')}~${(document.getElementById('dhTest')||{}).checked?1:0}`});}
+function saveDailyHunt(){const g=id=>{const e=document.getElementById(id);return e?e.value:''};send('dailyhuntset',{value:`${dhRunning?1:0}~${dhChars.filter(c=>c.on).map(c=>c.name).join('|')}~${[...dhOn].join(',')}~${g('dhNpc')}~${g('dhCard')}~${g('dhRow')}~${(document.getElementById('dhTest')||{}).checked?1:0}~${(document.getElementById('dhResume')||{}).checked?1:0}`});}
 let partyAcceptSig='';
 function savePartyRemote(el){const tr=el.closest('tr');el.value=el.value.replace(/~/g,'');send('partyremote',{value:`${tr.dataset.idx}~${el.value.trim()}~${tr.dataset.name}`});}
 function savePartyAccept(el){const tr=el.closest('tr');const f=tr.querySelector('.party-from');f.value=f.value.replace(/~/g,'');send('partyaccept',{value:`${tr.dataset.idx}~${tr.querySelector('.party-accept').checked?1:0}~${tr.querySelector('.party-from').value.trim()}~${tr.dataset.name}`});}
@@ -2211,6 +2259,7 @@ setInterval(()=>{if(isShown('mbox'))send('mboxstate');},2000);
 setInterval(()=>{if(isShown('party'))send('partystate');},2000);
 setInterval(()=>{if(isShown('companion'))send('companionstate');},2000);
 setInterval(()=>{if(isShown('dailyhunt')&&!dhEditing())send('dailyhuntstate');},3000);
+setInterval(()=>{if(isShown('automining'))send('autominingstate');},3000);
 setInterval(()=>{if(isShown('skillcombo'))send('skillcombostate');},2500);
 setInterval(()=>{if(isShown('home')||!dailyCache)send('dailystate');},60000);
 setTimeout(()=>send('dailystate'),1500);
@@ -2218,5 +2267,5 @@ setTimeout(()=>send('updatestate'),2500);
 setTimeout(()=>send('licensestate'),2000);setInterval(()=>send('licensestate'),600000);
 setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
 setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
-if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='automining')renderAutoMining(m.data);if(m?.type==='priority')renderPriority(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
 </script><div id="toast"></div></body></html>

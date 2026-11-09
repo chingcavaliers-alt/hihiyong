@@ -74,6 +74,10 @@ global DH_START_IDLE_MS := 2000                ; 啟動 / 換下一步之前，�
 global DH_TEST := 0                         ; 測試流程（不存檔）：只傳送到勾選的圖、走到固定點就算完成、回起點、下一張，不打怪
 global DH_CHARS := DhParseChars(DhIniGet("Chars", DhIniGet("Char", "")))   ; 舊版只有單一角色（Char）
 global DH_MAPS_ON := DhParseMaps(DhIniGet("Maps", ""))
+; 重開管理程式後自動接續（預設關閉）：[DailyHunt] ResumeOnStart=1 且上次是啟動狀態（Running=1）才會自己開始；遊戲被重新登入（管理程式沒關）不需要這個，本來就會接續。
+global DH_RESUME := DhIniGet("ResumeOnStart", "0") = "1" ? 1 : 0
+if DH_RESUME && DhIniGet("Running", "0") = "1"
+    DH_RUNNING := 1
 ; 還沒設定過（設定檔沒有 Maps 這一項）時，已知清單裡的圖預設全部勾選
 if DhIniGet("Maps", "<none>") = "<none>" {
     for id, _ in DH_MAPS
@@ -252,7 +256,7 @@ DhProfile() {
 
 ; rawValue：啟動(0/1)~角色名|角色名~地圖編號,地圖編號,…[~NPC 名稱~傳送卡名稱~對話框第幾行]
 DailyHuntSet(rawValue) {
-    global INI, DH_RUNNING, DH_CHARS, DH_MAPS_ON, profiles, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_TEST
+    global INI, DH_RUNNING, DH_CHARS, DH_MAPS_ON, profiles, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_TEST, DH_RESUME
     parts := StrSplit(rawValue, "~")
     if parts.Length < 3 || !IsInteger(parts[1])
         return
@@ -273,6 +277,14 @@ DailyHuntSet(rawValue) {
         IniWrite DH_NPC_NAME, INI, "DailyHunt", "Npc"
         IniWrite DH_START_CARD, INI, "DailyHunt", "Card"
         IniWrite DH_NPC_ROW, INI, "DailyHunt", "Row"
+    }
+    if parts.Length >= 8 && IsInteger(parts[8])
+        DH_RESUME := Integer(parts[8]) ? 1 : 0
+    IniWrite DH_RESUME, INI, "DailyHunt", "ResumeOnStart"
+    if DH_RESUME {   ; 只有勾「重開程式後自動接續」才把啟動狀態存檔（原本的設計：程式重開一定是停止）
+        IniWrite DH_RUNNING, INI, "DailyHunt", "Running"
+    } else {
+        try IniDelete INI, "DailyHunt", "Running"
     }
     IniWrite names, INI, "DailyHunt", "Chars"
     IniWrite ids, INI, "DailyHunt", "Maps"
@@ -296,7 +308,7 @@ DhBuildText() {
     return txt
 }
 DailyHuntPushWeb() {
-    global DH_TEST, webReady, WVCore, profiles, DH_RUNNING, DH_CHARS, DH_MAPS_ON, DH_MAPS, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_SPOTS, dhSpotMsg
+    global DH_TEST, webReady, WVCore, profiles, DH_RUNNING, DH_CHARS, DH_MAPS_ON, DH_MAPS, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_SPOTS, dhSpotMsg, DH_RESUME
     if !webReady || !WVCore
         return
     chars := "", states := ""
@@ -328,7 +340,7 @@ DailyHuntPushWeb() {
         if g.done < g.target
             pending += 1
     status := DH_CHARS.Count = 0 ? "請勾選要跑的角色" : (!p ? "勾選的角色都沒有遊戲視窗" : (IsObject(tasks) ? "" : "讀不到任務：" (DH_RUNNING ? "啟動後程式會自己按 T 讀取" : "按「▶ 啟動」會自己按 T 讀取，或在「" p.name "」的遊戲裡按 T 打開一次")))
-    try WVCore.PostWebMessageAsJson('{"type":"dailyhunt","data":{"running":' (DH_RUNNING ? "true" : "false") ',"test":' (DH_TEST ? "true" : "false")
+    try WVCore.PostWebMessageAsJson('{"type":"dailyhunt","data":{"running":' (DH_RUNNING ? "true" : "false") ',"test":' (DH_TEST ? "true" : "false") ',"resume":' (DH_RESUME ? "true" : "false")
         . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"pending":' pending ',"selected":[' sel '],"tasks":[' rows ']}}')
 }
 
@@ -460,6 +472,15 @@ DailyHuntTick() {
         busy := ApBlocker(DH_START_IDLE_MS)   ; 含「等你停止操作鍵盤滑鼠」：每日討伐只等 2 秒（不跟自動組隊共用 5 秒）
         if busy != "" {
             DhSt(todo.p).text := "等待中：" busy
+            return
+        }
+        fpWhy := "", fpNm := "FpBlocked"   ; 功能優先順序：排在前面的功能忙著就先等
+        try {
+            fpf := %fpNm%
+            fpWhy := fpf("dailyhunt", todo.p)
+        }
+        if fpWhy != "" {
+            DhSt(todo.p).text := "等待中：" fpWhy
             return
         }
         DhRun(todo.p, todo.d)
@@ -1192,7 +1213,15 @@ DhNearestCluster(cr, me, radius := 300, minN := 4) {
 }
 
 ; 點擊位置限制在畫面中間（避開左邊技能列、上方狀態列、左下聊天框、右下快捷欄）
-DhSafeClick(sx, sy) => {x: Round(Min(950, Max(70, sx))), y: Round(Min(560, Max(90, sy)))}
+; 畫面上不能點的區塊 {l, t, r, b}（遊戲畫面座標）：自動採礦讓背包一直開著時，地面點擊會閃開背包視窗（點在視窗上不會走路）。0 = 沒有。
+global DH_UI_BLOCK := 0
+DhSafeClick(sx, sy) {
+    global DH_UI_BLOCK
+    c := {x: Round(Min(950, Max(70, sx))), y: Round(Min(560, Max(90, sy)))}
+    if IsObject(DH_UI_BLOCK) && c.x >= DH_UI_BLOCK.l && c.x <= DH_UI_BLOCK.r && c.y >= DH_UI_BLOCK.t && c.y <= DH_UI_BLOCK.b
+        c.x := Max(70, DH_UI_BLOCK.l - 12)
+    return c
+}
 
 ; ---------------------------------------------------------------- 用大地圖（M）走路：開地圖 → 一直左鍵點目的地 → 到了關地圖
 ; 遊戲自己的「點地圖自動走過去」會自己繞路；被怪打到會取消移動，所以一直點（每次點完等不到 1 秒就再點）。
@@ -1305,7 +1334,8 @@ DhMapTargetChanged(pid, before) {
 ; 每次點完讀回遊戲記的目標（等它真的更新），校正 K / 標記偏差；目的地在框內而且遊戲認為的位置和想的差太多（> 60 單位）就立刻重點；
 ; 連續 8 次點了都沒走動、15 次都沒更靠近、或點了很久還沒到，丟出錯誤（外面會退回地面點擊的走法）；
 ; 走不動但離目標只差 stopDist 的 2.2 倍內，當作到了。
-DhRunTowardMap(p, tx, tz, stopDist) {
+; maxStill：連續幾次點了地圖人物沒動就放棄（預設 12；自動採礦用 3：目的地在地圖框外時點框邊常常不被收到，不要白等 40 秒）
+DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12) {
     global apRunStart, DH_MAP_SHORT
     pid := p.pid
     if ReadGameUiOpen(pid, "NewMap") != 1 {
@@ -1404,7 +1434,7 @@ DhRunTowardMap(p, tx, tz, stopDist) {
                 still += 1, lvl := still
                 if still <= DH_MAP_SHORT.Length
                     EventLog(p.name, "DH_MAPMOVE", "點了但人物沒動（第 " still " 次）｜改點離人物較近 / 換角度的點：" DH_MAP_SHORT[still][1] " 倍、偏 " DH_MAP_SHORT[still][2] "°｜目標讀回" (IsObject(pg2) ? "有更新" : "沒更新（遊戲沒記到這一下）"))
-                if still >= 12 {
+                if still >= maxStill {
                     if dist <= stopDist * 2.2 {   ; 差一點點：當作到了
                         arrived := true
                         break

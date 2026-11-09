@@ -8,13 +8,22 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.83.0"
+global APP_VERSION := "v1.3.90.11"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
 global INI := A_ScriptDir "\HIHIYONG_AutoRecovery.ini"
 global PROFILE_INI := A_ScriptDir "\HIHIYONG_Recovery_Profiles.ini"
 global EVENT_LOG := A_ScriptDir "\HIHIYONG_Recovery_Events.log"
+; 「你開始操作電腦就暫停」要靠 A_TimeIdlePhysical 判斷；沒裝鍵盤 / 滑鼠監聽時它和 A_TimeIdle 一樣，遠端桌面（Chrome 遠端桌面等）送進來的
+; 滑鼠 / 鍵盤事件也會算成「你在操作」，只是遠端看畫面也會讓每個自動功能一直暫停。裝了監聽之後，遠端軟體模擬的輸入帶「模擬」旗標，不會算進去，
+; 只有實體鍵盤滑鼠才算。[General] IgnoreRemoteInput=0 可以關掉（遠端時要它也讓路）。
+try {
+    if IniRead(INI, "General", "IgnoreRemoteInput", "1") != "0" {
+        InstallKeybdHook(true, true)
+        InstallMouseHook(true, true)
+    }
+}
 global MAX_AUTO_FAILURES := 3
 global RECOVERY_FOCUS_RETRY_SEC := 60
 global appStartTick := A_TickCount
@@ -112,6 +121,10 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\AutoParty.ahk
 #Include modules\CompanionWatch.ahk
 #Include modules\DailyHunt.ahk
+; 水晶礦場自動採礦（依顏色挑礦、走過去、右鍵十字鎬；沒在礦場時用傳送卡禮盒進圖）。
+#Include modules\AutoMining.ahk
+; 功能優先順序（多個自動功能搶同一個角色 / 前景視窗時，誰先誰等）。
+#Include modules\FeaturePriority.ahk
 #Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
 #Include modules\SkillCombo.ahk
@@ -634,6 +647,7 @@ LoadSwitchStopHotkey()
 SkillComboInit()   ; H-027 技能組合快速施法（預設關閉）
 g.Show("Hide w1080 h748")
 SetTimer InitWebUI, -50
+SetTimer MonitorAutoResume, -30000   ; 啟動 30 秒後（WebView、位置資料都好了）接續上次的監控
 
 LoadProfiles() {
     global profiles, PROFILE_INI
@@ -1454,6 +1468,41 @@ StartMonitoring(*) {
     ScanAllMonitoredLocationsOnce("MONITOR_START")
     RefreshProfileLV()
     Status.Text:="狀態：僅監控已勾選 Profile｜每 2 秒驗證 game.exe PID + HWND｜位置已於綁定時辨識一次"
+    MonitorPersist(true)
+}
+
+; 監控開著 / 關著存進設定檔：管理程式被關掉 / 重開後，上次是「監控中」就自動接續（沒接續監控的話，採礦 / 每日討伐這些要「監控中」才動的功能都不會動）。
+; 按「停止監控」或 F10 緊急停止 = 明確要停，下次開程式不會自動開監控。設定檔 [General] ResumeMonitor=0 可以關掉這個接續。
+MonitorPersist(on) {
+    global INI
+    try IniWrite(on ? 1 : 0, INI, "General", "MonitorOn")
+}
+MonitorAutoResume() {
+    global INI, running, profiles
+    if running
+        return
+    try {
+        if IniRead(INI, "General", "MonitorOn", "0") != "1" || IniRead(INI, "General", "ResumeMonitor", "1") = "0"
+            return
+    } catch
+        return
+    ; 和手動按「開始監控」同樣的前提；不滿足就不接續（不跳視窗，自動接續不能卡在對話框）
+    why := ""
+    if !PointsConfigured() && !LoginMemoryAvailable()
+        why := "遊戲位置資料 / 登入座標還沒準備好"
+    else {
+        for p in profiles
+            if p.enabled && !ProfileGameAlive(p) {
+                why := "帳號「" p.name "」目前沒有有效的 PID + HWND 綁定"
+                break
+            }
+    }
+    if why != "" {
+        EventLog("GLOBAL", "MONITOR_AUTORESUME_SKIP", "重開程式後不自動接續監控：" why "（要監控請手動按「開始監控」）")
+        return
+    }
+    EventLog("GLOBAL", "MONITOR_AUTORESUME", "上次是監控中，重開程式後自動接續監控")
+    StartMonitoring()
 }
 
 
@@ -1479,6 +1528,7 @@ EmergencyStopAll() {
     emergencyStop:=true
     abortRequested:=true
     running:=false
+    MonitorPersist(false)
     recoveryQueue:=[]
     queued:=Map()
     ResetSoftDisconnectRuntime()
@@ -1494,6 +1544,7 @@ EmergencyStopAll() {
 
 StopMonitoring(*) {
     global running,abortRequested,recoveryQueue,queued,processingQueue,profiles,Status
+    MonitorPersist(false)
     running:=false, abortRequested:=true, recoveryQueue:=[], queued:=Map()
     ResetSoftDisconnectRuntime()
     for p in profiles
@@ -1988,6 +2039,33 @@ UpdateLearnedMaxHP(p,hp) {
     }
 }
 
+; 角色是不是正在採集（讀不到回傳 false）。
+MiningIsGathering(pid) {
+    global GLAT_GATHERING
+    if !GameOffsetsReady(pid) || !GameOffset("CharActionOffset")
+        return false
+    charBase:=GameCharBase(pid)
+    if !charBase
+        return false
+    act:=GameReadNum(GameProcHandle(pid),charBase+GameOffset("CharActionOffset"),"UInt")
+    return act!="" && act=GLAT_GATHERING
+}
+
+; 假在線偵測用：採集中或剛採完一陣子，角色血量不會變也不是斷線。回傳 true 時呼叫端要把「血量最後變化時間」重設。
+MiningGatherActive(p) {
+    global MINING_GATHER_GRACE_MS
+    now:=A_TickCount
+    if p.HasOwnProp("mnActive") && p.mnActive   ; 自動採礦中的角色：等重生、走路的空檔血量也不會變
+        return true
+    if MiningIsGathering(p.pid) {
+        if !p.HasOwnProp("gatherTick") || now-p.gatherTick>=MINING_GATHER_GRACE_MS
+            EventLog(p.name,"MINING_ACTIVE","採集中｜血量靜止不當作假在線")
+        p.gatherTick:=now
+        return true
+    }
+    return p.HasOwnProp("gatherTick") && now-p.gatherTick<MINING_GATHER_GRACE_MS
+}
+
 MemoryHPMonitorTick() {
     global profiles,running,SoftEnableCB,SoftIdleEdit,SoftConfirmEdit,SoftMinVotesEdit,SoftMultiAssistCB,fastLoginCritical
     global MEMORY_HP_ZERO_CONFIRM_SAMPLES,MEMORY_HP_ALIVE_CONFIRM_SAMPLES
@@ -2124,6 +2202,8 @@ MemoryHPMonitorTick() {
             }
         }
 
+        if MiningGatherActive(p)   ; 採礦：角色站著採 60 秒，血量不變，不能當作斷線
+            p.memHpLastChangeTick:=A_TickCount
         staticMs:=A_TickCount-p.memHpLastChangeTick
         if staticMs>p.memHpMaxStaticMs
             p.memHpMaxStaticMs:=staticMs
@@ -2505,6 +2585,8 @@ AutoWindowSwitchTick(*) {
         busyWhy:="Recovery / 自動登入執行中"
     else if foregroundOwner!="" || apBusy
         busyWhy:="其他功能正在操作遊戲視窗"
+    else if (fpWhy:=FpBlocked("switcher"))!=""   ; 功能優先順序：排在它前面的功能排隊中（例如更換每日道具）也先讓
+        busyWhy:=fpWhy
     if busyWhy!="" {
         if !autoSwitchRecoveryPaused {
             autoSwitchPausedRemainMs:=autoSwitchNextAt>A_TickCount ? autoSwitchNextAt-A_TickCount : 0
@@ -5534,6 +5616,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer ApAcceptTick, 1000   ; 隊長在另一台電腦時，邀請視窗有時效：比 ApTick 看得勤一點
     SetTimer CompanionTick, CW_CHECK_MS   ; 寵物 / 雇傭兵監測（預設關閉）
     SetTimer DailyHuntTick, DH_TICK_MS    ; 每日討伐自動跑圖（預設關閉）
+    SetTimer MnTick, MN_TICK_MS           ; 水晶礦場自動採礦（預設關閉）
     SetTimer LagFixTick, 5000   ; 變慢自動過圖（預設關閉；待救援的角色即使關閉也會送回去）
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
@@ -5709,6 +5792,22 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="dailyhuntset" {
         DailyHuntSet(WebUrlDecode(rawValue))
         DailyHuntPushWeb()
+    } else if action="autominingstate" {
+        AutoMiningPushWeb()
+    } else if action="prioritystate" {
+        FpPushWeb()
+    } else if action="priorityset" {
+        FpSet(WebUrlDecode(rawValue))
+        FpPushWeb()
+    } else if action="autominingresethard" {
+        AutoMiningHardReset()
+        AutoMiningPushWeb()
+    } else if action="autominingreset" {
+        AutoMiningReset()
+        AutoMiningPushWeb()
+    } else if action="autominingset" {
+        AutoMiningSet(WebUrlDecode(rawValue))
+        AutoMiningPushWeb()
     } else if action="companionstate" {
         CompanionPushWeb()
     } else if action="companionset" {
