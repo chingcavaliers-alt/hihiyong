@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.16"
+global APP_VERSION := "v1.3.90.17"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -5798,6 +5798,9 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="dailyhuntspot" {
         DailyHuntSpot(WebUrlDecode(rawValue))
         DailyHuntPushWeb()
+    } else if action="autominingbosstimer" {
+        AutoMiningBossTimerNow()
+        AutoMiningPushWeb()
     } else if action="dhschedset" {
         DailyHuntSchedSet(WebUrlDecode(rawValue))
         DailyHuntPushWeb()

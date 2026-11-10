@@ -737,6 +737,8 @@ MnPlan(p) {
         st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.lootAt := A_TickCount + 3000
         EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆")
     }
+    if MnBossTimerDue(p, st, false)   ; 按了「現在讀王重生時間」：不在採集中的空檔去讀
+        return {action: "bosstimer"}
     ; 功能優先順序：排在「自動採礦」前面的功能忙著（預設：每日更換道具排隊中 / 進行中）→ 採完這一顆就讓出（不開始下一顆、不去打王），
     ; 等它做完（每日道具原地換，不離開礦場）再繼續
     fpWhy := FpBlocked("mining", p)
@@ -757,6 +759,8 @@ MnPlan(p) {
         return {action: "wait", text: "讀不到礦石清單", wait: 3000}
     ore := MnPickOre(crows, me, st.skip, A_TickCount, MnIsHard, st.useMax - 2)
     if !ore {   ; 礦都採完了等重生（遊戲 30 分鐘一次）：最久算 40 分鐘的正常等待，超過才當成卡住
+        if MnBossTimerDue(p, st, true)   ; 空檔順便讀王的重生時間（BossTimerAuto=1 才會自動）
+            return {action: "bosstimer"}
         if !st.respawnSince
             st.respawnSince := A_TickCount
         if A_TickCount - st.respawnSince < 2400000
@@ -785,6 +789,8 @@ MnRun(p, d) {
         if d.action = "enter" {
             st.text := "進水晶礦場"
             MnEnter(p)
+        } else if d.action = "bosstimer" {
+            MnBossTimer(p)
         } else if d.action = "boss" {
             MnFightBoss(p, d.boss)
         } else {
@@ -1655,7 +1661,7 @@ AutoMiningPushWeb() {
             continue
         chars .= (chars = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","on":' (MN_CHARS.Has(p.name) ? "true" : "false") ',"slot":' MN_BOSS_CHAR_SLOTS.Get(p.name, 0) '}'
         if MN_CHARS.Has(p.name)
-            states .= (states = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","text":"' JsonEscapeWeb(MnSt(p).text) '","visit":"' JsonEscapeWeb(MnVisitText(MnSt(p))) '"}'
+            states .= (states = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","text":"' JsonEscapeWeb(MnSt(p).text) '","visit":"' JsonEscapeWeb(MnVisitText(MnSt(p))) '","eta":"' JsonEscapeWeb(MnBossEtaText(MnSt(p))) '"}'
     }
     cur := ""   ; 第一個勾選且在遊戲裡的角色現在的右鍵技能（頁面上「記下目前的」用）
     for p in MnSelectedAlive() {
@@ -1692,3 +1698,5 @@ AutoMiningPushWeb() {
     try WVCore.PostWebMessageAsJson('{"type":"automining","data":{"running":' (MN_RUNNING ? "true" : "false") ',"autoEnter":' (MN_AUTOENTER ? "true" : "false") ',"keepInv":' (MN_KEEP_INV ? "true" : "false") ',"colors":[' colors '],"boss":' (MN_BOSS_ON ? "true" : "false") ',"bossBar":' MN_BOSS_BAR ',"bossSkill":"' JsonEscapeWeb(MN_BOSS_SKILL) '","loops":' MN_LOOPS ',"resume":' (MN_RESUME ? "true" : "false") ',"resumed":' (MN_RESUMED ? "true" : "false") ',"strictColor":' (MN_RANK_SEC >= 100 ? "true" : "false") ',"skipHard":' (MN_SKIPHARD ? "true" : "false") ',"hardCount":' MnHardCount() ',"curSkill":' (cur = "" ? "null" : cur) ',"stats":[' stats ']'
         . ',"licensed":' (MnFeatureOK() ? "true" : "false") ',"chars":[' chars '],"states":[' states ']}}')
 }
+
+#Include %A_LineFile%\..\BossTimer.ahk

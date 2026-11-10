@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.16",
+    "version":  "v1.3.90.17",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "f3ac56363ae76ca908f85c957c70e988e45968a14adb12f5d338a8a490469a2d"
+                      "sha256":  "d39d5e9c2e9a0bd5f8c0a426ce381f8649c95ae94b5b6550a41564a81b213b87"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "2606da80b8c9fea49be3150ccee9131e22ec21ed5458cd29a9894e83320cc493"
+                      "sha256":  "1c63ac270962034ef1531ed362610f53e64072a39b3963987f9a999d7bc7b7d4"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -131,11 +131,15 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "b9a10bbd62d1f2e130aa140a2c2724b92a7f811e611d7ffb3891647de5ccea3e"
+                      "sha256":  "18a24718c90bd9d40022e9c8cc31e6e84b5c25e0c8e08e89ee30914dd2250a72"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
                       "sha256":  "3ce462e9980850bb582d03c5a976aa5d473e92d60a5bbc56d0a0fcbf6d683e25"
+                  },
+                  {
+                      "path":  "modules\\BossTimer.ahk",
+                      "sha256":  "ea0d121c15f343d04d90dc504689b1dc7bf4de3e4490b0b96847e0de51968984"
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
@@ -354,6 +358,10 @@
                       "sha256":  "e32af84bf74c07157cf4d7ffc628878c1f21e560b35a1cf106405a5cb0023ef1"
                   },
                   {
+                      "path":  "tools\\ocr_text.ps1",
+                      "sha256":  "c3d6c10abe2b4224921a2c9b04c8f6f34841aeb66f61d5619f36039391213fe5"
+                  },
+                  {
                       "path":  "tools\\package\\HiHiyong帳號管理.bat",
                       "sha256":  "38dbbad49c55e308fae1857a577f0dabc609a28dee951d20b81dce7df6b20cba"
                   },
@@ -475,7 +483,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "ef29d7fc7c28f2cee5e52fab01eb0de3f8bd77f7f5498a6ef1ff99cb8b1aa625"
+                      "sha256":  "ec4e798d822e0f2223aa4a6bd3babe4004b48557006d1b35652fc5157b2604e7"
                   },
                   {
                       "path":  "登入測試.bat",
