@@ -31,6 +31,7 @@ global MN_RESPAWN_CHECK_MS := 30000       ; 礦都採完了，每隔多久再看
 global MN_START_IDLE_MS := 2000
 global MN_RUNNING := 0
 global MN_RESUME := 0, MN_RESUMED := false   ; 重開程式後自動接續採礦（設定檔 [AutoMining] ResumeOnStart / Running）
+global MN_HANG_MS := Max(2, Integer(MnIniGet("GatherHangMin", "5"))) * 60000   ; 採集動作一直沒結束（正常約 60 秒）累積超過這麼久 = 假在線，走假在線自動重新登入
 global MN_STALL_MS := 900000                 ; 15 分鐘沒有任何進展 = 卡住（通知 Discord）
 global mnBusy := false
 global MN_BOSS_BAR := Min(10, Max(0, Integer(MnIniGet("BossBar", "8"))))   ; 打王要求的技能欄 F1～F10（0 = 不檢查）
@@ -520,10 +521,40 @@ MnDailyQueued(p) {
     return false
 }
 
+; 採集假在線：採集動作正常約 60 秒結束；伺服器不回應（假在線）時角色會一直停在「採集中」。
+; 只累計「採礦計時器連續在跑」的時間（遠端暫停 / 等待期間不算），避免暫停回來就誤判；同一顆礦累計超過 MN_HANG_MS 就當作假在線處理。
+MnHangCheck(p, st) {
+    global MN_HANG_MS, profiles
+    now := A_TickCount
+    dt := st.HasOwnProp("hangLast") && st.hangLast ? now - st.hangLast : 0
+    st.hangLast := now
+    if !st.gathering || !st.gatherStart {
+        st.hangAcc := 0, st.hangFired := false, st.hangKey := 0
+        return
+    }
+    if !st.HasOwnProp("hangKey") || st.hangKey != st.gatherStart
+        st.hangKey := st.gatherStart, st.hangAcc := 0, st.hangFired := false
+    if dt > 0 && dt < 15000
+        st.hangAcc += dt
+    if st.hangAcc < MN_HANG_MS || st.hangFired
+        return
+    st.hangFired := true
+    mins := Round(st.hangAcc / 60000, 1)
+    EventLog(p.name, "MN_HANG", "採集動作 " mins " 分鐘還沒結束（正常約 60 秒）｜判定假在線")
+    idx := 0
+    for i, q in profiles
+        if q = p
+            idx := i
+    fn := "SoftDisconnectConfirmed"
+    if idx
+        try %fn%(idx, p, "自動採礦：採集動作 " mins " 分鐘還沒結束（正常約 60 秒），伺服器沒有回應")
+}
+
 ; 卡住偵測：進展 = 開始採集、進出礦場、進圖成功、打完王。15 分鐘都沒有進展就記日誌並通知 Discord（只通知一次，有進展再重新算）；
 ; 正常的等待（礦都採完等重生最久 40 分鐘、已跑完趟數、沒開自動進圖、沒勾顏色）不算卡住。
 MnWatchdog(p, st) {
     global MN_STALL_MS
+    MnHangCheck(p, st)
     if st.progressAt && A_TickCount - st.progressAt > MN_STALL_MS {
         if !st.stallAlerted {
             st.stallAlerted := true

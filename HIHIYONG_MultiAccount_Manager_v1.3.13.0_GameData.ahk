@@ -1,4 +1,4 @@
-#Requires AutoHotkey v2.0
+﻿#Requires AutoHotkey v2.0
 #SingleInstance Force
 #Include *i Lib\WebView2\WebView2.ahk
 Persistent
@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.13"
+global APP_VERSION := "v1.3.90.14"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -2058,8 +2058,13 @@ MiningIsGathering(pid) {
 MiningGatherActive(p) {
     global MINING_GATHER_GRACE_MS
     now:=A_TickCount
-    if p.HasOwnProp("mnActive") && p.mnActive   ; 自動採礦中的角色：等重生、走路的空檔血量也不會變
+    if p.HasOwnProp("mnActive") && p.mnActive {   ; 自動採礦中的角色：等重生、走路的空檔血量也不會變
+        ; 例外：同一顆礦的採集動作超過 90 秒還沒結束（正常約 60 秒）= 疑似卡住，不再重設靜止時間，
+        ; 讓這個角色能和其他視窗一起「多視窗共同判定」假在線（否則採礦角色永遠湊不進票數，另外兩個視窗票數不夠就不會處理）。
+        if p.HasOwnProp("mn") && IsObject(p.mn) && p.mn.HasOwnProp("hangAcc") && p.mn.hangAcc >= 90000
+            return false
         return true
+    }
     if MiningIsGathering(p.pid) {
         if !p.HasOwnProp("gatherTick") || now-p.gatherTick>=MINING_GATHER_GRACE_MS
             EventLog(p.name,"MINING_ACTIVE","採集中｜血量靜止不當作假在線")

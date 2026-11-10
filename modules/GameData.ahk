@@ -610,18 +610,53 @@ GameCharBase(pid) {
 }
 
 ; 伺服器時間（time_t 秒）；舊版 offsets 檔沒有這個欄位時回傳 false。
+; 遊戲更新後這個欄位常整段位移（2026-11-07 20:35 起 0x20040 → 0x20050，之後讀到 0，假在線偵測整個失效）：
+; 讀到的不是合理的時間時，在附近找「和電腦時間差不到 5 分鐘、而且只有一個」的 Int64，找到就暫時改用它並記日誌。
+global gameServerTimeOffFix := Map()
 ReadGameServerTime(pid,&serverTime) {
+    global gameServerTimeOffFix
     serverTime:=0
     if !GameOffset("ServerTimeOffset")
         return false
     inst:=GameGaeaBase(pid)
-    v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("ServerTimeOffset"),"Int64") : ""
+    if !inst
+        return false
+    hProc:=GameProcHandle(pid)
+    off:=gameServerTimeOffFix.Get(GameBuildOf(pid),GameOffset("ServerTimeOffset"))
+    v:=GameReadNum(hProc,inst+off,"Int64")
     ; 讀到 0 / 不合理的數字 = 這個遊戲版本的位置不對（實測 6AF0283E 四個視窗全部讀到 0）：當作讀不到。
     ; 否則伺服器時間永遠「沒更新」，每個帳號都被判「疑似假在線」，嚴重時還會把正常的遊戲關掉重登。
-    if v="" || v<1000000000 || v>4000000000
-        return false
+    if v="" || v<1000000000 || v>4000000000 {
+        found:=GameServerTimeScan(hProc,inst,off)
+        if !found
+            return false
+        build:=GameBuildOf(pid)
+        gameServerTimeOffFix[build]:=found
+        try EventLog("GLOBAL","SERVERTIME_OFFSET_FOUND","伺服器時間位置 0x" Format("{:X}",off) " 讀不到，掃描找到 0x" Format("{:X}",found) "｜版本 " build)
+        v:=GameReadNum(hProc,inst+found,"Int64")
+        if v="" || v<1000000000 || v>4000000000
+            return false
+    }
     serverTime:=v
     return true
+}
+
+; 在原位置前後 0x400 範圍內找和電腦時間（UTC time_t）差不到 300 秒的 Int64；剛好一個才採用。
+GameServerTimeScan(hProc,inst,oldOff) {
+    lo:=Max(0,oldOff-0x400)
+    buf:=GameReadBuf(hProc,inst+lo,0x800)
+    if !buf
+        return 0
+    now:=DateDiff(A_NowUTC,"19700101000000","Seconds")
+    hit:=0,n:=0
+    Loop 0x800//8 {
+        o:=(A_Index-1)*8
+        v:=NumGet(buf,o,"Int64")
+        if Abs(v-now)<300 {
+            n+=1,hit:=lo+o
+        }
+    }
+    return n=1 ? hit : 0
 }
 
 ; v1.3.51.0 道具冷卻表（GLCharacter.m_mapCoolTimeType：std::map<冷卻類型, ITEM_COOLTIME>）。
