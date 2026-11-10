@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.15",
+    "version":  "v1.3.90.16",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "9acb777f66e0bef8f838778b4f159097cf88b74ddb261350e02e1e3c1f634eb9"
+                      "sha256":  "f3ac56363ae76ca908f85c957c70e988e45968a14adb12f5d338a8a490469a2d"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "4a90ae52367f3814c1581e7957440e89849a52d2ab4560c0d1dcfedbb5c71994"
+                      "sha256":  "2606da80b8c9fea49be3150ccee9131e22ec21ed5458cd29a9894e83320cc493"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -319,7 +319,7 @@
                   },
                   {
                       "path":  "tools\\build_guide.py",
-                      "sha256":  "123bf1a5308de18f1d338f8eb10c879abc54ee1141729f8041e9e7e4549fc6eb"
+                      "sha256":  "d142410033297b3a835e51b73387f19320d55d4fc59b353b2a1e73a2c076bf12"
                   },
                   {
                       "path":  "tools\\derive_game_offsets.py",
@@ -387,87 +387,95 @@
                   },
                   {
                       "path":  "ui\\guide\\gd1_01.png",
-                      "sha256":  "7b2b025fb7bb074acf18b648d596a900767390aebd0fbd6a5e3a3073202f7823"
+                      "sha256":  "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
                   },
                   {
                       "path":  "ui\\guide\\gd2_02.png",
-                      "sha256":  "fd7d908a22950337b3ab3af16c26b81886b3d639f4c0ed270dbe28b2ab76601d"
+                      "sha256":  "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
                   },
                   {
                       "path":  "ui\\guide\\gd2_03.png",
-                      "sha256":  "fd7d908a22950337b3ab3af16c26b81886b3d639f4c0ed270dbe28b2ab76601d"
+                      "sha256":  "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
                   },
                   {
                       "path":  "ui\\guide\\gd3_04.png",
-                      "sha256":  "da1aff0598eff5705265c2ac0624461ebf2a9c0ea9df723fa6026af15a51fd36"
+                      "sha256":  "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
                   },
                   {
                       "path":  "ui\\guide\\gd3_05.png",
-                      "sha256":  "6e04880e4e59b53352a8f6d455aacd04e5bed7f048cbe3cc7d6b87a4ffae0dc1"
+                      "sha256":  "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
                   },
                   {
                       "path":  "ui\\guide\\gd4_06.png",
-                      "sha256":  "4266a90c277bbb7726cebcba8abccb854c682fd458f099160fd030d0cfda8a93"
+                      "sha256":  "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
                   },
                   {
                       "path":  "ui\\guide\\gd4_07.png",
-                      "sha256":  "4266a90c277bbb7726cebcba8abccb854c682fd458f099160fd030d0cfda8a93"
+                      "sha256":  "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
                   },
                   {
                       "path":  "ui\\guide\\gd5_08.png",
-                      "sha256":  "7b2b025fb7bb074acf18b648d596a900767390aebd0fbd6a5e3a3073202f7823"
+                      "sha256":  "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
                   },
                   {
                       "path":  "ui\\guide\\gd5_09.png",
-                      "sha256":  "c8ddc654df48cddb991c00f65f92a79aa9358076ae071aa6f521652981975db6"
+                      "sha256":  "108c74d101696390e039830ce74759fd165bdac05e3a5bc252528f4f9da467b9"
                   },
                   {
                       "path":  "ui\\guide\\gd6_10.png",
-                      "sha256":  "a4f1aa9b5dad56fa13abe4828304034b75d527aace37f4bb3bbd39f73fdac6ac"
+                      "sha256":  "0af95e2a2aa42dd9c044067205ff37f03d93b7403f56c4cbbc00814c151ff5e5"
                   },
                   {
                       "path":  "ui\\guide\\gd6_11.png",
-                      "sha256":  "bd395c1e02565962a28b35347335fdf299bb1e1ea91224a5b614ce1a18e0c1e7"
+                      "sha256":  "02b7fb70bbb4fbfc0a42f461eb1e38bd4fa176fa69ae2a2d8064e8fa5daa17d4"
                   },
                   {
                       "path":  "ui\\guide\\gd6_12.png",
-                      "sha256":  "93fa2d4368c445d9bd64c97a79de523b56b2e2f8a3c3257c2b7692712abf3ce6"
+                      "sha256":  "55d6dbc0b42fb15d5c224281b70d90aa4c364402aa8a6089c1d431d59f635dc7"
                   },
                   {
                       "path":  "ui\\guide\\gd6_13.png",
-                      "sha256":  "ce6ea7b5d88e1de9f64bb2db5a0411f188e5a2cd049e93a1a6c5f4bb9c4c0b79"
+                      "sha256":  "3c8d1f77cbdf9c4e366c2cf40589eee4c9be305ecd5c90365013cf03a87cc29d"
                   },
                   {
                       "path":  "ui\\guide\\gd7_14.png",
-                      "sha256":  "8cb063e750ac2d67d1859c4934057954209e4c376badeec6a5a073c192c1be6b"
+                      "sha256":  "3723da1423b084ea7c884de207e19b5739933ce9bbe566df008f7d5be1772af2"
                   },
                   {
                       "path":  "ui\\guide\\gd7_15.png",
-                      "sha256":  "41681fee529d0fd11881df0d391dc3ec7d5d085800f950526daab7725a71b1ff"
+                      "sha256":  "63751387405f06acab33948eb9451c8b883107354ca4c279a96f5b34662f3f03"
                   },
                   {
                       "path":  "ui\\guide\\gd7_16.png",
-                      "sha256":  "54a1bd04dd8e1b41206232726ba6af59f0c4ef17351514dbf0fdbeb310586439"
+                      "sha256":  "cab233caf6e2afb2a4e99ae9d496c546adb1f44c343f2d2b2e39bc7aa1d9c753"
                   },
                   {
                       "path":  "ui\\guide\\gd7_17.png",
-                      "sha256":  "165de167a449f5be690d23c128b82915d0660dcaba1bc30bbad76d0b7b8da95b"
+                      "sha256":  "d2e9e068bf6afa4db882db3adaecd7a57aa0252f4edbb0fd80f4fbbcfc3d25d2"
                   },
                   {
                       "path":  "ui\\guide\\gd7_18.png",
-                      "sha256":  "2ce954e59649b526bbc3d3c0720d8ab5e69df806629cbd72cd89a11a26ceeb83"
+                      "sha256":  "54b13628ba5c410e21c570a6bb75f7c04ec17494fe289706c6a2edd6be5a2298"
                   },
                   {
                       "path":  "ui\\guide\\gd7_19.png",
-                      "sha256":  "b89d443b8313cb97cca77a071de8b291425bd82f21c469e8d774d670136dc8b8"
+                      "sha256":  "4d37be07b24721a09e9778c5ac7604ffc9564047ae858587183add967116b55a"
                   },
                   {
-                      "path":  "ui\\guide\\gd8_20.png",
-                      "sha256":  "8a5d658eaf2927f9d3d6b95474ec51a9840ca3e75c7bb41c665baae028b0e8ee"
+                      "path":  "ui\\guide\\gd7_20.png",
+                      "sha256":  "e8261456e6f1fe4864d4902bcbc7cf044fd593bcb3a9658c45556bb16ad70e4e"
+                  },
+                  {
+                      "path":  "ui\\guide\\gd7_21.png",
+                      "sha256":  "a19a5db73aca56f53a3d41d96d1cde3ad4dd6bdf351f59c3c39a42d44877d7b7"
+                  },
+                  {
+                      "path":  "ui\\guide\\gd8_22.png",
+                      "sha256":  "f12f13d30dc0c984c128d22c4778d738aa729c6e8fef904d2e7849f3a68bc8e3"
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "fca0be00ebec4ce4113fe366c9523f47247e17e22147be8605829000b39acad0"
+                      "sha256":  "ef29d7fc7c28f2cee5e52fab01eb0de3f8bd77f7f5498a6ef1ff99cb8b1aa625"
                   },
                   {
                       "path":  "登入測試.bat",
