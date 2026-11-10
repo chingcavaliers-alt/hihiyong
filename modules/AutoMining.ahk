@@ -121,7 +121,7 @@ MnToday() => FormatTime(A_Now, "yyyyMMdd")
 MnStatsOf(name) {
     global MN_STATS
     if !MN_STATS.Has(name)
-        MN_STATS[name] := {gathers: 0, dayGathers: 0, day: MnToday(), items: Map()}
+        MN_STATS[name] := {gathers: 0, dayGathers: 0, day: MnToday(), items: Map(), runs: []}
     s := MN_STATS[name]
     if s.day != MnToday() {   ; 換日：今天的數字歸零，累積不變
         s.day := MnToday(), s.dayGathers := 0
@@ -140,7 +140,7 @@ MnStatsSerialize(s) {
     return out
 }
 MnStatsParse(text) {
-    s := {gathers: 0, dayGathers: 0, day: MnToday(), items: Map()}
+    s := {gathers: 0, dayGathers: 0, day: MnToday(), items: Map(), runs: []}
     if Trim(text) = ""
         return s
     parts := StrSplit(text, "|", , 2)
@@ -166,6 +166,104 @@ MnStatsLoad() {
         if eq > 1
             MN_STATS[SubStr(line, 1, eq - 1)] := MnStatsParse(SubStr(line, eq + 1))
     }
+    raw := ""
+    try raw := IniRead(INI, "MiningRuns")
+    for line in StrSplit(raw, "`n", "`r") {
+        eq := InStr(line, "=")
+        if eq > 1 {
+            nm := SubStr(line, 1, eq - 1)
+            if !MN_STATS.Has(nm)
+                MN_STATS[nm] := MnStatsParse("")
+            MN_STATS[nm].runs := MnRunsParse(SubStr(line, eq + 1))
+        }
+    }
+}
+; ---------------------------------------------------------------- 每輪統計（每次進礦場算一輪：採集顆數、王、取得的道具）
+; 存在 INI [MiningRuns]，每個角色一行，最近 MN_RUNS_KEEP 輪：輪號,開始,顆數,王,結束|道具代碼~名稱~數量;…（輪之間用 ^ 分開）
+global MN_RUNS_KEEP := 30
+MnRunsSerialize(runs) {
+    out := ""
+    for r in runs {
+        it := ""
+        for k, d in r.items
+            it .= (it = "" ? "" : ";") k "~" StrReplace(StrReplace(StrReplace(d.name, "~", "-"), ";", "-"), "^", "-") "~" d.count
+        out .= (out = "" ? "" : "^") r.n "," r.start "," r.gathers "," r.boss "," r.end "|" it
+    }
+    return out
+}
+MnRunsParse(text) {
+    runs := []
+    for one in StrSplit(text, "^") {
+        if Trim(one) = ""
+            continue
+        parts := StrSplit(one, "|", , 2)
+        h := StrSplit(parts[1], ",")
+        if h.Length < 5 || !IsInteger(h[1]) || !IsInteger(h[3]) || !IsInteger(h[4])
+            continue
+        r := {n: Integer(h[1]), start: h[2], gathers: Integer(h[3]), boss: Integer(h[4]), end: h[5], items: Map()}
+        if parts.Length >= 2 && parts[2] != "" {
+            for item in StrSplit(parts[2], ";") {
+                f := StrSplit(item, "~")
+                if f.Length >= 3 && IsInteger(f[3])
+                    r.items[f[1]] := {name: f[2], count: Integer(f[3])}
+            }
+        }
+        runs.Push(r)
+    }
+    return runs
+}
+MnRunsSave(name) {
+    global INI, MN_STATS
+    if MN_STATS.Has(name)
+        try IniWrite MnRunsSerialize(MN_STATS[name].runs), INI, "MiningRuns", name
+}
+; 進礦場：開新的一輪（n = 今天第幾趟）
+MnRunBegin(name, n) {
+    global MN_RUNS_KEEP
+    s := MnStatsOf(name)
+    if s.runs.Length && s.runs[s.runs.Length].end = "" && s.runs[s.runs.Length].n = n
+        return s.runs[s.runs.Length]
+    MnRunEnd(name)
+    r := {n: n, start: A_Now, gathers: 0, boss: 0, end: "", items: Map()}
+    s.runs.Push(r)
+    while s.runs.Length > MN_RUNS_KEEP
+        s.runs.RemoveAt(1)
+    MnRunsSave(name)
+    return r
+}
+; 離開礦場：結束目前這一輪
+MnRunEnd(name) {
+    s := MnStatsOf(name)
+    if s.runs.Length && s.runs[s.runs.Length].end = "" {
+        s.runs[s.runs.Length].end := A_Now
+        MnRunsSave(name)
+    }
+}
+; 目前這一輪（沒有進行中的就用角色現在的趟數補開一輪：重開管理程式後接續的情況）
+MnRunCurrent(name) {
+    global profiles
+    s := MnStatsOf(name)
+    if s.runs.Length && s.runs[s.runs.Length].end = ""
+        return s.runs[s.runs.Length]
+    n := 0
+    for p in profiles
+        if p.name = name && p.HasOwnProp("mn")
+            n := p.mn.visits
+    return MnRunBegin(name, n)
+}
+MnRunAdd(name, deltas, gather, boss := 0) {
+    r := MnRunCurrent(name)
+    if gather
+        r.gathers += 1
+    r.boss += boss
+    for k, d in deltas {
+        if !r.items.Has(k)
+            r.items[k] := {name: d.name, count: 0}
+        r.items[k].count += d.count
+        if d.name != ""
+            r.items[k].name := d.name
+    }
+    MnRunsSave(name)
 }
 MnStatsSave(name) {
     global INI, MN_STATS
@@ -185,6 +283,7 @@ MnStatsAdd(name, deltas) {
             it.name := d.name
     }
     MnStatsSave(name)
+    MnRunAdd(name, deltas, true)
 }
 MnStatsAddItems(name, deltas) {
     s := MnStatsOf(name)
@@ -197,11 +296,13 @@ MnStatsAddItems(name, deltas) {
             it.name := d.name
     }
     MnStatsSave(name)
+    MnRunAdd(name, deltas, false)   ; 王的掉落：道具算在這一輪
 }
 AutoMiningReset() {
     global INI, MN_STATS
     MN_STATS := Map()
     try IniDelete INI, "MiningStats"
+    try IniDelete INI, "MiningRuns"
     AddRecentEvent("⛏ 自動採礦：統計已清除")
 }
 ; 背包現在的道具 Map(代碼 → 數量)（讀不到回傳 0）
@@ -489,12 +590,14 @@ MnTrackVisit(p, st, mapId) {
         } else {
             st.visits += 1
             MnRunVisitsSave(p.name, st.visits)
+            MnRunBegin(p.name, st.visits)
             EventLog(p.name, "MN_IN", "進入水晶礦場（今天第 " st.visits " 趟）")
         }
     } else if !inMine && st.inMine {
         st.progressAt := A_TickCount
         st.inMine := false, st.lastStay := Round((A_TickCount - st.inSince) / 60000, 1), st.gathering := false
         st.next := 0
+        MnRunEnd(p.name)
         EventLog(p.name, "MN_KICKED", "離開水晶礦場（到 " mapId "）｜這趟待了 " st.lastStay " 分鐘｜自動重新進圖")
         AddRecentEvent("⛏ " p.name " 離開水晶礦場（待了 " st.lastStay " 分鐘），自動重新進圖")
     }
@@ -1043,7 +1146,7 @@ MnFightBossCore(p, boss) {
             if !IsObject(b) {
                 EventLog(p.name, "MN_BOSS_DONE", "王從清單消失（被打死 / 離開範圍）｜打了 " Round((A_TickCount - start) / 1000) " 秒")
                 AddRecentEvent("✓ " p.name " 打王結束（" Round((A_TickCount - start) / 60000, 1) " 分鐘）")
-                st.bossKills += 1, st.progressAt := A_TickCount
+                st.bossKills += 1, st.progressAt := A_TickCount, MnRunAdd(p.name, Map(), false, 1)
                 if held
                     MnRightButton(false), held := false
                 st.text := "王打完了，等寵物撿掉落"
@@ -1571,7 +1674,17 @@ AutoMiningPushWeb() {
         items := ""
         for k, it in s.items
             items .= (items = "" ? "" : ",") '{"n":"' JsonEscapeWeb(it.name) '","t":' it.total ',"d":' it.day '}'
-        stats .= (stats = "" ? "" : ",") '{"name":"' JsonEscapeWeb(nm) '","gathers":' s.gathers ',"dayGathers":' s.dayGathers ',"items":[' items ']}'
+        runs := ""
+        Loop Min(10, s.runs.Length) {
+            r := s.runs[s.runs.Length - A_Index + 1]
+            ri := ""
+            for k, d in r.items
+                ri .= (ri = "" ? "" : ",") '{"n":"' JsonEscapeWeb(d.name) '","c":' d.count '}'
+            mins := ""
+            try mins := Round(DateDiff(r.end != "" ? r.end : A_Now, r.start, "Seconds") / 60, 1)
+            runs .= (runs = "" ? "" : ",") '{"n":' r.n ',"start":"' FormatTime(r.start, "MM-dd HH:mm") '","mins":' (mins = "" ? 0 : mins) ',"open":' (r.end = "" ? "true" : "false") ',"gathers":' r.gathers ',"boss":' r.boss ',"items":[' ri ']}'
+        }
+        stats .= (stats = "" ? "" : ",") '{"name":"' JsonEscapeWeb(nm) '","gathers":' s.gathers ',"dayGathers":' s.dayGathers ',"items":[' items '],"runs":[' runs ']}'
     }
     colors := ""
     for c in MN_COLORS

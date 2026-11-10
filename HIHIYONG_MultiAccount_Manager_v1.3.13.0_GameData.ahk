@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.14"
+global APP_VERSION := "v1.3.90.15"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -5624,6 +5624,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer ApAcceptTick, 1000   ; 隊長在另一台電腦時，邀請視窗有時效：比 ApTick 看得勤一點
     SetTimer CompanionTick, CW_CHECK_MS   ; 寵物 / 雇傭兵監測（預設關閉）
     SetTimer DailyHuntTick, DH_TICK_MS    ; 每日討伐自動跑圖（預設關閉）
+    SetTimer DailyHuntSchedTick, 10000    ; 每日討伐：各角色的定時啟動
     SetTimer MnTick, MN_TICK_MS           ; 水晶礦場自動採礦（預設關閉）
     SetTimer LagFixTick, 5000   ; 變慢自動過圖（預設關閉；待救援的角色即使關閉也會送回去）
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
@@ -5796,6 +5797,12 @@ WebRunAction(action,value:=0,rawValue:="") {
         DailyHuntPushWeb()
     } else if action="dailyhuntspot" {
         DailyHuntSpot(WebUrlDecode(rawValue))
+        DailyHuntPushWeb()
+    } else if action="dhschedset" {
+        DailyHuntSchedSet(WebUrlDecode(rawValue))
+        DailyHuntPushWeb()
+    } else if action="dhschedack" {
+        DailyHuntSchedAck(WebUrlDecode(rawValue))
         DailyHuntPushWeb()
     } else if action="dailyhuntset" {
         DailyHuntSet(WebUrlDecode(rawValue))

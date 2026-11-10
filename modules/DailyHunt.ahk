@@ -341,7 +341,7 @@ DailyHuntPushWeb() {
             pending += 1
     status := DH_CHARS.Count = 0 ? "請勾選要跑的角色" : (!p ? "勾選的角色都沒有遊戲視窗" : (IsObject(tasks) ? "" : "讀不到任務：" (DH_RUNNING ? "啟動後程式會自己按 T 讀取" : "按「▶ 啟動」會自己按 T 讀取，或在「" p.name "」的遊戲裡按 T 打開一次")))
     try WVCore.PostWebMessageAsJson('{"type":"dailyhunt","data":{"running":' (DH_RUNNING ? "true" : "false") ',"test":' (DH_TEST ? "true" : "false") ',"resume":' (DH_RESUME ? "true" : "false")
-        . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"pending":' pending ',"selected":[' sel '],"tasks":[' rows ']}}')
+        . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"pending":' pending ',"selected":[' sel '],' DhSchedJson() ',"tasks":[' rows ']}}')
 }
 
 ; ============================================================================
@@ -517,6 +517,8 @@ DhPlan(p) {
         st.staleN := 0
     if IsObject(tasks) && tasks.today != st.lastDay {   ; 新的一天（00:00 換任務）：重新來過
         st.lastDay := tasks.today, st.skip := Map(), st.prog := Map(), st.stalls := 0, st.hunted := 0, st.lock := 0, st.done := false
+        if st.HasOwnProp("stat")
+            st.DeleteProp("stat")
     }
     if IsObject(tasks) && !DH_TEST
         DhNoteProgress(p, tasks)
@@ -524,6 +526,8 @@ DhPlan(p) {
         , huntedMap: st.hunted, now: A_TickCount, refreshedAt: st.refreshedAt, lockMap: st.lock})
     if !DH_TEST && IsObject(d.goal) && d.goal.done < d.goal.target
         st.lock := d.goal.map   ; 記住現在在跑的圖
+    if !DH_TEST && d.action != "done"
+        DhStatTrack(p, st, d)   ; 統計每張圖花的時間
     return d
 }
 
@@ -560,7 +564,7 @@ DhMonitor(p, g) {
 DhRun(p, d) {
     global dhBusy, apBusy, foregroundOwner, apRunStart, apLastOwn, dhCurProfile
     st := DhSt(p), g := d.goal
-    prev := 0, cursor := 0, minimized := [], stopped := false
+    prev := 0, cursor := 0, minimized := [], stopped := false, runT0 := A_TickCount
     dhBusy := true, apBusy := true, foregroundOwner := "dailyhunt", apRunStart := A_TickCount, apLastOwn := A_TickCount, dhCurProfile := p
     try {
         prev := ApForeground(), cursor := ApCursor()
@@ -621,6 +625,7 @@ DhRun(p, d) {
     } finally {
         try DhCloseWindows(p)
         ApCleanup(p, false, minimized, prev, cursor, stopped)
+        try DhStatRunEnd(p, A_TickCount - runT0)
         foregroundOwner := "", apBusy := false, apRunStart := 0, dhBusy := false, dhCurProfile := 0
     }
 }
@@ -1014,6 +1019,7 @@ DhActTestWalk(p, g) {
 DhActFinish(p) {
     global DH_NPC_NAME
     st := DhSt(p)
+    finT0 := A_TickCount
     npc := DhFindCrow(p.pid, DH_NPC_NAME), me := MiningCharState(p.pid)
     if IsObject(npc) && IsObject(me) && Sqrt((npc.x - me.x) ** 2 + (npc.z - me.z) ** 2) <= 400
         EventLog(p.name, "DH_RETURN", "人物已經在起點（「" DH_NPC_NAME "」就在附近），不用再按傳送卡")
@@ -1023,6 +1029,8 @@ DhActFinish(p) {
     st.text := "✅ 指定任務全部完成，已回起點"
     DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，已用起點傳送卡回到復活點")
     AddRecentEvent("🎯 " p.name "：指定任務全部完成，已回起點")
+    try DhStatFinish(p, A_TickCount - finT0)   ; 每張圖花的時間 + 總時長
+    try DhSchedFinish(p)                       ; 定時啟動的：跑完自動停止
 }
 ; 選好地圖後，下方「公車站」清單會出現入口：要先點第一行（入口）再按確定，不點的話確定沒有反應。
 DhBusPickGate(p) {
@@ -1741,3 +1749,5 @@ DhStartByCluster(p, g, mob) {
     if best.dist > stopAt
         DhMoveTo(p, best.x, best.z, stopAt)
 }
+
+#Include %A_LineFile%\..\DailyHuntSchedule.ahk

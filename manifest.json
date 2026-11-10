@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.14",
+    "version":  "v1.3.90.15",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "30c07c6255723e714fdd04d800a544ef4697cbaf0d578e1fbdb9d877d9e9db16"
+                      "sha256":  "9acb777f66e0bef8f838778b4f159097cf88b74ddb261350e02e1e3c1f634eb9"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "9287c169f71619a18550080c7ed2facda686e452e25f6685bd5d4541f172feac"
+                      "sha256":  "4a90ae52367f3814c1581e7957440e89849a52d2ab4560c0d1dcfedbb5c71994"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -131,7 +131,7 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "e527740a92bce5338aacaffa3f3cb2c4cc97f02c8d7a0cfe45b5e1632e55e33e"
+                      "sha256":  "b9a10bbd62d1f2e130aa140a2c2724b92a7f811e611d7ffb3891647de5ccea3e"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -143,7 +143,11 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "881fae631c7be43e19891fa0646f63a3fd5bcdc704b2fa65b325d418090a8b93"
+                      "sha256":  "e2f91414da800bc079e97e5a53f849c41ff8967ecb2dd887ddf4b19f8d8630e7"
+                  },
+                  {
+                      "path":  "modules\\DailyHuntSchedule.ahk",
+                      "sha256":  "401c7601385e25f1515c782de4eabc5e8fbccc91c92da5d596864ed618d88523"
                   },
                   {
                       "path":  "modules\\DailyItems.ahk",
@@ -463,7 +467,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "241584926ee089dd80070c40af914e1d7ab652fced72d1e0617b7b99f4711cdc"
+                      "sha256":  "fca0be00ebec4ce4113fe366c9523f47247e17e22147be8605829000b39acad0"
                   },
                   {
                       "path":  "登入測試.bat",
