@@ -74,8 +74,12 @@ global MN_BOSS_CHAR_SLOTS := MnParseCharSlots(MnIniGet("BossCharSlots", ""))
 global MN_BOSS_NAME := "虹光秘脈礦主"      ; 水晶礦場的王（固定地點，2 小時重生一次）
 global MN_BOSS_STAND := 14                ; 站在離王幾單位的旁邊打
 global MN_BOSS_AIM_H := 12                ; 游標對準王身上離地多高（錄製時游標在王的身體 / 血條下方）
+global MN_BOSS_SPACE_PICK := MnIniGet("BossSpacePick", "1") = "0" ? 0 : 1   ; 等不到秘笈進背包就按兩下空白鍵自己撿（INI [AutoMining] BossSpacePick=0 關閉）
+global MN_BOSS_SPACE_AFTER_MS := Min(30, Max(1, Integer(MnIniGet("BossSpaceAfterSec", "5")))) * 1000   ; 王死後幾秒背包還沒有秘笈就先按空白鍵（INI [AutoMining] BossSpaceAfterSec，預設 5）
+global MN_BOSS_SPACE_WAIT_MS := 4000   ; 按完空白鍵後最多再等幾毫秒看秘笈進背包
 global MN_BOSS_LOOT_WAIT_MS := 20000   ; 王打死後最多等幾毫秒，讓寵物把掉落（秘笈）撿進背包；等不到就記一筆並通知
 global MN_BOSS_MAX_MS := Min(60, Max(2, Integer(MnIniGet("BossMaxMin", "15")))) * 60000   ; 一隻王最多打幾分鐘（INI [AutoMining] BossMaxMin，預設 15；欸等欸一隻王約 10 分鐘，10 分鐘上限太緊）；超過就放開右鍵、先離開王
+global MN_BOSS_ORE_GAP := 45               ; 游標離礦石的畫面點至少幾像素，太近就換瞄王身上別的點
 global MN_BOSS_TICK_MS := 300             ; 每隔多久重新對準游標
 global mnTestInput := 0                   ; 測試用：取代真正的游標 / 滑鼠右鍵
 
@@ -1080,12 +1084,37 @@ MnEnsurePet(p, why) {
     EventLog(p.name, "MN_PET", why "｜寵物不在外面，已按 " StrUpper(info.key) " 叫出｜" (ok ? "寵物出來了" : "按了但寵物還是沒出來"))
     return ok
 }
+; 按兩下空白鍵撿地上的秘笈，再等一下看秘笈進背包沒有。回傳有沒有撿到；items 換成最新的背包差。start = 王死亡的時間（日誌寫第幾秒）
+MnBossSpacePick(p, base, &items, start) {
+    global MN_BOSS_SPACE_WAIT_MS
+    pid := p.pid
+    at := Round((A_TickCount - start) / 1000)
+    Loop 2 {
+        ApGuardAny()
+        ApKey(p, "Space")
+        MnOwnAct()
+        Sleep 400
+    }
+    got := false, t0 := A_TickCount
+    Loop {
+        ApGuardAny()
+        items := MnLootDiff(base, MnInvSnap(pid), pid)
+        for k, d in items
+            if InStr(d.name, "秘笈")
+                got := true
+        if got || A_TickCount - t0 >= MN_BOSS_SPACE_WAIT_MS
+            break
+        Sleep 500
+    }
+    EventLog(p.name, "MN_BOSS_SPACE", "王死後 " at " 秒背包沒有多出秘笈，按了兩下空白鍵撿地上的｜" (got ? "撿到了" : "還是沒有秘笈"))
+    return got
+}
 MnBossLootWait(p, st, base) {
-    global MN_BOSS_LOOT_WAIT_MS
+    global MN_BOSS_LOOT_WAIT_MS, MN_BOSS_SPACE_PICK, MN_BOSS_SPACE_AFTER_MS
     pid := p.pid
     if MnPetOut(pid) = 0
         MnEnsurePet(p, "王死後")
-    start := A_TickCount, items := Map(), got := false
+    start := A_TickCount, items := Map(), got := false, spaceTried := false, spaceEarly := false
     Loop {
         ApGuardAny()
         items := MnLootDiff(base, MnInvSnap(pid), pid)
@@ -1094,14 +1123,24 @@ MnBossLootWait(p, st, base) {
                 got := true
         if got || A_TickCount - start >= MN_BOSS_LOOT_WAIT_MS
             break
+        if MN_BOSS_SPACE_PICK && !spaceEarly && A_TickCount - start >= MN_BOSS_SPACE_AFTER_MS {   ; 寵物站太遠撿不到：不等到掉落物消失，早一點自己按空白鍵撿
+            spaceEarly := spaceTried := true
+            got := MnBossSpacePick(p, base, &items, start)
+            if got
+                break
+        }
         Sleep 500
+    }
+    if !got && MN_BOSS_SPACE_PICK {   ; 時間到還是沒有：最後再按一次
+        spaceTried := true
+        got := MnBossSpacePick(p, base, &items, start)
     }
     txt := ""
     for k, d in items
         txt .= (txt = "" ? "" : "、") d.name " ×" d.count
     pet := MnPetOut(pid)
     petTxt := pet = 1 ? "寵物在外面" : (pet = 0 ? "寵物不在外面" : "讀不到寵物狀態")
-    EventLog(p.name, "MN_BOSS_LOOT", (got ? "王的掉落已進背包：" txt : "等了 " Round((A_TickCount - start) / 1000) " 秒背包沒有多出秘笈" (txt = "" ? "" : "（只多出：" txt "）")) "｜" petTxt)
+    EventLog(p.name, "MN_BOSS_LOOT", (got ? (spaceTried ? "王的掉落已進背包（按空白鍵撿的）：" : "王的掉落已進背包：") txt : "等了 " Round((A_TickCount - start) / 1000) " 秒背包沒有多出秘笈" (txt = "" ? "" : "（只多出：" txt "）")) "｜" petTxt)
     if items.Count
         MnStatsAddItems(p.name, items)
     if !got
@@ -1120,8 +1159,58 @@ MnFightBoss(p, boss) {
         mnBossFight := false
     }
 }
+; 游標要瞄王身上哪一點：預設是王身體（離地 MN_BOSS_AIM_H）；王的位置和礦石重疊時，游標剛好落在礦上會點到礦、一直對礦送無效攻擊。
+; 所以把附近礦石投影到畫面，預設點離任何礦太近（< MN_BOSS_ORE_GAP 像素）就換成王身上較高 / 較低的其他點，挑離礦最遠的。
+; 回傳 {x, y, overlap（有換點）, gap（離最近礦的像素，沒有礦 = 9999）}；王不在畫面內 x = -1。
+MnBossAimPoint(pid, b) {
+    global MN_BOSS_AIM_H, MN_BOSS_ORE_GAP, MN_ORE_NAME
+    ores := []
+    try {
+        cr := MiningCrows(pid, MN_ORE_NAME)
+        if IsObject(cr)
+            for o in cr
+                if Abs(o.x - b.x) < 60 && Abs(o.z - b.z) < 60   ; 離王遠的礦不可能疊在王身上
+                    ores.Push(o)
+    }
+    ; 礦石投影成畫面點（取礦身體中間高度）
+    oreSp := []
+    for o in ores {
+        sp := MnScreenPt(pid, o.x, o.y + 6, o.z)
+        if sp.x >= 0
+            oreSp.Push(sp)
+    }
+    best := 0, first := 0
+    for dy in [0, 6, 12, 18, -4, -8] {
+        sp := MnScreenPt(pid, b.x, b.y + MN_BOSS_AIM_H + dy, b.z)
+        if sp.x < 0
+            continue
+        gap := 9999
+        for q in oreSp
+            gap := Min(gap, Sqrt((q.x - sp.x) ** 2 + (q.y - sp.y) ** 2))
+        c := {x: sp.x, y: sp.y, gap: gap, overlap: false}
+        if !IsObject(first)
+            first := c
+        if gap >= MN_BOSS_ORE_GAP {
+            c.overlap := c.y != first.y
+            return c
+        }
+        if !IsObject(best) || gap > best.gap
+            best := c
+    }
+    if !IsObject(best)
+        return {x: -1, y: -1, overlap: false, gap: 9999}
+    best.overlap := best.y != first.y
+    return best
+}
+; 世界座標 → 遊戲畫面（1024x768）座標；不在畫面內 x = -1
+MnScreenPt(pid, x, y, z) {
+    sp := GameWorldToScreen(pid, x, y, z)
+    if !IsObject(sp) || !sp.visible
+        return {x: -1, y: -1}
+    return {x: sp.vpw ? Round(sp.x * 1024 / sp.vpw) : sp.x, y: sp.vph ? Round(sp.y * 768 / sp.vph) : sp.y}
+}
 MnFightBossCore(p, boss) {
-    global MN_BOSS_STAND, MN_BOSS_AIM_H, MN_BOSS_MAX_MS, MN_BOSS_TICK_MS, apRunStart
+    global MN_BOSS_STAND, MN_BOSS_AIM_H, MN_BOSS_MAX_MS, MN_BOSS_TICK_MS, MN_BOSS_ORE_GAP, apRunStart
     st := MnSt(p), pid := p.pid
     DhEnsureAutoHuntOff(p)
     try {
@@ -1133,7 +1222,7 @@ MnFightBossCore(p, boss) {
     EventLog(p.name, "MN_BOSS_START", boss.name "#" boss.glob "｜(" Round(boss.x) "," Round(boss.z) ")｜HP 欄位 " boss.hp)
     AddRecentEvent("⚔ " p.name " 開始打王：" boss.name)
     st.text := "打王：走到 " boss.name " 旁邊"
-    start := A_TickCount, held := false, hidden := 0
+    start := A_TickCount, held := false, hidden := 0, overlapLogged := false
     try {
         try MnLootSettle(p, st, true)   ; 上一顆還沒結算的收穫先算掉，免得和王的掉落混在一起
         bossBase := MnInvSnap(pid)
@@ -1179,9 +1268,12 @@ MnFightBossCore(p, boss) {
                 MnWalkBeside(p, b, MN_BOSS_STAND, 0, MN_BOSS_STAND + 12)
                 continue
             }
-            sp := GameWorldToScreen(pid, b.x, b.y + MN_BOSS_AIM_H, b.z)
-            ax := IsObject(sp) && sp.visible ? (sp.vpw ? Round(sp.x * 1024 / sp.vpw) : sp.x) : -1
-            ay := IsObject(sp) && sp.visible ? (sp.vph ? Round(sp.y * 768 / sp.vph) : sp.y) : -1
+            aim := MnBossAimPoint(pid, b)
+            ax := aim.x, ay := aim.y
+            if aim.overlap && !overlapLogged {
+                overlapLogged := true
+                EventLog(p.name, "MN_BOSS_OVERLAP", "王身上有礦石重疊，游標改瞄 (" ax "," ay ")｜離最近的礦 " aim.gap " 像素" (aim.gap < MN_BOSS_ORE_GAP ? "（已經是能找到最遠的點了）" : ""))
+            }
             if ax < 0 || !MnAim(p, ax, ay) {
                 hidden += 1
                 if held
