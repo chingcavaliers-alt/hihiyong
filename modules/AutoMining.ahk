@@ -340,14 +340,28 @@ MnLootDiff(before, after, pid) {
 MnLootSettle(p, st, force := false) {
     if !IsObject(st.lootBase) || (!force && (!st.lootAt || A_TickCount < st.lootAt))
         return
-    deltas := MnLootDiff(st.lootBase, MnInvSnap(p.pid), p.pid)
+    base := st.lootBase, now := MnInvSnap(p.pid)
     st.lootBase := 0, st.lootAt := 0
+    if !IsObject(now) {   ; 結算時背包讀不到：不是「沒有收穫」，不算進沒收穫的警告
+        EventLog(p.name, "MN_LOOT", "這顆取得：（結算時讀不到背包，無法統計）｜開始前背包 " base.Count " 種")
+        return
+    }
+    deltas := MnLootDiff(base, now, p.pid)
     MnStatsAdd(p.name, deltas)
     MnNoLootNote(p, st, deltas.Count > 0)
     txt := ""
     for k, d in deltas
         txt .= (txt = "" ? "" : "、") d.name " ×" d.count
-    EventLog(p.name, "MN_LOOT", "這顆取得：" (txt = "" ? "（背包沒有增加）" : txt))
+    diag := ""
+    if txt = "" {   ; 背包沒有增加：附上兩次讀到的內容，之後才查得出是真的沒增加還是讀錯
+        n0 := 0, n1 := 0
+        for k, c in base
+            n0 += c
+        for k, c in now
+            n1 += c
+        diag := "｜背包 " base.Count " 種 " n0 " 個 → " now.Count " 種 " n1 " 個"
+    }
+    EventLog(p.name, "MN_LOOT", "這顆取得：" (txt = "" ? "（背包沒有增加）" : txt) diag)
 }
 ; ---------------------------------------------------------------- 略過不好走的礦（提升效率）
 ; 礦石重生後編號會變、位置不變：用「位置」記哪些礦不好走（走不到、一直卡、走太久、右鍵採不起來）。
