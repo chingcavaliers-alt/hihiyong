@@ -220,12 +220,15 @@ DailyItemsPushWeb() {
         if !p.enabled
             continue
         expiry:=p.HasOwnProp("dailyExpiry") ? p.dailyExpiry : 0
+        ci:=DailyClientInfo(p)
         roles.=(roles="" ? "" : ",") '{"index":' i ',"name":"' JsonEscapeWeb(p.name) '"'
             . ',"alive":' (p.pid && ProfileGameAlive(p) ? "true" : "false")
             . ',"expiry":"' (expiry ? GameTimeText(expiry,"MM-dd HH:mm") : "") '"'
             . ',"due":"' (expiry ? GameTimeText(expiry+DAILY_DELAY_MIN*60,"MM-dd HH:mm") : "") '"'
             . ',"status":"' JsonEscapeWeb(DailyStatusText(p)) '"'
             . ',"fail":"' JsonEscapeWeb(p.HasOwnProp("dailyFail") ? p.dailyFail : "") '"'
+            . ',"cw":' ci.w ',"ch":' ci.h ',"cmin":' ci.min ',"cok":' (ci.ok ? "true" : "false") ',"dpi":' Round(A_ScreenDPI/96*100)
+            . ',"block":"' JsonEscapeWeb(p.pid && ProfileGameAlive(p) ? DailyRoutineBlocker(p) : "") '"'
             . ',"packs":' (p.HasOwnProp("dailyPacks") ? p.dailyPacks : -1)
             . ',"packsStale":' (p.HasOwnProp("dailyPacksStale") && p.dailyPacksStale ? "true" : "false")
             . ',"items":"' JsonEscapeWeb(DailyItemsOf(p)) '","mode":"' DailyModeOf(p) '","weapon":"' JsonEscapeWeb(DailyWeaponOf(p)) '"}'

@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.19",
+    "version":  "v1.3.90.20",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "be420dfda951ce9114b09a68a8b2725c7d92072bc9163669e694cd3f35d01045"
+                      "sha256":  "16931277ac816418a3a7ffa0e8022b6285d06ae38cf83c70c1d448dd3d60032b"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "6d8020a57ec00e787a5e4b9330a0a874888603a7cfd7b36830a729a13e090d69"
+                      "sha256":  "74274e8cb9a7d69be2f4ab992ba0c67397cc04aeaec1de09faa9aded2ca0e08d"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -155,11 +155,11 @@
                   },
                   {
                       "path":  "modules\\DailyItems.ahk",
-                      "sha256":  "7609c010911a08d920eef35ece55f962d943bc74fcc13d96af17d23ec68d8963"
+                      "sha256":  "6a7daf7a8f802d4ee7b9879190854b9fb5fc81025f5a73b64f14f1faeede69f1"
                   },
                   {
                       "path":  "modules\\DailyRoutine.ahk",
-                      "sha256":  "010de035a3e7978813f6dfdd231dd6696ed71cae452330584534b7346ab8bced"
+                      "sha256":  "ee1780343f03a209ba0ed6856a3e0ac6130317f957203ae48b5cf115c13ac083"
                   },
                   {
                       "path":  "modules\\DeathStats.ahk",
@@ -483,7 +483,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "d3eaa83cd72418d5300133b1c4cecfd006013a041987864614fcfa9631c1cdce"
+                      "sha256":  "b144b05a53de0348ca2b0047f282741dbc1c389ceae0e4870cc3a8bd07dd42a0"
                   },
                   {
                       "path":  "登入測試.bat",

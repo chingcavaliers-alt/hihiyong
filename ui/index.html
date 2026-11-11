@@ -422,7 +422,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.19· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.20· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -459,7 +459,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="subpage" id="daily">
 <div class="card table-card">
  <div class="section-title"><span class="ni"><span class="emo">⏰</span></span>每日道具到期時間 <span class="pill" id="dailyDelay">到期 5 分鐘後提醒</span></div>
- <div class="table-wrap"><table><thead><tr><th>角色</th><th>每日道具到期</th><th>預定更換</th><th>狀態</th><th>銀行每日禮包</th><th>自動更換</th></tr></thead><tbody id="dailyRows"><tr><td colspan="6" class="hint">讀取中…</td></tr></tbody></table></div>
+ <div class="table-wrap"><table><thead><tr><th>角色</th><th>每日道具到期</th><th>預定更換</th><th>狀態</th><th>銀行每日禮包</th><th>自動更換</th><th>視窗條件</th></tr></thead><tbody id="dailyRows"><tr><td colspan="7" class="hint">讀取中…</td></tr></tbody></table></div>
  <div class="hint" id="dailyRunInfo" style="margin-top:8px">時間到會跳出提醒視窗（不搶焦點）並發送 Discord 通知。</div>
  <div class="hint" style="margin-top:6px">「立即更換」會切到該角色的遊戲視窗自動完成：Q 回城（或原地）→ F6 → 取出並打開每日禮包 → 套上有勾選的造型 / 項鍊 / 勳章 → W → F6。每一步都會確認結果，不符合就停止並通知。執行期間請勿操作鍵盤滑鼠，<b>F10 可隨時中止</b>。</div>
 </div>
@@ -1640,7 +1640,10 @@ function renderHpMonitor(a,push=true){
  const el=document.getElementById('hpCards'); if(!el)return;
  if(push)a.forEach(x=>{const k=String(x.index); if(!hpHistory[k])hpHistory[k]=[]; if(x.memHpReadOk&&Number(x.memHp)>=0){hpHistory[k].push(Number(x.memHp));if(hpHistory[k].length>30)hpHistory[k].shift();}});
  if(!a.length){el.innerHTML='<div class="hint">尚未建立帳號。</div>';return;}
- el.innerHTML=a.map(x=>{
+ const ord=[...a.filter(x=>x.enabled),...a.filter(x=>!x.enabled)];   // 監控中的角色排前面，沒監控的排最後、縮成一小張
+ el.innerHTML=ord.map((x,oi)=>{
+   const offHead=(!x.enabled&&(oi===0||ord[oi-1].enabled))?`<div class="hint" style="grid-column:1/-1;margin-top:4px">未監控的角色（${ord.length-oi}）</div>`:'';
+   if(!x.enabled)return offHead+`<div class="role-card rc-off" style="opacity:.65"><div class="hp-head"><div class="hp-name">${esc(x.name)}</div><span class="hp-status off">未監控</span></div></div>`;
    const f=friendlyState(x); let label=f[1], cls=f[2];
    const soft=x.memSoftState||'';
    if(x.enabled&&cls==='ok'){
@@ -2344,11 +2347,20 @@ function renderLagFix(d){
  rows.innerHTML=(d.rows||[]).length?d.rows.map(r=>`<tr><td class="account-name">${esc(r.name)}</td><td>${r.med===null?'—':r.med+' ms'}</td><td>${r.runs}</td><td>${esc(r.text||'')}</td><td><button class="btn soft" onclick="if(confirm('現在對這個視窗做一次過圖（起點卡→前點卡）？等鍵盤滑鼠閒置後才會執行。'))send('lfnow',{value:${r.index}})">現在過圖</button></td></tr>`).join(''):'<tr><td colspan="5" class="hint">沒有已連接的遊戲視窗</td></tr>';
 }
 setInterval(()=>{const t=document.getElementById('lagRows');if(t&&t.offsetParent)send('lagstate');},3000);
+// 每日道具要遊戲畫面剛好 1024x768：每個監控中的視窗先顯示符不符合，不用等到要更換時才失敗
+function dailyCond(r){
+ if(!r.alive)return '<span class="account-sub">— 未連線</span>';
+ if(r.cmin)return '<span class="warn">⚠ 視窗縮到最小，請還原</span>';
+ if(!r.cok)return `<span class="warn">⚠ ${r.cw}×${r.ch}</span><div class="account-sub">要 1024×768，請把遊戲視窗調成這個大小（Windows 縮放建議 100%，目前 ${r.dpi}%）</div>`;
+ const dpi=r.dpi!==100?`<div class="account-sub">Windows 縮放 ${r.dpi}%（建議 100%）</div>`:'';
+ if(r.block)return `<span class="ok">✓ ${r.cw}×${r.ch}</span><div class="account-sub">但現在不能自動更換：${esc(r.block)}</div>${dpi}`;
+ return `<span class="ok">✓ ${r.cw}×${r.ch} 符合</span>${dpi}`;
+}
 function renderDaily(d){
  dailyCache=d; if(latestState)renderFeatures(latestState); if(latestState)renderHpMonitor(latestState.accounts||[],false);
  const delay=document.getElementById('dailyDelay');if(delay)delay.textContent=`到期 ${d.delay} 分鐘後提醒`;
  const rows=document.getElementById('dailyRows');
- if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}${(!busy&&r.fail)?`<div class="account-sub" style="margin-top:4px;color:var(--red)">上次自動更換沒完成：${esc(r.fail)}</div>`:''}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td></tr>`}).join(''):'<tr><td colspan="6" class="hint">沒有開啟監控的角色</td></tr>';
+ if(rows)rows.innerHTML=(d.roles||[]).length?d.roles.map(r=>{const cls=r.status.startsWith('有效')?'ok':(r.status==='讀取中'?'muted':'warn');const busy=d.running===r.name;return `<tr><td class="account-name">${esc(r.name)}${r.alive?'':' <span class="account-sub">（未連線）</span>'}</td><td>${esc(r.expiry||'—')}</td><td>${esc(r.due||'—')}</td><td class="${cls}">${busy?'🔄 自動更換中…':esc(r.status)}${(!busy&&r.fail)?`<div class="account-sub" style="margin-top:4px;color:var(--red)">上次自動更換沒完成：${esc(r.fail)}</div>`:''}</td><td>${r.packsStale?(r.packs>=0?r.packs+' 個（上次讀到，':'—（')+'打開一次銀行分頁後更新）':(r.packs>=0?r.packs+' 個':'—')}</td><td><button class="btn soft" ${(!r.alive||d.running)?'disabled':''} onclick="if(confirm('立即自動更換「${esc(r.name)}」的每日道具？\\n執行期間請勿操作鍵盤滑鼠，F10 可中止。'))send('dailyrun',{value:${r.index}})">立即更換</button></td><td>${dailyCond(r)}</td></tr>`}).join(''):'<tr><td colspan="7" class="hint">沒有開啟監控的角色</td></tr>';
  renderDailyCfg(d);
  const info=document.getElementById('dailyRunInfo');
  if(info)info.textContent=(d.running?`🔄 正在自動更換：${d.running}　`:'')+(d.queue?`等待中：${d.queue}　`:'')+(d.popupTimeout>0?`到期後跳出提醒；${d.popupTimeout} 秒內沒有人點選提醒視窗就自動更換。`:d.autorun?`到期後跳出提醒；${d.idle} 秒內沒有鍵鼠操作就自動更換。`:'到期後跳出提醒（目前未開啟無人自動執行，可在提醒視窗按「立即更換」）。');

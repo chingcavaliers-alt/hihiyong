@@ -194,6 +194,19 @@ DailyRoutineBlocker(p) {
     return ""
 }
 
+; 這個角色視窗現在的遊戲畫面大小（每日道具要 1024x768）：{w, h, min（視窗縮到最小）, ok}；沒有連接遊戲視窗 w = 0
+DailyClientInfo(p) {
+    global DAILY_CLIENT_W,DAILY_CLIENT_H
+    w:=0,h:=0,mn:=0
+    try {
+        if p.hwnd && WinExist("ahk_id " p.hwnd) {
+            mn:=WinGetMinMax("ahk_id " p.hwnd)=-1 ? 1 : 0
+            WinGetClientPos(,,&w,&h,"ahk_id " p.hwnd)
+        }
+    }
+    return {w:w,h:h,min:mn,ok:(!mn && w=DAILY_CLIENT_W && h=DAILY_CLIENT_H)}
+}
+
 DailyRoutineRun(idx) {
     global profiles,foregroundOwner,activeRecoveryHwnd,activeRecoveryPid,dailyRunning,Status,INI,dailyTestDriver
     p:=profiles[idx]
