@@ -11,6 +11,8 @@
 ; ============================================================================
 global BT_BTN_X := 874, BT_BTN_Y := 688          ; BOSS 資訊按鈕（遊戲畫面 1024x768 座標）
 global BT_CROP := [262, 98, 503, 570]            ; BOSS 資訊視窗的範圍 x, y, w, h
+global BT_LIST_X := 374, BT_LIST_Y := 433        ; 捲動時游標要放的位置：左邊「BOSS 清單」欄（放到右邊掉落物欄只會捲到掉落物，清單不會動）
+global BT_SCROLL_STEP := 4, BT_SCROLL_TRIES := 14 ; 每次捲幾格、最多捲幾次（11/13 實測：清單很長、不是照倒數排序，原本 3 格 × 6 次且游標在掉落物欄，從沒捲到王那一格）
 global BT_NAME := "虹光秘脈礦主"
 global BT_AUTO := MnIniGet("BossTimerAuto", "0") = "1" ? 1 : 0
 global BT_RECHECK_MS := 600000                   ; 沒有讀到過：每 10 分鐘讀一次
@@ -94,7 +96,7 @@ BtOcrLines(p, scale := 3) {
 
 ; 開視窗 → 讀倒數 → 關視窗。回傳 {sec, lines}；讀不到 sec 是 ""
 BtRead(p) {
-    global BT_BTN_X, BT_BTN_Y
+    global BT_BTN_X, BT_BTN_Y, BT_LIST_X, BT_LIST_Y, BT_SCROLL_STEP, BT_SCROLL_TRIES
     lines := BtOcrLines(p)
     if BtTimeLines(lines) < 2 {   ; 視窗沒開（開著再點一次會被關掉）
         ApClick(p, BT_BTN_X, BT_BTN_Y)
@@ -104,9 +106,9 @@ BtRead(p) {
     sec := BtFindSeconds(lines)
     tries := 0
     scroll := "ApScrollMany"
-    while sec = "" && BtTimeLines(lines) >= 2 && tries < 6 {   ; 視窗開著但那一格不在畫面上：往下捲
+    while sec = "" && BtTimeLines(lines) >= 2 && tries < BT_SCROLL_TRIES {   ; 視窗開著但那一格不在畫面上：往下捲（游標放在左邊 BOSS 清單欄）
         tries += 1
-        try %scroll%(p, 500, 400, 1, 3, 40)
+        try %scroll%(p, BT_LIST_X, BT_LIST_Y, 1, BT_SCROLL_STEP, 40)
         Sleep 600
         lines := BtOcrLines(p)
         sec := BtFindSeconds(lines)

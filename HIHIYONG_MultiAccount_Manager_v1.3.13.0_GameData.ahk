@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.20"
+global APP_VERSION := "v1.3.90.33"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 global GAME_TITLE := "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
@@ -799,7 +799,8 @@ RefreshProfileLV() {
         hpText:=MemoryHPDisplayStatus(p)
         stage:=recoveryStage.Has(i) ? recoveryStage[i] : (ProfileGameAlive(p) ? "遊戲中" : "—")
         LV.Add(p.enabled ? "Check" : "",i,p.name,p.state,stage,p.pid,p.hwnd,hpText,p.deathDetect ? "ON":"OFF",p.hpEventNo,p.hpReviveNo,p.softDetect ? "ON":"OFF",loc,p.recoveries,p.failures)
-        LaunchLV.Add(p.launchEnabled ? "Check" : "",i,p.name,p.account,p.launchEnabled ? "ON":"OFF")
+        accText:=(Trim(p.account)="" ? "⚠ 未填帳號" : p.account) (p.password="" ? "　⚠ 未填密碼" : "")
+        LaunchLV.Add(p.launchEnabled ? "Check" : "",i,p.name,accText,p.launchEnabled ? "ON":"OFF")
     }
     try {
         oldChoice:=LocationProfileDDL.Value
@@ -893,7 +894,10 @@ SaveSelectedProfile(*) {
     p.deathDetect:=DeathDetectCB.Value, p.deathNotify:=DeathNotifyCB.Value, p.softDetect:=SoftDetectCB.Value
     SaveProfiles(), RefreshProfileLV()
     LV.Modify(row,"Select Vis")
-    Status.Text:="狀態：已保存 " p.name
+    miss:=ProfileMissingLogin(p), missText:=""
+    for m in miss
+        missText.=(missText="" ? "" : "、") m
+    Status.Text:="狀態：已保存 " p.name (missText!="" ? "｜⚠ 還沒填" missText "，自動登入 / 重新登入會失敗" : "")
 }
 
 AddProfile(*) {
@@ -3616,6 +3620,28 @@ TestDeathDiscordWebhook(*) {
     }
 }
 
+; 從正在執行的 game.exe 找同資料夾的 Launcher.exe（先看各角色綁定的 PID，再看所有 game.exe）；找不到回傳 ""
+LauncherFromRunningGame() {
+    global profiles
+    pids:=[]
+    for q in profiles
+        if q.pid
+            pids.Push(q.pid)
+    try for hw in WinGetList("ahk_exe game.exe")
+        pids.Push(WinGetPID("ahk_id " hw))
+    for pid in pids {
+        exe:=""
+        try exe:=ProcessGetPath(pid)
+        if exe=""
+            continue
+        SplitPath exe,,&dir
+        cand:=dir "\Launcher.exe"
+        if FileExist(cand)
+            return cand
+    }
+    return ""
+}
+
 BrowseLauncher(*) {
     global LauncherEdit
     p:=FileSelect(1,, "選擇 HIHIYONG Launcher", "Executable (*.exe)")
@@ -3796,6 +3822,7 @@ FinalizeRecovery(idx, newHwnd, oldBoundPid) {
     p.state := running && p.enabled ? "監控中" : "已恢復（未監控）"
     p.recoveries+=1, p.failures:=0
     EventLog(p.name, "RECOVERY_OK", "新 PID " p.pid " / HWND " newHwnd "｜已確認進入遊戲")
+    p.loginNote := ""
     RecoveryGuardArm(p)
     RecoveryWebhook(p,"Recovery 成功","PID " p.pid "｜已確認進入遊戲")
     activeRecoveryHwnd:=0
@@ -3825,6 +3852,11 @@ HandleRecoveryException(idx, e) {
     p.failures += 1
     fastLoginCritical:=false   ; 登入關鍵區中途失敗也要解除，否則排隊重啟的 Timer 會一直被擋住（2026-10-26 椰奶卡在選角後沒有自動重啟）
     EventLog(p.name, "RECOVERY_FAIL", e.Message)
+    hint := LoginFailHint(p, e.Message)   ; 備註：為什麼失敗、要怎麼處理（沒填帳密 / 密碼可能錯）
+    p.loginNote := hint
+    if hint != ""
+        EventLog(p.name, "LOGIN_FAIL_NOTE", hint)
+    missingCreds := ProfileMissingLogin(p).Length > 0
 
     ; v1.3.7.4 Login Commit Point：
     ; HUD/HP 已證明進入遊戲後，即使後續位置/按鍵判斷失敗，也保留 game.exe，
@@ -3838,9 +3870,9 @@ HandleRecoveryException(idx, e) {
         EventLog(p.name, "LOGIN_COMMITTED_SAFE", reason)
         RecoveryWebhook(p,"已登入－保留遊戲視窗",reason)
         Status.Text := "狀態：" p.name " 已進入遊戲；後續異常但已保留視窗，不自動關閉"
-    } else if p.failures >= MAX_AUTO_FAILURES {
+    } else if p.failures >= MAX_AUTO_FAILURES || missingCreds {   ; 沒填帳號/密碼重試也不會成功，不要反覆重啟
         p.state := "需要人工處理"
-        reason := "連續自動恢復失敗 " p.failures " 次｜最後原因：" e.Message
+        reason := (missingCreds ? "沒有填帳號或密碼，不再自動重試" : "連續自動恢復失敗 " p.failures " 次") "｜最後原因：" e.Message (hint != "" ? "｜" hint : "")
         EventLog(p.name, "MANUAL_REQUIRED", reason)
         RecoveryWebhook(p,"需要人工處理",reason)
         Status.Text := "狀態：" p.name " 需要人工處理：" reason
@@ -4171,8 +4203,16 @@ RecoverProfile(idx, &asyncLoading:=false) {
         return RecoverProfileEnterGame(idx,live,90)
     }
     launcher:=Trim(LauncherEdit.Value)
-    if !FileExist(launcher)
-        throw Error("找不到 Launcher：" launcher)
+    if !FileExist(launcher) {
+        ; 設定的 Launcher 路徑不存在（例如設定檔從別台電腦複製來，路徑還是 F:\…）：
+        ; 用正在跑的遊戲（game.exe）所在資料夾的 Launcher.exe，找到就改用並更新設定
+        alt:=LauncherFromRunningGame()
+        if alt=""
+            throw Error("找不到 Launcher：" launcher "｜請到 設定 → 啟動與登入 選正確的 Launcher.exe")
+        EventLog(p.name,"LAUNCHER_AUTOFIX","設定的 Launcher 不存在：" launcher "｜改用正在執行的遊戲所在資料夾：" alt)
+        LauncherEdit.Value:=alt, launcher:=alt
+        try IniWrite alt,INI,"General","Launcher"
+    }
     if (p.account="" || p.password="")
         throw Error("帳號或密碼未設定。")
 
@@ -6148,6 +6188,11 @@ WebSaveAccount(rawValue) {
     SaveSelectedProfile()
     WebSelectProfile(webSelectedProfile)
     AddRecentEvent("帳號資料已儲存：" profiles[webSelectedProfile].name)
+    miss:=ProfileMissingLogin(profiles[webSelectedProfile]), missText:=""
+    for m in miss
+        missText.=(missText="" ? "" : "、") m
+    if missText!=""
+        AddRecentEvent("⚠ " profiles[webSelectedProfile].name " 還沒填" missText "：自動登入 / 重新登入會失敗，請補上後再儲存")
 }
 
 WebDeleteSelectedAccount() {
@@ -6590,6 +6635,7 @@ PushWebState(*) {
             . ',"deathDetect":' (p.deathDetect ? "true":"false")
             . ',"deathNotify":' (p.deathNotify ? "true":"false")
             . ',"hasPassword":' (p.password!="" ? "true":"false")
+            . ',"loginNote":"' JsonEscapeWeb(p.HasOwnProp("loginNote") ? p.loginNote : "") '"'
             . ',"recoveryStage":"' JsonEscapeWeb(WebRecoveryStage(p)) '"'
             . "}"
     }

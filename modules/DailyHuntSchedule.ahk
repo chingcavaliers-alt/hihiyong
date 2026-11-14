@@ -17,11 +17,33 @@ global DH_SCHED_ALERTS := []        ; [{id, text, at}] 頁面上的紅色提醒�
 global DH_SCHED_ALERT_SEQ := 0
 global DH_STATS_HISTORY := []       ; 最近幾次跑完的統計（新的在前）
 global DH_SCHED := Map(), DH_SCHED_LOADED := false   ; Map(角色名稱 → ["05:10", "13:00"])；角色列表載入後才讀（第一次用到時）
+global DH_SCHED_RAW := ""                            ; 上次讀進來的 [DailyHuntSchedule] 區段原文；設定檔被改了（手動改 INI / 別的工具）就重新讀
+; 讀設定檔 [DailyHuntSchedule] 區段原文到 raw；讀不到（檔案被占住等）回傳 false，這次不判斷有沒有變動，避免把定時誤清掉。
+; 區段整個不存在：檔案本身讀得到才算「沒有定時」（raw = ""）。
+DhSchedRaw(&raw) {
+    global INI, DH_SCHED_SEC
+    raw := ""
+    try {
+        raw := IniRead(INI, DH_SCHED_SEC)
+        return true
+    }
+    try {
+        IniRead(INI, "General", "Launcher", "")   ; 檔案讀得到 → 區段不存在 = 沒有設定任何定時
+        return true
+    }
+    return false
+}
 DhSchedEnsure() {
-    global DH_SCHED, DH_SCHED_LOADED
+    global DH_SCHED, DH_SCHED_LOADED, DH_SCHED_RAW
+    ok := DhSchedRaw(&raw)
     if !DH_SCHED_LOADED {
         DH_SCHED_LOADED := true
+        DH_SCHED_RAW := ok ? raw : ""
         DH_SCHED := DhSchedLoad()
+    } else if ok && raw != DH_SCHED_RAW {   ; 2026-11-13：設定檔清掉 06:30 後，記憶體還是舊的，隔天照樣啟動
+        DH_SCHED_RAW := raw
+        DH_SCHED := DhSchedLoad()
+        EventLog("GLOBAL", "DH_SCHED_RELOAD", "設定檔的每日討伐定時有變動，已重新讀取")
     }
 }
 
@@ -82,7 +104,7 @@ DhSchedLoad() {
 }
 ; rawValue：角色名稱~時間,時間（時間空白 = 清除）；回傳給畫面的訊息
 DailyHuntSchedSet(rawValue) {
-    global INI, DH_SCHED, DH_SCHED_SEC
+    global INI, DH_SCHED, DH_SCHED_SEC, DH_SCHED_RAW
     DhSchedEnsure()
     cut := InStr(rawValue, "~", , -1)
     if !cut
@@ -94,6 +116,8 @@ DailyHuntSchedSet(rawValue) {
     if arr.Length {
         DH_SCHED[name] := arr
         IniWrite DhSchedJoin(arr), INI, DH_SCHED_SEC, name
+        if DhSchedRaw(&raw)
+            DH_SCHED_RAW := raw   ; 自己寫的，不算「設定檔被外部改過」
         EventLog(name, "DH_SCHED_SET", "每日討伐定時啟動：" DhSchedJoin(arr))
         AddRecentEvent("⏰ 每日討伐｜" name "｜每天 " DhSchedJoin(arr) " 自動開始")
         return name "：每天 " DhSchedJoin(arr) " 自動開始"
@@ -101,6 +125,8 @@ DailyHuntSchedSet(rawValue) {
     if DH_SCHED.Has(name)
         DH_SCHED.Delete(name)
     try IniDelete INI, DH_SCHED_SEC, name
+    if DhSchedRaw(&raw)
+        DH_SCHED_RAW := raw
     EventLog(name, "DH_SCHED_SET", "每日討伐定時啟動：已清除")
     return name "：已清除定時啟動"
 }

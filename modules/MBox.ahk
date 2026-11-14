@@ -299,8 +299,10 @@ MBoxOpen(idx) {
             if sent
                 Sleep MBOX_HOLD_MS
         }
-        if prev && prev != p.hwnd
+        if prev && prev != p.hwnd {
             MBoxRestore(prev)
+            MBoxToBottom(p.hwnd)
+        }
         prev := 0
         if !sent {
             MBoxFail(p, "無法把視窗切到前面")
@@ -367,8 +369,10 @@ MBoxOpen(idx) {
         Critical "Off"
         MBoxFail(p, e.Message)
     } finally {
-        if prev && prev != p.hwnd
+        if prev && prev != p.hwnd {
             try MBoxRestore(prev)
+            try MBoxToBottom(p.hwnd)
+        }
         foregroundOwner := "", mboxBusy := false
     }
 }
@@ -614,10 +618,31 @@ MBoxReleaseKeys(p) {
             Sleep 300
         }
     } finally {
-        if prev && prev != p.hwnd
+        if prev && prev != p.hwnd {
             try MBoxRestore(prev)
+            try MBoxToBottom(p.hwnd)
+        }
     }
     return ok
+}
+; 用完被叫到前面的視窗放到最後面（不搶焦點）；前景是它（使用者正在用）就不動。
+MBoxToBottom(hwnd) {
+    global mboxTestDriver, mboxLastOwn
+    if !hwnd
+        return
+    if IsObject(mboxTestDriver) {
+        if HasMethod(mboxTestDriver, "ToBottom")
+            mboxTestDriver.ToBottom(hwnd)
+        return
+    }
+    ; 不依賴 AutoParty.ahk（單元測試只 include 本模組）
+    try {
+        if WinGetID("A") = hwnd
+            return
+    }
+    ; HWND_BOTTOM = 1；SWP_NOSIZE 0x1 | SWP_NOMOVE 0x2 | SWP_NOACTIVATE 0x10
+    DllCall("SetWindowPos", "Ptr", hwnd, "Ptr", 1, "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
+    mboxLastOwn := A_TickCount
 }
 MBoxRestore(hwnd) {
     global mboxTestDriver, mboxLastOwn

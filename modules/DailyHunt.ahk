@@ -1343,7 +1343,8 @@ DhMapTargetChanged(pid, before) {
 ; 連續 8 次點了都沒走動、15 次都沒更靠近、或點了很久還沒到，丟出錯誤（外面會退回地面點擊的走法）；
 ; 走不動但離目標只差 stopDist 的 2.2 倍內，當作到了。
 ; maxStill：連續幾次點了地圖人物沒動就放棄（預設 12；自動採礦用 3：目的地在地圖框外時點框邊常常不被收到，不要白等 40 秒）
-DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12) {
+; nearGive：離目標只剩這麼近（單位）時，點了人物沒動 1 次就當作到了（遊戲不收離人物太近的地圖點擊，再點只是白等；自動採礦用 35，交給呼叫端判斷夠不夠近 / 補走最後一段）；0 = 不啟用
+DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12, nearGive := 0) {
     global apRunStart, DH_MAP_SHORT
     pid := p.pid
     if ReadGameUiOpen(pid, "NewMap") != 1 {
@@ -1442,6 +1443,10 @@ DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12) {
                 still += 1, lvl := still
                 if still <= DH_MAP_SHORT.Length
                     EventLog(p.name, "DH_MAPMOVE", "點了但人物沒動（第 " still " 次）｜改點離人物較近 / 換角度的點：" DH_MAP_SHORT[still][1] " 倍、偏 " DH_MAP_SHORT[still][2] "°｜目標讀回" (IsObject(pg2) ? "有更新" : "沒更新（遊戲沒記到這一下）"))
+                if nearGive > 0 && dist <= nearGive {   ; 離目標很近了：遊戲不收離人物太近的地圖點擊（11/13 實測停在 13～26 單位後每顆白點 3 次，約 6 秒）
+                    arrived := true
+                    break
+                }
                 if still >= maxStill {
                     if dist <= stopDist * 2.2 {   ; 差一點點：當作到了
                         arrived := true

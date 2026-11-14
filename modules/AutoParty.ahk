@@ -662,6 +662,25 @@ ApRestoreFocus(hwnd) {
         apLastOwn := A_TickCount
     }
 }
+; 功能用完被叫到前面的遊戲視窗：做完把它放到所有視窗的最後面（不搶焦點），才不會一直壓在你正在操作的視窗上。
+; 使用者正在用的視窗（目前的前景）不動。
+ApSendToBottom(hwnd) {
+    global apTestDriver, apLastOwn
+    if !hwnd
+        return
+    if IsObject(apTestDriver) {
+        if HasMethod(apTestDriver, "ToBottom")
+            apTestDriver.ToBottom(hwnd)
+        return
+    }
+    try {
+        if WinGetID("A") = hwnd
+            return
+    }
+    ; HWND_BOTTOM = 1；SWP_NOSIZE 0x1 | SWP_NOMOVE 0x2 | SWP_NOACTIVATE 0x10
+    DllCall("SetWindowPos", "Ptr", hwnd, "Ptr", 1, "Int", 0, "Int", 0, "Int", 0, "Int", 0, "UInt", 0x13)
+    apLastOwn := A_TickCount
+}
 ApCursor() {
     global apTestDriver
     if IsObject(apTestDriver)
@@ -1874,6 +1893,9 @@ ApCleanup(p, opened, minimized, prev, cursor, stopped := false) {
     try fg := ApForeground()
     if prev && fg != prev && (!stopped || (fg = apLastActive && !userBusy))
         try ApRestoreFocus(prev)
+    ; 這個功能叫到前面的視窗：切回原本的視窗後放到最後面（原本就在這個視窗、或你自己切走了就不動）
+    if prev && prev != p.hwnd && !userBusy
+        try ApSendToBottom(p.hwnd)
     if !stopped && !userBusy
         try ApMoveCursorBack(cursor)
 }

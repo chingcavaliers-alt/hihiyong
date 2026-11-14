@@ -503,3 +503,28 @@ LoginCharSet(rawValue) {
     SaveProfiles()
     AddRecentEvent(p.name " → 登入後選擇：" (name="" ? "預設" : LoginWantText(name)))
 }
+
+; ---------------------------------------------------------------- 登入失敗備注 / 沒填帳密防呆
+; 這個帳號缺哪些登入資料：回傳 ["遊戲帳號","遊戲密碼"] 中沒填的那幾項（都有填 = 空陣列）
+ProfileMissingLogin(p) {
+    miss := []
+    if Trim(p.account) = ""
+        miss.Push("遊戲帳號")
+    if p.password = ""
+        miss.Push("遊戲密碼")
+    return miss
+}
+; 登入失敗備注：一句話說明可能原因與處理方式，會寫進日誌（LOGIN_FAIL_NOTE）、Discord 通知、畫面。
+; 2026-11-13：豆奶沒設密碼、欸等欸密碼不符都只看到「帳號或密碼未設定」/「等待角色畫面 Timeout」，看不出該怎麼辦。
+LoginFailHint(p, msg := "") {
+    miss := ProfileMissingLogin(p)
+    if miss.Length {
+        s := ""
+        for m in miss
+            s .= (s = "" ? "" : "、") m
+        return "備註：這個帳號沒有填" s "，自動登入無法進行；請到「設定 → 帳號」補上並按「儲存帳號」。"
+    }
+    if InStr(msg, "等待角色畫面") || InStr(msg, "等待密碼欄") || InStr(msg, "等待登入按鈕")
+        return "備註：帳號密碼已輸入，但逾時沒有進到角色畫面；最常見是遊戲回報「帳號或密碼不符」（密碼存錯或已被改過），其次是伺服器忙碌或維護。請確認「設定 → 帳號」裡的密碼；連續輸錯有被鎖帳號的風險，連續失敗會停止自動重試。"
+    return ""
+}

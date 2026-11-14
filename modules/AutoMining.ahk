@@ -23,7 +23,8 @@ global MN_USE_MAX := 24                   ; 離礦石在這個距離內就直接
 global MN_STOP_DIST := 4                  ; 走到離「旁邊的站位」幾單位內就停
 global MN_CLICK_AVOID := 55                ; 地面點擊的落點離任何怪（礦石也是怪）的畫面距離至少這麼遠（1024x768 的像素）；點到礦石人物會一直普攻
 global MN_FINAL_STEPS := 14, MN_FINAL_IDLE_MS := 900, MN_FINAL_SEG_MS := 4000
-global MN_MAP_STOP := 6                   ; 大地圖走到離站位這麼近就算到（離礦石最遠 MN_STAND_DIST + 這個 = 14，在 MN_USE_MAX 內、直接採）
+global MN_LOOT_WAIT_MS := 20000            ; 採完後最多等這麼久看水晶進背包（還沒進就先不算沒收穫）；0 = 不等（舊行為）
+global MN_MAP_STOP := 6                  ; 大地圖走到離站位這麼近就算到（離礦石最遠 MN_STAND_DIST + 這個 = 14，在 MN_USE_MAX 內、直接採）
 global MN_NEAR_OK := 24                   ; （舊值，實際用每個角色學到的 st.useMax）
 global MN_GATHER_CONFIRM_MS := 7000       ; 右鍵十字鎬之後最多等這麼久，角色要進入「採集」動作
 global MN_SKIP_MS := 600000               ; 走不到 / 採不了的礦石先略過 10 分鐘
@@ -338,9 +339,33 @@ MnLootDiff(before, after, pid) {
 ; 採完 3 秒後（道具到背包要一下子）結算這一顆的收穫
 ; force：下一顆開始採集前，上一顆還沒結算的收穫要先算進去（否則新的背包快照會把它蓋掉、這顆的收穫就漏了）
 MnLootSettle(p, st, force := false) {
-    if !IsObject(st.lootBase) || (!force && (!st.lootAt || A_TickCount < st.lootAt))
+    if !IsObject(st.lootBase) {   ; 沒有「採集前」的背包快照可比（例如管理程式在採集中途重啟）：把結算時間也清掉，否則下一顆開始採集一拍快照後會被這個舊的時間提前結算，每顆都誤判「沒有收穫」
+        st.lootAt := 0
+        return
+    }
+    if !force && (!st.lootAt || A_TickCount < st.lootAt)
         return
     base := st.lootBase, now := MnInvSnap(p.pid)
+    ; 道具進背包比採完晚約 10～15 秒（11/13 走路改快後，下一顆開始採集時上一顆的水晶還沒到，被誤判「沒有收穫」）：
+    ; 採完不到 MN_LOOT_WAIT_MS 還沒看到增加就先不結算。下一顆開始採集時（force）人物正在採集、等一下不耗時間，直接輪詢到出現或逾時；
+    ; 一般排程（非 force）就把結算往後排 1.5 秒再看。
+    doneAt := st.HasOwnProp("lootDone") ? st.lootDone : 0
+    if IsObject(now) && doneAt && MN_LOOT_WAIT_MS > 0 && MnLootDiff(base, now, p.pid).Count = 0 && A_TickCount - doneAt < MN_LOOT_WAIT_MS {
+        if !force {
+            st.lootAt := A_TickCount + 1500
+            return
+        }
+        while A_TickCount - doneAt < MN_LOOT_WAIT_MS {
+            Sleep 500
+            ApGuardAny()
+            now2 := MnInvSnap(p.pid)
+            if IsObject(now2) {
+                now := now2
+                if MnLootDiff(base, now, p.pid).Count > 0
+                    break
+            }
+        }
+    }
     st.lootBase := 0, st.lootAt := 0
     if !IsObject(now) {   ; 結算時背包讀不到：不是「沒有收穫」，不算進沒收穫的警告
         EventLog(p.name, "MN_LOOT", "這顆取得：（結算時讀不到背包，無法統計）｜開始前背包 " base.Count " 種")
@@ -752,7 +777,7 @@ MnPlan(p) {
             EventLog(p.name, "MN_GATHER_EARLY", "採集只持續 " Round((A_TickCount - st.gatherStart) / 1000) " 秒就結束了（被打斷？）")
         }
         st.notSince := 0
-        st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.lootAt := A_TickCount + 3000
+        st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.lootAt := A_TickCount + 3000, st.lootDone := A_TickCount
         EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆")
     }
     if MnBossTimerDue(p, st, false)   ; 按了「現在讀王重生時間」：不在採集中的空檔去讀
@@ -907,7 +932,7 @@ MnMine(p, ore) {
             cur := MiningCharState(pid)
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
-                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.progressAt := A_TickCount
+                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
                 st.text := "採集中（約 60 秒）"
                 MnHardNote(ore, A_TickCount - t0 > MN_SLOW_MS ? "slow" : "ok")
                 EventLog(p.name, "MN_GATHER_START", ore.name "#" ore.glob "｜晚幾秒才開始，不重複右鍵")
@@ -924,7 +949,7 @@ MnMine(p, ore) {
             cur := MiningCharState(pid)
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
-                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.progressAt := A_TickCount
+                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
                 st.text := "採集中（約 60 秒）"
                 if d > st.okMax {   ; 採得起來的最遠距離（距離上限不會低於它）
                     st.okMax := d
@@ -1384,7 +1409,9 @@ MnWalkBeside(p, ore, standDist, angle := 0, useMax := 0) {
     ; 大地圖只點地圖視窗、不會點到遊戲裡的東西；大地圖失敗也不退回一般的地面點擊（那會點到礦石）
     mapFailed := false
     try {
-        DhRunTowardMap(p, g.x, g.z, MN_MAP_STOP, 3)   ; 連續 3 次點了地圖人物沒動就放棄，交給避開礦石的地面點擊（目的地在地圖框外時點框邊常常不被收到）
+        ; 到站位的容許距離：只要離礦石在 useMax 內就能直接採，不必走到離站位 MN_MAP_STOP 內
+        ; （11/13 實測大地圖常停在離站位 ~11 單位，之後要白點 3 次「人物沒動」才放棄，每顆多花 ~7 秒）
+        DhRunTowardMap(p, g.x, g.z, Min(20, Max(MN_MAP_STOP, useMax - standDist - 1.5)), 3, 35)   ; 連續 3 次點了地圖人物沒動就放棄，交給避開礦石的地面點擊（目的地在地圖框外時點框邊常常不被收到）
     } catch as e {
         if e.Extra = "stop"
             throw e

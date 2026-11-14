@@ -333,6 +333,15 @@ class Finder:
         d = rd(self.g.h, self.g.base + rva - 8, 8)
         return bool(d) and struct.unpack("<2i", d) == (2, 3)
 
+    def v_quick_head(self, rva):
+        """遊戲更新後固定開頭的最後兩項會變（2→3：11/14 6AF77EDC 實測 1,1,1.0f,1.0f,3,3），strict 就全部落空，
+        接著 v_quick_tail 誤中差 0x20 的位置（前面剛好是下一段的 2,3；那裡是 4..9），快捷欄每一格都按錯鍵（寵物卡變成 6）。
+        中間再加一關：前面 24 位元組的前 4 項（1,1,1.0f,1.0f）對得上就算。"""
+        if not self.v_quick(rva):
+            return False
+        d = rd(self.g.h, self.g.base + rva - 24, 16)
+        return bool(d) and struct.unpack("<4i", d) == (1, 1, 0x3F800000, 0x3F800000)
+
     def v_quick_strict(self, rva):
         """在 v_quick 之外，還要求前面 24 位元組是已知的固定開頭（1,1,1.0f,1.0f,2,3）。
         11/06 發現只看「6 個不重複的掃描碼」會誤中旁邊另一張表（差 0x60），按錯鍵。"""
@@ -410,7 +419,9 @@ def derive_one(g, ref):
     # 快捷鍵：有固定的 6 個掃描碼
     if "QuickKeysRva" in ref:
         d = f.nearest("QuickKeysRva", f.v_quick_strict, dg)
-        if d is None:   # 完整開頭對不上：先退到「前面緊接著 (2, 3)」，再不行才退回只看掃描碼
+        if d is None:   # 完整開頭對不上：先退到「開頭前 4 項」，再退到「前面緊接著 (2, 3)」，再不行才退回只看掃描碼
+            d = f.nearest("QuickKeysRva", f.v_quick_head, dg)
+        if d is None:
             d = f.nearest("QuickKeysRva", f.v_quick_tail, dg)
         if d is None:
             d = f.nearest("QuickKeysRva", f.v_quick, dg)

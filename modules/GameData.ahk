@@ -1081,7 +1081,17 @@ ReadGameSummonOut(pid) {
         return -1
     inst:=GameGaeaBase(pid)
     v:=inst ? GameReadNum(GameProcHandle(pid),inst+GameOffset("SummonValidOffset"),"UChar") : ""
-    return v="" ? -1 : (v ? 1 : 0)
+    if v=""
+        return -1
+    g:=ReadGameSummonGuid(pid)
+    if !v {
+        ; 2026-11-14：遊戲更新後 m_bValid 位置會位移（6AF77EDC 0x1FF78 → 0x1FFE8），舊位置永遠讀到 0，
+        ; 結果雇傭兵明明在外面還一直按 S 把它收起來。旗標說不在、但角色記的召喚獸 ID 有效 → 兩者矛盾，當作在外面（不按）。
+        return (g!="" && g!=0xFFFFFFFF && g!=0) ? 1 : 0
+    }
+    ; m_bValid 會卡在 1（實測 11/11：旗標在外面、角色記的召喚獸 ID 卻是 0xFFFFFFFF，雇傭兵其實沒叫出來）：
+    ; 旗標為 1 還要角色記的召喚獸 ID 有效才算在外面（11/10 實測：在外面 = ID 有值，不在 = 0xFFFFFFFF）。ID 讀不到就只看旗標。
+    return (g!="" && g=0xFFFFFFFF) ? 0 : 1
 }
 ; 魔法娃娃現在是否在外面：1 = 在外面，0 = 不在，讀不到回傳 -1。GLCharacter.m_magicDoll：收起時階級 0、座標 0xFFFF，
 ; 叫出時階級 / 座標有值（實測：收放一次序號加 1）。只有「階級 0 而且座標 0xFFFF」才算不在，其他一律當作在外面，避免誤判後把它收起來。

@@ -210,6 +210,15 @@ tbody tr:hover td{background:var(--surface-2)}
 /* 首頁：目前啟動的功能（綠 = 開著、灰 = 關閉） */
 .feat-card{padding:14px 18px}.feat-card .section-title{margin-bottom:10px}
 .feat-list{display:flex;flex-wrap:wrap;gap:8px}
+.matrix{display:flex;flex-direction:column}
+.mx-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.mx-row:first-child{border-top:0}
+.mx-name{width:130px;font-weight:600;flex:none}
+.mx-name small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.mx-chips{display:flex;gap:6px;flex-wrap:wrap}
+.mx-chip{padding:3px 10px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer}
+.mx-chip.on{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
+.mx-chip.busy{outline:1px solid var(--accent-ink)}
 .feat{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
 .feat:hover{border-color:var(--accent)}
 .feat.on{background:var(--green-soft);border-color:transparent;color:var(--green);font-weight:700}
@@ -422,7 +431,7 @@ tbody tr:hover td{background:var(--surface-2)}
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.20· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.33· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -439,9 +448,14 @@ tbody tr:hover td{background:var(--surface-2)}
  </div>
 </div>
 <div class="card feat-card">
- <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>目前啟動的功能</div>
- <div class="hint">綠色 = 開著，灰色 = 關閉。點一下標籤會跳到那個功能的設定。</div>
+ <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>全域功能（總開關）</div>
+ <div class="hint">綠色 = 開著，灰色 = 關閉。點一下標籤會跳到設定。每個角色各自要不要用，請看下方「今晚行程」。</div>
  <div class="feat-list" id="featList"><span class="muted">讀取中…</span></div>
+</div>
+<div class="card feat-card" id="matrixCard">
+ <div class="section-title"><span class="ni"><span class="emo">📅</span></span>今晚行程：每個角色在做什麼</div>
+ <div class="hint">每個角色一行，綠色 = 有開，灰色 = 沒開。<b>點一下標籤就能直接開 / 關</b>（組隊設定較複雜，點了會前往設定）。</div>
+ <div class="matrix" id="matrixList"><span class="muted">讀取中…</span></div>
 </div>
 <div class="card table-card">
  <div class="section-title"><span class="ni"><span class="emo">👥</span></span>角色列表</div>
@@ -1099,7 +1113,8 @@ tbody tr:hover td{background:var(--surface-2)}
 <div class="subpage" id="accounts">
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔑</span></span>帳號管理</div><div class="hint">新增的帳號預設不監控；填好帳號密碼並連接遊戲視窗後，再到首頁開啟監控。</div>
 <div class="actions" style="margin-top:14px"><button class="btn soft" onclick="send('accountAdd')">＋ 新增帳號</button><button class="btn blue" onclick="saveAcct()">儲存帳號</button><button class="btn danger" onclick="if(confirm('確定刪除目前選取的帳號？遊戲本身不會被關閉。'))send('accountDelete')">刪除帳號</button></div>
-<div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"></div></div>
+<div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"><div class="account-sub warn" id="acctLoginNote"></div></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"><div class="account-sub warn" id="acctPassNote"></div></div></div>
+<div class="gd-warn" id="acctWarn" style="display:none;margin-top:12px"></div><div class="gd-warn" id="acctFailNote" style="display:none;margin-top:12px"></div>
 <div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔗</span></span>遊戲視窗綁定</div><div class="hint">把帳號和開著的遊戲視窗配對。一般按「自動連接」即可（會依遊戲中的角色名稱配對）；配錯時再手動選擇。</div><div class="formgrid" style="margin-top:16px"><div class="field"><label>目前帳號</label><select id="profileSelectMirror" disabled><option>請在上方選擇帳號</option></select></div><div class="field"><label>遊戲視窗</label><select id="gameSelect" onchange="send('gameSelect',{value:Number(this.value)})"></select></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="send('autoBind')">自動連接遊戲視窗</button><button class="btn soft" onclick="send('refreshGames')">重新整理清單</button><button class="btn soft" onclick="send('bindSelected')">連接選定視窗</button><button class="btn danger" onclick="send('unbindSelected')">解除連接</button><button class="btn soft" onclick="send('showWindow')">顯示遊戲視窗</button><button class="btn soft" onclick="send('recordPosition')">記錄視窗位置</button></div></div></div>
 <div class="subpage" id="monitor">
@@ -1532,10 +1547,11 @@ renderSwitchPage(s);
 const gch=document.getElementById('gameCountHome');if(gch)gch.textContent=s.gameCount||0;
 document.getElementById('runBadge').textContent=s.running?'● 系統運行中':'● 系統待命';
 const up=document.getElementById('uptime'); if(up){const sec=Number(s.uptimeSec||0),hh=String(Math.floor(sec/3600)).padStart(2,'0'),mm=String(Math.floor(sec%3600/60)).padStart(2,'0'),ss=String(sec%60).padStart(2,'0');up.textContent=`${hh}:${mm}:${ss}`;}
-updateHealth(s); renderFeatures(s);
+updateHealth(s); renderFeatures(s); renderMatrix();
 if(s.uiTheme!==undefined&&(document.documentElement.dataset.theme||'')!==s.uiTheme)applyTheme(s.uiTheme);
 renderAccounts(s.accounts||[]); renderHpMonitor(s.accounts||[]); const ii=document.getElementById('iniInfo'); if(ii)ii.textContent='INI：'+(s.iniInfo||'未回報');
-const ps=document.getElementById('profileSelect'); if(ps){ps.innerHTML='<option value="0">請選擇帳號</option>'+(s.accounts||[]).map(x=>`<option value="${x.index}">${esc(x.name)} / ${esc(x.account)}</option>`).join(''); ps.value=String(s.selectedProfile||0);}
+const ps=document.getElementById('profileSelect'); if(ps){ps.innerHTML='<option value="0">請選擇帳號</option>'+(s.accounts||[]).map(x=>`<option value="${x.index}">${esc(x.name)} / ${esc(x.account)}${acctMissing(x).length?' ⚠ 未填'+acctMissing(x).join('、'):''}</option>`).join(''); ps.value=String(s.selectedProfile||0);}
+renderAcctWarn(s.accounts||[],(s.accounts||[]).find(x=>x.index==s.selectedProfile));
 const psm=document.getElementById('profileSelectMirror'); if(psm){const sp=(s.accounts||[]).find(x=>x.index==s.selectedProfile);psm.innerHTML=`<option>${sp?esc(sp.name)+' / '+esc(sp.account):'請先選擇上方遊戲帳號'}</option>`;}
 const gs=document.getElementById('gameSelect'); if(gs){gs.innerHTML='<option value="0">請選擇遊戲視窗</option>'+(s.games||[]).map(x=>`<option value="${x.index}">${esc(x.label)}</option>`).join(''); gs.value=String(s.selectedGame||0);}
 document.querySelectorAll('[data-scan-feedback]').forEach(el=>el.textContent=`找到 ${s.gameCount??(s.games||[]).length} 個遊戲視窗`);
@@ -1677,15 +1693,29 @@ function renderHpMonitor(a,push=true){
 let lastAccountStructureSig='';
 // 首頁血量欄：「目前 / 最大」；讀不到目前血量時只顯示最大值。
 function homeHpText(x){const mx=Number(x.memHpLearnedMax||0),max=mx>0?mx.toLocaleString():'—';return x.memHpReadOk&&Number(x.memHp)>=0?`${Number(x.memHp).toLocaleString()} / ${max}`:(mx>0?`— / ${max}`:'—');}
+// 沒填遊戲帳號 / 密碼的帳號：自動登入、重新登入都會失敗，到處標出來
+function acctMissing(x){const m=[];if(!String(x.account||'').trim())m.push('遊戲帳號');if(!x.hasPassword)m.push('遊戲密碼');return m;}
+function acctWarnLine(x){const m=acctMissing(x);return m.length?`<div class="account-sub warn" title="到「設定 → 帳號」補上並按「儲存帳號」">⚠ 還沒填${m.join('、')}（自動登入會失敗）</div>`:'';}
+function renderAcctWarn(accounts,selected){
+ const box=document.getElementById('acctWarn');
+ if(box){const bad=accounts.filter(x=>acctMissing(x).length);
+  box.style.display=bad.length?'':'none';
+  box.innerHTML=bad.length?'<b>⚠ 這些帳號還沒填完整，自動登入 / 斷線重新登入會失敗：</b><br>'+bad.map(x=>`${esc(x.name)}：沒有填${acctMissing(x).join('、')}`).join('<br>')+'<br>補上後按「儲存帳號」。若只是不想自動登入，把「批次啟動時開啟」取消勾選即可。':'';}
+ const ln=document.getElementById('acctLoginNote'), pn=document.getElementById('acctPassNote'), nn=document.getElementById('acctFailNote');
+ const miss=selected?acctMissing(selected):[];
+ if(ln)ln.textContent=selected&&miss.includes('遊戲帳號')?'⚠ 還沒填遊戲帳號':'';
+ if(pn)pn.textContent=selected&&miss.includes('遊戲密碼')?'⚠ 還沒填遊戲密碼':'';
+ if(nn){nn.style.display=selected&&selected.loginNote?'':'none';nn.textContent=selected&&selected.loginNote?selected.loginNote:'';}
+}
 function renderAccounts(a){
  const el=document.getElementById('accountRows');if(!el)return;
- const sig=JSON.stringify(a.map(x=>[x.index,x.name,x.state,x.recoveryStage,x.location,x.enabled,x.launch,x.pid,x.hwnd,x.autoAttack]));
+ const sig=JSON.stringify(a.map(x=>[x.index,x.name,x.state,x.recoveryStage,x.location,x.enabled,x.launch,x.pid,x.hwnd,x.autoAttack,x.account?1:0,x.hasPassword?1:0,x.loginNote||'']));
  if(sig===lastAccountStructureSig){
    a.forEach(x=>{const c=el.querySelector(`[data-hp-index="${x.index}"]`);if(c){const v=homeHpText(x);if(c.textContent!==v)c.textContent=v;c.className=x.memHpReadOk?'ok':'muted';}});
    return;
  }
  lastAccountStructureSig=sig;
- el.innerHTML=a.map(x=>{const f=friendlyState(x);return `<tr><td><input type="checkbox" ${x.launch?'checked':''} onchange="send('launchcheck',{value:'${x.index}~'+(this.checked?1:0)})" title="套用於批次啟動帳號"></td><td><div class="account-name">${f[0]} ${esc(x.name)}</div></td><td class="${f[2]}">${esc(f[1])}${x.autoAttack===0?'<div class="account-sub warn">💤 自動攻擊關閉</div>':''}${!x.hwnd&&x.enabled?'<div class="account-sub warn" title="到「設定 → 帳號」按「自動連接遊戲視窗」">⚠ 沒有連接遊戲視窗</div>':''}</td><td data-hp-index="${x.index}" class="${x.memHpReadOk?'ok':'muted'}">${homeHpText(x)}</td><td>${esc(x.location||'-')}</td><td><label class="monitor-switch"><input type="checkbox" ${x.enabled?'checked':''} onchange="send('monitorcheck',{value:'${x.index}~'+(this.checked?1:0)});showToast('${esc(x.name)} 監控 '+(this.checked?'ON':'OFF'))">${x.enabled?'ON':'OFF'}</label></td></tr>`}).join('');
+ el.innerHTML=a.map(x=>{const f=friendlyState(x);return `<tr><td><input type="checkbox" ${x.launch?'checked':''} onchange="send('launchcheck',{value:'${x.index}~'+(this.checked?1:0)})" title="套用於批次啟動帳號"></td><td><div class="account-name">${f[0]} ${esc(x.name)}</div>${acctWarnLine(x)}${x.loginNote?`<div class="account-sub warn">${esc(x.loginNote)}</div>`:''}</td><td class="${f[2]}">${esc(f[1])}${x.autoAttack===0?'<div class="account-sub warn">💤 自動攻擊關閉</div>':''}${!x.hwnd&&x.enabled?'<div class="account-sub warn" title="到「設定 → 帳號」按「自動連接遊戲視窗」">⚠ 沒有連接遊戲視窗</div>':''}</td><td data-hp-index="${x.index}" class="${x.memHpReadOk?'ok':'muted'}">${homeHpText(x)}</td><td>${esc(x.location||'-')}</td><td><label class="monitor-switch"><input type="checkbox" ${x.enabled?'checked':''} onchange="send('monitorcheck',{value:'${x.index}~'+(this.checked?1:0)});showToast('${esc(x.name)} 監控 '+(this.checked?'ON':'OFF'))">${x.enabled?'ON':'OFF'}</label></td></tr>`}).join('');
 }
 // v1.3.22.0 首頁「目前啟動的功能」：每個功能一個標籤，點了跳到設定
 function devShow(id){if(id==='skillcombo')send('skillcombostate');document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
@@ -1697,8 +1727,8 @@ function renderFeatures(s){
  const shot=Number(s.reportSnapshotMin||0), rep=String(s.reportDailyTime||'').trim();
  const daily=dailyCache?((dailyCache.autorun||dailyCache.popupTimeout>0)?'on':'off'):'unk';
  const items=[
-  ['🛡️','監控 / 自動重新登入',s.running?'on':'off',s.running?`${en.length} 個角色`:'已停止','home'],
-  ['👻','假在線偵測',s.softEnabled?'on':'off',s.softEnabled?`自動恢復 ${auto}/${en.length}`:'','setup','monitor'],
+  ['🛡️','自動重新登入',s.running?'on':'off',s.running?`${en.length} 個角色`:'已停止','home'],
+  ['👻','假在線偵測（總開關）',s.softEnabled?'on':'off',s.softEnabled?`自動恢復 ${auto}/${en.length}`:'','setup','monitor'],
   ['🗂️','監控時還原視窗位置',s.layoutAutoRestore?'on':'off','','tools','layout'],
   ['🎁','每日道具無人自動更換',daily==='unk'?'off':daily,daily==='unk'?'讀取中':'','roles','daily'],
   ['💬','斷線通知',s.discordEnabled?'on':'off','','setup','notifyTab'],
@@ -1710,6 +1740,49 @@ function renderFeatures(s){
  const html=items.sort((x,y)=>(x[2]==='off')-(y[2]==='off')).map(([ic,name,st,det,pg,sb])=>`<button class="feat ${st==='off'?'':st}" onclick="goTo('${pg}'${sb?`,'${sb}'`:''})" title="${st==='off'?'目前關閉':'目前開著'}｜點一下前往設定"><span class="emo">${ic}</span>${st==='off'?'○':'●'} ${esc(name)}${det?` <small>${esc(det)}</small>`:''}</button>`).join('');
  if(el.innerHTML!==html)el.innerHTML=html;
 }
+// 首頁「今晚行程」：把採礦 / 每日討伐 / 命運箱子 / 組隊各自的角色勾選，整理成「每個角色一行」
+const homeFeat={mn:null,dh:null,mbox:null,party:null};
+function wrapHomeFeed(fn,key){const orig=window[fn];if(typeof orig!=='function')return;window[fn]=function(d){orig.apply(this,arguments);homeFeat[key]=d;renderMatrix();};}
+function requestHomeFeat(){['autominingstate','dailyhuntstate','mboxstate','partystate'].forEach(a=>send(a));}
+function renderMatrix(){
+ const el=document.getElementById('matrixList');if(!el||!latestState)return;
+ const acc=(latestState.accounts||[]).filter(x=>x.enabled||x.launch);
+ if(!acc.length){el.innerHTML='<span class="muted">目前沒有勾選的角色</span>';return;}
+ const F=homeFeat;
+ const mnOn=n=>((F.mn&&F.mn.chars)||[]).some(c=>c.name===n&&c.on);
+ const dhOn=n=>((F.dh&&F.dh.chars)||[]).some(c=>c.name===n&&c.on);
+ const mbOn=n=>((F.mbox&&F.mbox.roles)||[]).some(r=>r.name===n&&r.on);
+ const ptOn=n=>((F.party&&F.party.roles)||[]).some(r=>r.name===n&&(r.leader||r.accept));
+ const feats=[
+  ['mon','🛡️','監控',x=>!!x.enabled,'',true],
+  ['soft','👻','假在線偵測',x=>!!x.soft&&!!latestState.softEnabled,latestState.softEnabled?'':'（總開關關閉）',true],
+  ['auto','🔧','自動恢復',x=>!!x.softAutoRecover,'',true],
+  ['mn','⛏','採礦',x=>mnOn(x.name),F.mn&&F.mn.running?'執行中':'',F.mn!==null],
+  ['dh','🎯','每日討伐',x=>dhOn(x.name),F.dh&&F.dh.running?'執行中':'',F.dh!==null],
+  ['mb','🎁','命運箱子',x=>mbOn(x.name),F.mbox&&!F.mbox.enabled?'（總開關關閉）':'',F.mbox!==null],
+  ['pt','🤝','組隊',x=>ptOn(x.name),'',false]];
+ const html=acc.map(x=>{const f=friendlyState(x);
+  return `<div class="mx-row"><div class="mx-name">${esc(x.name)}<small class="${f[2]}">${esc(f[1])}</small></div><div class="mx-chips">`
+   +feats.map(([k,ic,t,get,note,canToggle])=>{const on=get(x);const busy=on&&note==='執行中';
+    const act=canToggle?`mxToggle('${k}',${x.index},'${esc(x.name).replace(/'/g,"\'")}')`:`goTo('tools','party')`;
+    return `<button class="mx-chip ${on?'on':''} ${busy?'busy':''}" ${canToggle?'':'data-nav="1"'} onclick="${act}" title="${canToggle?'點一下開 / 關':'組隊設定較複雜，點一下前往設定'}">${ic} ${t}${note&&(on||note.startsWith('（'))?' <small>'+note+'</small>':''}</button>`;}).join('')
+   +`</div></div>`;}).join('');
+ if(el.innerHTML!==html)el.innerHTML=html;
+}
+// 直接在首頁開關：沿用各功能頁原本的儲存函式 / 指令，先樂觀更新畫面，AHK 回報後會再校正
+function mxToggle(k,idx,name){
+ const x=(latestState.accounts||[]).find(a=>a.index==idx);if(!x)return;
+ if(k==='mon'){const v=!x.enabled;x.enabled=v?1:0;send('monitorcheck',{value:idx+'~'+(v?1:0)});}
+ else if(k==='soft'){if(!latestState.softEnabled){showToast('「假在線偵測」總開關關閉中，請到 設定 → 監控 開啟');return;}const v=!x.soft;x.soft=v?1:0;location.href='hihiyong://softdetect/'+idx+'~'+(v?1:0);}
+ else if(k==='auto'){const v=!x.softAutoRecover;x.softAutoRecover=v?1:0;location.href='hihiyong://softautorecover/'+idx+'~'+(v?1:0);}
+ else if(k==='mn'){const i=mnChars.findIndex(c=>c.name===name);if(i<0){showToast('採礦清單裡找不到這個角色');return;}mnCharToggle(i,!mnChars[i].on);}
+ else if(k==='dh'){const i=dhChars.findIndex(c=>c.name===name);if(i<0){showToast('每日討伐清單裡找不到這個角色');return;}dhCharToggle(i,!dhChars[i].on);}
+ else if(k==='mb'){const r=((homeFeat.mbox&&homeFeat.mbox.roles)||[]).find(r=>r.name===name);if(!r){showToast('命運箱子清單裡找不到這個角色');return;}r.on=!r.on;send('mboxrole',{value:`${r.index}~${r.on?1:0}~${(r.key||'e').trim()}~${name}`});}
+ renderMatrix();
+ setTimeout(requestHomeFeat,800);
+}
+['renderAutoMining:mn','renderDailyHunt:dh','renderMBox:mbox','renderParty:party'].forEach(x=>{const [f,k]=x.split(':');wrapHomeFeed(f,k);});
+setTimeout(requestHomeFeat,1800);setInterval(()=>{if(document.getElementById('home')?.classList.contains('active'))requestHomeFeat();},30000);
 // v1.3.22.0 首頁一句話總結：幾個正常、幾個重新登入中、哪些需要注意
 function updateHealth(s){
  const a=s.accounts||[], en=a.filter(x=>x.enabled);
