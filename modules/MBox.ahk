@@ -33,6 +33,10 @@ global mboxBusy := false
 global mboxTestDriver := 0
 ; 實體鍵鼠閒置毫秒數；測試可換成固定值
 global mboxIdleMs := () => A_TimeIdlePhysical
+; 含遠端桌面模擬輸入的閒置時間（MBoxRemoteActive）：0 = 用 A_TimeIdle（測試時不看）。[General] YieldToRemoteInput=0 可以關掉。
+global mboxAnyIdleMs := 0
+global MBOX_YIELD_REMOTE := 1
+try MBOX_YIELD_REMOTE := IniRead(INI, "General", "YieldToRemoteInput", "1") != "0"
 
 MBoxOn(p) => p.HasOwnProp("mboxEnabled") && p.mboxEnabled
 MBoxKeyOf(p) {
@@ -156,7 +160,26 @@ MBoxBlocker() {
     idle := mboxIdleMs()
     if idle < MBOX_IDLE_SEC * 1000 && idle < A_TickCount - mboxLastOwn - MBOX_OWN_MARGIN
         return "等你停止操作鍵盤滑鼠 " MBOX_IDLE_SEC " 秒"
+    if MBoxRemoteActive()
+        return "等你停止操作鍵盤滑鼠 " MBOX_IDLE_SEC " 秒（含遠端桌面）"
     return ""
+}
+
+; 遠端桌面送進來的鍵鼠（帶「模擬」旗標，mboxIdleMs 看不到）也讓路：你遠端操作時不切到別的視窗開箱子。
+; 含模擬輸入的閒置時間扣掉我們自己的動作（命運箱子 mboxLastOwn + 其他功能 apLastOwn）。
+MBoxRemoteActive() {
+    global MBOX_YIELD_REMOTE, mboxAnyIdleMs, mboxIdleMs, mboxTestDriver, mboxLastOwn, MBOX_OWN_MARGIN, MBOX_IDLE_SEC
+    if !MBOX_YIELD_REMOTE
+        return false
+    if !IsObject(mboxAnyIdleMs) && IsObject(mboxTestDriver)
+        return false   ; 測試沒有指定含模擬輸入的閒置時間：不看（只看 mboxIdleMs，和以前一樣）
+    idle := IsObject(mboxAnyIdleMs) ? mboxAnyIdleMs() : A_TimeIdle
+    own := mboxLastOwn, fnm := "ApLastOwnTick"
+    try {
+        f := %fnm%
+        own := Max(own, f())
+    }
+    return idle < MBOX_IDLE_SEC * 1000 && idle < A_TickCount - own - MBOX_OWN_MARGIN
 }
 
 ; MBoxOpen / MBoxRecover 執行中自己占著 foregroundOwner；這裡暫時不算它，看有沒有「其他」原因不能切視窗。

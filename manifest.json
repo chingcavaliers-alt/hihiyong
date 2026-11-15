@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.33",
+    "version":  "v1.3.90.34",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "97ef793b8d7d4836bb593fcd717ca99ccc73ab4835d669b8ecf8567370af9252"
+                      "sha256":  "c299f100cebd330e3df58ad043c3ddb79136fb4687d75311b0c1cf0dd4c71d3a"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "cbfc4000b7ab1a641c9fbe346f5bce6233d0268b9fa7256a1cd31839279387a8"
+                      "sha256":  "f10497a1cc1d950d22d568629dd0a28d6b99e59bcbe32a9fed608e35578815d3"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -135,7 +135,7 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "68ba0e4b007b94ea31a4496ff03512a6212d161024df6680dd24330b6955a984"
+                      "sha256":  "f032ff7b96fea5806da8d510bc083b97133611d89672e2cfbc4b288b991ff8bd"
                   },
                   {
                       "path":  "modules\\BossTimer.ahk",
@@ -143,7 +143,7 @@
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
-                      "sha256":  "e385f07a02ed7a08b4d0bbb7b3a5f646f71089230e56d0ea7fa17308532b310e"
+                      "sha256":  "08bf34a08b371e829ba45d52fc190aa7dfa635970da5a0ff67b3e636aa6d7113"
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
@@ -187,7 +187,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "aa4f09766e6a81ae95c8c0ae2b811dd574d8375c1284e1bf5c69f7a727058a9b"
+                      "sha256":  "b12a19ddf65577c6b9e242d90e1392b7675206520cd473e4332b1e6adfc5fde9"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -215,7 +215,7 @@
                   },
                   {
                       "path":  "modules\\MBox.ahk",
-                      "sha256":  "bfd610ed163e0ff7ac42c07b1857c8e208779428f705b88a721655a61d2a8428"
+                      "sha256":  "d783959378e1f2a02b7c6f5faa3cce98d57ba339aeacb38679103d4a0e9c81ff"
                   },
                   {
                       "path":  "modules\\Mining.ahk",
@@ -487,7 +487,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "15af68872a4c6b068ac3621936b225d58ae99393da29a0f842f27e706f93343f"
+                      "sha256":  "4a21d884d6a30bdfb03b27801b1afe76e15b9edb61032c48a4d964f2f8a59211"
                   },
                   {
                       "path":  "登入測試.bat",

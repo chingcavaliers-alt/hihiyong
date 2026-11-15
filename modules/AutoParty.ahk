@@ -44,6 +44,13 @@ global AP_RUN_MAX_MS := 120000, AP_MANUAL_IDLE_MS := 1500, AP_DESIGN_W := 1024, 
 global apTestDriver := 0
 global apSmooth := false   ; 開著時 ApClick / ApHover / ApScrollMany 用平順移動（每日討伐搭公車點 NPC、選地圖）
 global apIdleMs := () => A_TimeIdlePhysical
+; 遠端桌面（Chrome 遠端桌面等）送進來的鍵鼠帶「模擬」旗標，apIdleMs（只看實體）看不到：你遠端操作時，
+; 寵物 / 雇傭兵監測照樣切視窗、壓住你正在用的畫面（11/14 實測：遠端操作欸等等時其他視窗一直跳到最上面）。
+; 這類「晚一點做也沒關係」的背景功能另外看含模擬輸入的閒置時間（扣掉我們自己的動作）。0 = 用 A_TimeIdle（測試時不看）。
+; 自動採礦 / 組隊等仍只看實體輸入：自己漏記的按鍵不會讓它們誤停。[General] YieldToRemoteInput=0 可以關掉。
+global apAnyIdleMs := 0
+global AP_YIELD_REMOTE := 1
+try AP_YIELD_REMOTE := IniRead(INI, "General", "YieldToRemoteInput", "1") != "0"
 global dhCurProfile := 0   ; 每日討伐這一回合正在操作的角色（死亡時整輪要馬上停，不能繼續點，更不能卡著前景讓復活動作做不了）
 
 ApIsLeader(p) => p.HasOwnProp("partyLeader") && p.partyLeader
@@ -269,6 +276,21 @@ ApUserActive() {
     sinceOwn := apLastOwn ? A_TickCount - apLastOwn : 99999
     return apIdleMs() + AP_OWN_GRACE_MS < sinceOwn   ; 我們最後一次動作之後有任何鍵鼠輸入（不限多久以前）
 }
+
+; 我們最後一次動作之後、waitMs 內有任何鍵鼠輸入（含遠端桌面的模擬輸入）= 有人在操作（見 apAnyIdleMs 的說明）。
+; 命運箱子的按鍵記在 mboxLastOwn（另一個模組），呼叫端可以傳進來一起扣掉。
+ApRemoteInputActive(waitMs, otherOwn := 0) {
+    global AP_YIELD_REMOTE, apAnyIdleMs, apIdleMs, apTestDriver, apLastOwn, AP_OWN_GRACE_MS
+    if !AP_YIELD_REMOTE
+        return false
+    if !IsObject(apAnyIdleMs) && IsObject(apTestDriver)
+        return false   ; 測試沒有指定含模擬輸入的閒置時間：不看（只看 apIdleMs，和以前一樣）
+    idle := IsObject(apAnyIdleMs) ? apAnyIdleMs() : A_TimeIdle
+    own := Max(apLastOwn, otherOwn)
+    sinceOwn := own ? A_TickCount - own : 99999999
+    return idle < waitMs && idle + AP_OWN_GRACE_MS < sinceOwn
+}
+ApLastOwnTick() => apLastOwn
 
 ; ---------------------------------------------------------------- 讀遊戲記憶體（測試時交給 apTestDriver）
 ; 這個遊戲版本有沒有隊伍 / 好友 / 介面的位置（resolve_game_offsets.py v14；解析失敗時整組沒有）。

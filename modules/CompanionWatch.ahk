@@ -154,6 +154,8 @@ CompanionTick() {
     if !todo.Length
         return
     busy := ApBlocker()   ; 含「等你停止操作鍵盤滑鼠」
+    if busy = "" && ApRemoteInputActive(AP_IDLE_SEC * 1000)   ; 遠端桌面操作也讓路（不搶你正在用的視窗）
+        busy := "等你停止操作鍵盤滑鼠 " AP_IDLE_SEC " 秒（含遠端桌面）"
     if busy != "" {
         for t in todo
             CwState(t.p, t.kind).text := "不在外面｜" busy

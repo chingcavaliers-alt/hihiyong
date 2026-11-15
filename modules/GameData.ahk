@@ -1058,13 +1058,74 @@ ReadGameQuickKeys(pid, raw := false) {
     h:=GameProcHandle(pid),base:=h ? GetGameModuleBase(pid,h) : 0
     if !base || cnt<1 || cnt>12
         return ""
-    buf:=GameReadBuf(h,base+GameOffset("QuickKeysRva"),cnt*4)
+    rva:=GameQuickKeysRva(pid,h,base,cnt)
+    if !rva
+        return ""
+    buf:=GameReadBuf(h,base+rva,cnt*4)
     if !buf
         return ""
     out:=[]
     Loop cnt
         out.Push(names.Get(NumGet(buf,(A_Index-1)*4,"Int"),""))
     return out
+}
+
+; 快捷鍵表的位置要先核對：表前面 24 位元組是固定開頭（1,1,1.0f,1.0f,…；11/14 6AF77EDC 實測後兩項從 2,3 變 3,3），
+; 後面 cnt 個掃描碼都在 1～255 而且不重複。2026-11-14 遊戲更新後推導工具誤中差 0x20 的另一組數字（4..9），
+; 寵物卡變成按 6（其實是魔法娃娃那格）、還把打王的右鍵技能蓋掉：核對不過就在附近 ±0x400 找「只有一處」對得上的位置，
+; 找到就暫時改用並記日誌（同 ReadGameServerTime 的做法）；找不到回傳 0，呼叫端改用設定檔的備用鍵（DailyQuickInfo）或不按。
+global gameQuickKeysFix := Map(), gameQuickKeysWarned := Map()
+GameQuickKeysRva(pid,h,base,cnt) {
+    global gameQuickKeysFix, gameQuickKeysWarned
+    build:=GameBuildOf(pid)
+    off:=gameQuickKeysFix.Get(build,GameOffset("QuickKeysRva"))
+    if GameQuickKeysValidAt(h,base+off,cnt)
+        return off
+    found:=GameQuickKeysScan(h,base,off,cnt)
+    if found {
+        gameQuickKeysFix[build]:=found
+        try EventLog("GLOBAL","QUICKKEYS_OFFSET_FOUND","快捷鍵表位置 0x" Format("{:X}",off) " 核對不過，掃描找到 0x" Format("{:X}",found) "｜版本 " build)
+        return found
+    }
+    if !gameQuickKeysWarned.Has(build) {
+        gameQuickKeysWarned[build]:=1
+        try EventLog("GLOBAL","QUICKKEYS_OFFSET_BAD","快捷鍵表位置 0x" Format("{:X}",off) " 核對不過、附近也找不到｜版本 " build "｜改用設定檔的備用鍵（遊戲更新後可能要重新推導位置）")
+        try AddRecentEvent("⚠ 讀不到遊戲的快捷鍵設定（遊戲更新？）：寵物 / 雇傭兵 / 每日道具改用設定檔的備用鍵")
+    }
+    return 0
+}
+GameQuickKeysValidAt(h,addr,cnt) {
+    buf:=GameReadBuf(h,addr-24,24+cnt*4)
+    return buf ? GameQuickKeysValidBuf(buf,24,cnt) : false
+}
+; buf 的第 at 個位元組是快捷鍵表開頭（前面要有 24 位元組的固定開頭）
+GameQuickKeysValidBuf(buf,at,cnt) {
+    if at<24 || buf.Size<at+cnt*4
+        return false
+    if NumGet(buf,at-24,"Int")!=1 || NumGet(buf,at-20,"Int")!=1 || NumGet(buf,at-16,"UInt")!=0x3F800000 || NumGet(buf,at-12,"UInt")!=0x3F800000
+        return false
+    seen:=Map()
+    Loop cnt {
+        v:=NumGet(buf,at+(A_Index-1)*4,"Int")
+        if v<1 || v>255 || seen.Has(v)
+            return false
+        seen[v]:=1
+    }
+    return true
+}
+GameQuickKeysScan(h,base,oldOff,cnt) {
+    lo:=Max(24,oldOff-0x400)
+    buf:=GameReadBuf(h,base+lo-24,0x800+24+cnt*4)
+    if !buf
+        return 0
+    hit:=0,n:=0
+    Loop 0x800//4 {
+        o:=24+(A_Index-1)*4
+        if GameQuickKeysValidBuf(buf,o,cnt) {
+            n+=1,hit:=lo+o-24
+        }
+    }
+    return n=1 ? hit : 0
 }
 
 ; 寵物現在是否在外面：1 = 在外面，0 = 不在，讀不到（舊位置檔 / 讀取失敗）回傳 -1。
