@@ -8,9 +8,11 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.34"
+global APP_VERSION := "v1.3.90.36"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
-global GAME_TITLE := "HIHIYong2.0"
+; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
+global GAME_TITLE := "HIHIYong"
+IsGameTitle(t) => t = "HIHIYong" || t = "HIHIYong2.0"
 global UPDATE_TITLE := "Update - HiHiYong"
 global INI := A_ScriptDir "\HIHIYONG_AutoRecovery.ini"
 global PROFILE_INI := A_ScriptDir "\HIHIYONG_Recovery_Profiles.ini"
@@ -919,7 +921,7 @@ RefreshGames(*) {
     global GameList,gameRows,GAME_TITLE,profiles,LV
     GameList.Delete(), gameRows:=[]
     for hwnd in WinGetList("ahk_exe game.exe") {
-        if WinGetTitle("ahk_id " hwnd) != GAME_TITLE
+        if !IsGameTitle(WinGetTitle("ahk_id " hwnd))
             continue
         pid:=WinGetPID("ahk_id " hwnd)
         mm:=WinGetMinMax("ahk_id " hwnd)
@@ -4220,15 +4222,16 @@ RecoverProfile(idx, &asyncLoading:=false) {
 
     EventLog(p.name, "STEP", "啟動 Launcher")
     Status.Text:="狀態：" p.name "｜啟動 Launcher..."
+    oldLaunchers:=LauncherWindows(launcher)
     Run '"' launcher '"'
-    updater:=WinWait(UPDATE_TITLE,,20)
+    updater:=WaitLauncherWindow(launcher,oldLaunchers,20)
     if !updater
         throw Error("Launcher/Updater Timeout：20 秒內沒有找到 Updater。")
-    EventLog(p.name, "STEP", "Updater 已出現")
+    EventLog(p.name, "STEP", "Updater 已出現｜" (LauncherNeedsClick(updater) ? "新版 Launcher：點「開始遊戲」" : "舊版 Updater：按 Enter"))
     WinActivate "ahk_id " updater
     try WinWaitActive "ahk_id " updater,,5
     WaitSeconds(5)
-    hwnd:=WaitGameWithRepeatedEnter(old,updater,180)
+    hwnd:=WaitGameWithRepeatedEnter(old,updater,180,launcher)
     if !hwnd
         throw Error("Game Window Timeout：180 秒內沒有找到新 HIHIYong 視窗。")
     activeRecoveryHwnd:=hwnd
@@ -5076,7 +5079,7 @@ ProfileGameAlive(p) {
             return false
         if WinGetProcessName("ahk_id " p.hwnd) != "game.exe"
             return false
-        if WinGetTitle("ahk_id " p.hwnd) != GAME_TITLE
+        if !IsGameTitle(WinGetTitle("ahk_id " p.hwnd))
             return false
     } catch {
         return false
@@ -5088,7 +5091,7 @@ FindNewGameByPid(oldPids) {
     global GAME_TITLE
     for hwnd in WinGetList("ahk_exe game.exe") {
         try {
-            if WinGetTitle("ahk_id " hwnd) != GAME_TITLE
+            if !IsGameTitle(WinGetTitle("ahk_id " hwnd))
                 continue
             pid := WinGetPID("ahk_id " hwnd)
             if !oldPids.Has(String(pid))
@@ -5098,7 +5101,7 @@ FindNewGameByPid(oldPids) {
     return 0
 }
 
-WaitGameWithRepeatedEnter(oldPids, updaterHwnd, timeoutSec := 180) {
+WaitGameWithRepeatedEnter(oldPids, updaterHwnd, timeoutSec := 180, launcher := "") {
     global abortRequested, Status
     start := A_TickCount
     nextEnter := 0
@@ -5111,18 +5114,98 @@ WaitGameWithRepeatedEnter(oldPids, updaterHwnd, timeoutSec := 180) {
             return found.hwnd
 
         if (A_TickCount >= nextEnter) {
+            ; 新版 Launcher 開啟時可能先閃一個視窗再換主視窗：原本的視窗不見了就重新找，不然會一直等到逾時都沒點到
+            if !WinExist("ahk_id " updaterHwnd) && launcher != "" {
+                list := LauncherWindows(launcher)
+                if list.Length
+                    updaterHwnd := list[1]
+            }
             if WinExist("ahk_id " updaterHwnd) {
                 try WinActivate "ahk_id " updaterHwnd
                 Sleep 100
-                SendEvent "{Enter}"
                 elapsed := Floor((A_TickCount - start) / 1000)
-                Status.Text := "狀態：等待新 game.exe PID｜已等待 " elapsed " 秒｜每 3 秒送 Enter"
+                if LauncherNeedsClick(updaterHwnd) {
+                    LauncherClickStart(updaterHwnd)
+                    Status.Text := "狀態：等待新 game.exe PID｜已等待 " elapsed " 秒｜每 3 秒點「開始遊戲」"
+                } else {
+                    SendEvent "{Enter}"
+                    Status.Text := "狀態：等待新 game.exe PID｜已等待 " elapsed " 秒｜每 3 秒送 Enter"
+                }
             }
             nextEnter := A_TickCount + 3000
         }
         Sleep 200
     }
     return 0
+}
+
+; 2026-11-15 官方換新版 Launcher：視窗標題改成「嗨嗨勇 · HIHI YONG」，Enter 不會進遊戲，要點右下角「開始遊戲」。
+; 舊版 Updater（標題 UPDATE_TITLE）照舊按 Enter；新版用 Launcher.exe 的可見視窗辨識。
+LauncherWindows(launcher) {
+    global UPDATE_TITLE
+    out:=[]
+    for h in WinGetList(UPDATE_TITLE)
+        out.Push(h)
+    SplitPath launcher,&exe
+    if exe=""
+        return out
+    for h in WinGetList("ahk_exe " exe) {
+        ; 只認這個 Launcher.exe 的路徑（別的程式也可能叫 Launcher.exe），且是可見、夠大的主視窗
+        path:=""
+        try path:=WinGetProcessPath("ahk_id " h)
+        if path="" || StrLower(path)!=StrLower(launcher) || !DllCall("IsWindowVisible","Ptr",h) || WinGetTitle("ahk_id " h)=""
+            continue
+        WinGetClientPos ,,&w,&ch,"ahk_id " h
+        if w>=400 && ch>=300
+            out.Push(h)
+    }
+    return out
+}
+
+; 等 Launcher 視窗出現：優先回傳這次新開的；Launcher 只允許單一視窗時（新開的直接喚出舊的）就用原本那個
+WaitLauncherWindow(launcher,oldHwnds,timeoutSec) {
+    global abortRequested
+    start:=A_TickCount
+    while A_TickCount-start < timeoutSec*1000 {
+        if abortRequested
+            throw Error("使用者停止測試。")
+        list:=LauncherWindows(launcher)
+        for h in list {
+            isOld:=false
+            for o in oldHwnds
+                if o=h
+                    isOld:=true
+            if !isOld
+                return h
+        }
+        if list.Length && A_TickCount-start > 3000
+            return list[1]
+        Sleep 250
+    }
+    return 0
+}
+
+LauncherNeedsClick(hwnd) {
+    global UPDATE_TITLE
+    try return WinGetTitle("ahk_id " hwnd)!=UPDATE_TITLE
+    return false
+}
+
+; 「開始遊戲」按鈕中心在 Client 的 (852,570) / 1000x650；用比例換算，視窗縮放也點得到。點完游標放回原處。
+LauncherClickStart(hwnd) {
+    WinGetClientPos &x,&y,&w,&h,"ahk_id " hwnd
+    if w<=0 || h<=0
+        return false
+    px:=Round(x+w*0.852), py:=Round(y+h*0.877)
+    prev:=CoordMode("Mouse","Screen")
+    MouseGetPos &mx,&my
+    CoordMode "Mouse",prev
+    DllCall("SetCursorPos","Int",px,"Int",py)
+    Sleep 60
+    Click
+    Sleep 60
+    DllCall("SetCursorPos","Int",mx,"Int",my)
+    return true
 }
 
 WaitForNewGameWindow(oldPids, timeoutSec) {
@@ -5304,10 +5387,10 @@ GetCoordTargetInfo(hwnd:=0) {
     global GAME_TITLE
     if !hwnd || !WinExist("ahk_id " hwnd) {
         active:=WinExist("A")
-        if active && WinExist(GAME_TITLE " ahk_id " active)
+        if active && WinExist(GAME_TITLE " ahk_exe game.exe ahk_id " active)
             hwnd:=active
         else {
-            list:=WinGetList(GAME_TITLE)
+            list:=WinGetList(GAME_TITLE " ahk_exe game.exe")
             if list.Length
                 hwnd:=list[1]
         }
@@ -5412,7 +5495,7 @@ StartSetup(*) {
         return
     }
 
-    hwnds := WinGetList(GAME_TITLE)
+    hwnds := WinGetList(GAME_TITLE " ahk_exe game.exe")
     if hwnds.Length = 0 {
         MsgBox "請先開啟一個 HIHIYong 遊戲視窗，停在任一登入相關畫面後再開始設定。`n`n設定過程可隨登入流程切換畫面，F7 會一直以同一個遊戲視窗為基準記錄。", APP_TITLE
         return
@@ -6922,7 +7005,7 @@ GetInventoryGameWindows() {
     global GAME_TITLE
     arr:=[]
     try {
-        for hwnd in WinGetList(GAME_TITLE) {
+        for hwnd in WinGetList(GAME_TITLE " ahk_exe game.exe") {
             try {
                 pid:=WinGetPID("ahk_id " hwnd)
                 if pid && ProcessExist(pid)

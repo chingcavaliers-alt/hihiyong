@@ -73,7 +73,7 @@ StageText(st) => st = "server" ? "伺服器選擇" : st = "login" ? "輸入帳�
 
 Candidates() {
     out := []
-    for hw in WinGetList("HIHIYong2.0") {
+    for hw in WinGetList("HIHIYong ahk_exe game.exe") {
         pid := WinGetPID("ahk_id " hw)
         WinGetClientPos , , &cw, &ch, "ahk_id " hw
         if cw < 640

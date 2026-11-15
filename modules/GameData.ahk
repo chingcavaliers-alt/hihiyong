@@ -521,8 +521,17 @@ GameOffsetsResolveTick() {
         EventLog("GLOBAL",gameOffsetsResolveKind="derive" ? "GAME_OFFSETS_DERIVED" : "GAME_OFFSETS_OK","Build=" gameOffsets["Build"] "｜Gaea=" gameOffsets["GaeaInstanceRva"] "｜HP=Char+" gameOffsets["HpNowOffset"] "｜Money=Char+" gameOffsets["MoneyOffset"]
             . (gameOffsetsResolveKind="derive" ? "｜由 " gameOffsets.Get("DerivedFrom","?") " 推算（沒有 Game.pdb）" : ""))
         AddRecentEvent("✓ 已取得新版遊戲資料位置（HP / 金幣 / 背包），不需要校正")
-        if gameOffsetsResolveKind="derive"
+        if gameOffsetsResolveKind="derive" {
             GameOffsetsCompareStatic(gameOffsets["Build"])
+            ; 角色欄位（寵物 / 雇傭兵 / 快捷欄 / 裝備 / 座標…）由舊版 game.exe 比對推算；比對不了或有欄位確認不了要讓人知道
+            if gameOffsets.Has("FieldError") {
+                EventLog("GLOBAL","GAME_OFFSETS_FIELD_WARN",gameOffsets["FieldError"])
+                AddRecentEvent("⚠ 新版有部分角色資料位置無法確認（寵物 / 雇傭兵 / 快捷欄等可能讀錯），詳見 Log")
+            } else if gameOffsets.Has("FieldNote") {
+                EventLog("GLOBAL","GAME_OFFSETS_FIELD_WARN",gameOffsets["FieldNote"])
+                AddRecentEvent("⚠ 新版角色資料位置未比對（缺少舊版 game.exe），寵物 / 雇傭兵 / 快捷欄等可能讀錯")
+            }
+        }
         ; 讓目前的 session 改用新位置，並重新走「連續讀到合理 HP 才啟用死亡判定」。
         for p in profiles {
             if !p.HasOwnProp("memHpStale") || !ProfileGameAlive(p)

@@ -86,7 +86,8 @@ class Game:
         pe = struct.unpack_from("<I", hdr, 0x3C)[0]
         n = struct.unpack_from("<H", hdr, pe + 6)[0]
         opt = struct.unpack_from("<H", hdr, pe + 20)[0]
-        self.build = f"{struct.unpack_from('<I', hdr, pe + 8)[0]:08X}-{struct.unpack_from('<I', hdr, pe + 0x50)[0]:X}"
+        self.image_size = struct.unpack_from('<I', hdr, pe + 0x50)[0]
+        self.build = f"{struct.unpack_from('<I', hdr, pe + 8)[0]:08X}-{self.image_size:X}"
         self.secs = {}
         so = pe + 24 + opt
         for i in range(n):
@@ -521,6 +522,177 @@ def compose(ref, deltas, vdelta, build):
     return out
 
 
+# ----------------------------------------------------------------- 角色欄位（結構內部偏移）
+# 2026-11-15 改版：GLCharacter 中間插了新欄位，後面的欄位整串 +0x118 / +0x140，只驗證名字 / 血量的推算沒發現，
+# 寵物 / 雇傭兵 / 快捷欄 / 每日道具到期 / 座標全部讀錯。這裡拿舊版 game.exe（game_ref\<參考版本>.exe）和新版比對：
+# 程式碼裡「mov reg,[reg+欄位偏移]」這種指令前後的機器碼當特徵，到新版找同一處、讀出新的偏移；
+# 找不到的欄位用前後已確定欄位的平移量推（兩邊相同才採用），再用執行中的遊戲記憶體逐項核對（座標、裝備、時間、寵物）。
+CHAR_FIELDS = ("CharNameOffset", "CharClassOffset", "MoneyOffset", "ExpNowOffset", "HpNowOffset", "HpMaxOffset",
+               "PutOnItemsOffset", "SkillQuickActOffset", "SkillQuickOffset", "ActionQuickOffset", "InvenOffset",
+               "BankOffset", "AutoSkillActiveOffset", "AutoHuntOffset", "CoolMapTypeOffset", "MagicDollOffset",
+               "SkillFactOffset", "QItemFactOffset", "VehicleOnOffset", "CharPosOffset", "CharActionOffset",
+               "CharActStateOffset", "CharTargetOffset", "CharTarNumOffset", "CharTarIdsOffset", "RunSkillOffset",
+               "ActiveSkillOffset", "CharSummonGuidOffset", "VehicleReqOffset", "VehicleActiveOffset",
+               "CharMouseTargetOffset", "CharMyTargetOffset")
+GAEA_FIELDS = ("PetValidOffset", "SummonValidOffset", "ServerTimeOffset")   # GLGaeaClient 上、角色物件後面的欄位
+
+
+def exe_text(path):
+    b = Path(path).read_bytes()
+    pe = struct.unpack_from("<I", b, 0x3C)[0]
+    n = struct.unpack_from("<H", b, pe + 6)[0]
+    opt = struct.unpack_from("<H", b, pe + 20)[0]
+    for i in range(n):
+        nm, vs, va, rs, ro = struct.unpack_from("<8sIIII", b, pe + 24 + opt + i * 40)
+        if nm.rstrip(b"\0") == b".text":
+            return b[ro:ro + rs]
+    raise Derive(f"{path} 沒有 .text 區段")
+
+
+def field_votes(old, new, x):
+    """舊版程式碼裡用到偏移 x（disp32）的指令，在新版找到同樣前後文時讀出的新偏移，回傳 {新偏移: 票數}。"""
+    pat = struct.pack("<I", x)
+    votes = {}
+    i = old.find(pat, 2)
+    seen = 0
+    while i != -1 and seen < 300:
+        m, m2 = old[i - 1], old[i - 2]
+        if ((m >> 6) == 2 and (m & 7) != 4) or ((m2 >> 6) == 2 and (m2 & 7) == 4):
+            seen += 1
+            for nb, na in ((12, 8), (10, 8), (8, 6), (6, 4)):
+                if i < nb:
+                    continue
+                rx = re.escape(old[i - nb:i]) + b"(?s:....)" + re.escape(old[i + 4:i + 4 + na])
+                ms = [mt.start() for mt in re.finditer(rx, new)]
+                if 1 <= len(ms) <= 2:
+                    for q in ms:
+                        v = struct.unpack_from("<I", new, q + nb)[0]
+                        votes[v] = votes.get(v, 0) + 1
+                    break
+        i = old.find(pat, i + 1)
+    return votes
+
+
+class FieldCheck:
+    """用執行中的遊戲核對欄位位置：True = 對、False = 不對、None = 資料不夠判斷（例如沒叫寵物）。"""
+    def __init__(self, g, gaea, ref):
+        self.g, self.gaea, self.ref = g, gaea, ref
+        self.char = gaea + int(ref["CharOffset"], 16)
+
+    def check(self, key, off):
+        fn = getattr(self, "c_" + key, None)
+        if not fn:
+            return None
+        try:
+            return fn(off)
+        except (struct.error, TypeError):
+            return False
+
+    def c_CharPosOffset(self, off):
+        d = rd(self.g.h, self.char + off, 12)
+        x, y, z = struct.unpack("<3f", d)
+        ok = all(v == v and abs(v) < 1e6 for v in (x, y, z))
+        return ok and (abs(x) > 1 or abs(z) > 1)
+
+    def c_PutOnItemsOffset(self, off):
+        size = int(self.ref.get("ItemCustomSize", "0x120"), 16)
+        born = int(self.ref.get("BornTimeOffset", "0x8"), 16)
+        good = 0
+        for s in range(8):
+            d = rd(self.g.h, self.char + off + s * size, born + 4)
+            nid = struct.unpack_from("<I", d, 0)[0]
+            t = struct.unpack_from("<I", d, born)[0]
+            if nid not in (0, 0xFFFFFFFF) and 1_400_000_000 < t < 2_200_000_000:
+                good += 1
+        return True if good >= 2 else (None if good == 0 else False)
+
+    def c_ServerTimeOffset(self, off):
+        t = struct.unpack("<q", rd(self.g.h, self.gaea + off, 8))[0]
+        return abs(t - datetime.now().timestamp()) < 3 * 86400
+
+    def _flag(self, off):
+        d = rd(self.g.h, self.gaea + off - 8, 9)
+        p, flag = struct.unpack_from("<Q", d, 0)[0], d[8]
+        if p == 0 and flag == 0:
+            return None
+        # 旗標前面是指向 game.exe 映像內（.data / .rdata）的指標
+        return self.g.base <= p < self.g.base + self.g.image_size and flag in (0, 1)
+
+    c_PetValidOffset = _flag
+    c_SummonValidOffset = _flag
+
+
+def fix_fields(g, gaea, ref, values, ref_exe, new_exe):
+    """回傳 (改過的 values, 說明)；舊版 game.exe 不在就原樣回傳（欄位沿用參考版本，和以前一樣）。"""
+    if not ref_exe or not Path(ref_exe).is_file():
+        values["FieldNote"] = "沒有參考版本的 game.exe（game_ref），角色欄位沿用參考版本、未比對"
+        return values, "skip"
+    old, new = exe_text(ref_exe), exe_text(new_exe)
+    char_off = int(ref["CharOffset"], 16)
+    chk = FieldCheck(g, gaea, ref)
+    pos = {}                                     # 欄位 → 在角色物件裡的位置（Gaea 欄位換算成角色座標）
+    for k in CHAR_FIELDS:
+        if k in ref:
+            pos[k] = int(ref[k], 16)
+    for k in GAEA_FIELDS:
+        if k in ref and int(ref[k], 16) > char_off:
+            pos[k] = int(ref[k], 16) - char_off
+    shift, weak = {}, {}
+    anchor =int(ref.get("HpMaxOffset", "0"), 16)      # 名字 / 血量已由 valid_gaea 驗證過，它們之前的欄位不動
+    for k, p in pos.items():
+        if p <= anchor:
+            shift[k] = 0
+    for k, p in pos.items():
+        if k in shift or p < 0x1000:              # 太小的偏移在程式碼裡到處都是（別的結構也用），比對不可靠
+            continue
+        v = field_votes(old, new, int(ref[k], 16))
+        top = sorted(v.items(), key=lambda kv: -kv[1])
+        if top and top[0][1] >= 2 and (len(top) == 1 or top[0][1] >= 2 * top[1][1]):
+            shift[k] = top[0][0] - int(ref[k], 16)
+        elif len(top) == 1:
+            weak[k] = top[0][0] - int(ref[k], 16)   # 只有一處對上：要和前後欄位的平移量一致才採用
+    known = sorted((pos[k], shift[k]) for k in shift)
+    errors = []
+    for k, p in sorted(pos.items(), key=lambda kv: kv[1]):
+        if k in shift:
+            continue
+        lo = [s for q, s in known if q < p]
+        hi = [s for q, s in known if q > p]
+        cands = []
+        for s in ([lo[-1]] if lo else []) + ([hi[0]] if hi else []):
+            if s not in cands:
+                cands.append(s)
+        if len(cands) == 1:
+            shift[k] = cands[0]
+            continue
+        if weak.get(k) in cands:
+            shift[k] = weak[k]
+            continue
+        ok = [s for s in cands if chk.check(k, int(ref[k], 16) + s)]
+        if len(ok) == 1:
+            shift[k] = ok[0]
+        else:
+            errors.append(k)
+    # 有記憶體核對的欄位：比對結果核對不過、而前後平移量其中一個核對得過 → 用核對得過的
+    for k in list(shift):
+        if chk.check(k, int(ref[k], 16) + shift[k]) is False:
+            alts = {s for _, s in known} - {shift[k]}
+            good = [s for s in alts if chk.check(k, int(ref[k], 16) + s)]
+            if len(good) == 1:
+                shift[k] = good[0]
+            else:
+                del shift[k]
+                errors.append(k)
+    moved = 0
+    for k, s in shift.items():
+        if s:
+            values[k] = f"0x{int(ref[k], 16) + s:X}"
+            moved += 1
+    if errors:
+        values["FieldError"] = "新版推算時無法確認這些角色欄位（沿用參考版本，可能讀錯）：" + ",".join(sorted(errors))
+    return values, f"fields moved={moved} unsure={len(errors)}"
+
+
 def write_ini(path, values, status, error=""):
     lines = ["[GameOffsets]", f"Status={status}", f"ToolVersion={TOOL_VERSION}",
              f"ResolvedAt={datetime.now():%Y-%m-%d %H:%M:%S}"]
@@ -536,6 +708,7 @@ def main():
     ap.add_argument("--pid", type=int, action="append", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--db", type=Path, required=True)
+    ap.add_argument("--ref-exe", type=Path, help="參考版本的 game.exe（預設 offsets_db 旁邊的 game_ref\\<參考版本>.exe）")
     args = ap.parse_args()
     build = ""
     try:
@@ -547,7 +720,16 @@ def main():
                 build = g.build
                 ref = pick_reference(args.db, build)
                 deltas, vdelta = derive_one(g, ref)
-                result = (compose(ref, deltas, vdelta, build), ref)
+                values = compose(ref, deltas, vdelta, build)
+                gaea = g.base + int(ref["GaeaInstanceRva"], 16) + deltas["GaeaInstanceRva"]
+                ref_exe = args.ref_exe or (args.db.parent / "game_ref" / f"{ref['Build']}.exe")
+                try:
+                    values, note = fix_fields(g, gaea, ref, values, ref_exe, args.exe)
+                except Exception as exc:     # 比對失敗不擋全域位置的結果（欄位沿用參考版本，和以前一樣）
+                    values["FieldNote"] = f"角色欄位比對失敗：{exc}".replace("\n", " ")
+                    note = "fields failed"
+                print(note)
+                result = (values, ref)
                 break
             except Derive as e:
                 errors.append(f"{pid}: {e}")
