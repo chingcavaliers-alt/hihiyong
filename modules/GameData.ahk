@@ -1090,6 +1090,27 @@ GameQuickKeysRva(pid,h,base,cnt) {
     off:=gameQuickKeysFix.Get(build,GameOffset("QuickKeysRva"))
     if GameQuickKeysValidAt(h,base+off,cnt)
         return off
+    ; 位置和隨程式附上（作者驗證過）的 offsets_db 一樣：表前面的遊戲選項每台電腦不同（11/15 另一台電腦連「只看形狀」都對不上，
+    ; 掃描反而抓到旁邊長得像的表 0x1504420，寵物 / 娃娃按成 6 / 7）。這時只看 6 個掃描碼本身，不掃描附近。
+    if off=GameQuickKeysShipped(build) {
+        buf:=GameReadBuf(h,base+off-24,24+cnt*4)
+        if buf && GameQuickKeysCodesOk(buf,24,cnt) {
+            if !gameQuickKeysWarned.Has(build "_trust") {
+                gameQuickKeysWarned[build "_trust"]:=1
+                hex:=""
+                Loop 6
+                    hex.=Format("{:08X} ",NumGet(buf,(A_Index-1)*4,"UInt"))
+                try EventLog("GLOBAL","QUICKKEYS_OFFSET_TRUSTED","快捷鍵表 0x" Format("{:X}",off) " 前面的遊戲選項和預期不同（" Trim(hex) "），位置和附上的已驗證資料相同，照用｜版本 " build)
+            }
+            return off
+        }
+        if !gameQuickKeysWarned.Has(build) {
+            gameQuickKeysWarned[build]:=1
+            try EventLog("GLOBAL","QUICKKEYS_OFFSET_BAD","快捷鍵表 0x" Format("{:X}",off) " 讀到的按鍵不合理（有空格或重複）｜版本 " build "｜改用設定檔的備用鍵")
+            try AddRecentEvent("⚠ 讀不到遊戲的快捷鍵設定：寵物 / 雇傭兵 / 每日道具改用設定檔的備用鍵")
+        }
+        return 0
+    }
     found:=GameQuickKeysScan(h,base,off,cnt)
     if found {
         gameQuickKeysFix[build]:=found
@@ -1102,6 +1123,37 @@ GameQuickKeysRva(pid,h,base,cnt) {
         try AddRecentEvent("⚠ 讀不到遊戲的快捷鍵設定（遊戲更新？）：寵物 / 雇傭兵 / 每日道具改用設定檔的備用鍵")
     }
     return 0
+}
+; 隨程式附上的 offsets_db\<版本>.ini 裡的快捷鍵位置（讀不到回傳 -1）
+global gameQuickKeysShippedCache := Map()
+GameQuickKeysShipped(build) {
+    global GAME_OFFSETS_DB_DIR, gameQuickKeysShippedCache
+    if gameQuickKeysShippedCache.Has(build)
+        return gameQuickKeysShippedCache[build]
+    v:=-1
+    try {
+        s:=IniRead(GAME_OFFSETS_DB_DIR "\" build ".ini","GameOffsets","QuickKeysRva","")
+        if s!=""
+            v:=Integer(s)
+    }
+    gameQuickKeysShippedCache[build]:=v
+    return v
+}
+; 只看掃描碼：1～255、不重複，而且不是 6 個連號（差 0x20 的錯位置是數字鍵那張表 4..9 = 5,6,7,8,9,10；差 8 位元組會讀到開頭的 2,3 / 3,3）
+GameQuickKeysCodesOk(buf,at,cnt) {
+    seen:=Map(),prev:=0,run:=true
+    Loop cnt {
+        v:=NumGet(buf,at+(A_Index-1)*4,"Int")
+        if v<1 || v>255 || seen.Has(v)
+            return false
+        if A_Index>1 && v!=prev+1
+            run:=false
+        seen[v]:=1,prev:=v
+    }
+    if run
+        return false
+    ; 差 8 位元組：前兩格其實是開頭的最後兩項（2,3 / 3,3 這類小整數）；前兩格都 ≤ 4（Esc、1、2、3）就當作錯位，寧可改用備用鍵
+    return !(NumGet(buf,at,"Int")<=4 && NumGet(buf,at+4,"Int")<=4)
 }
 GameQuickKeysValidAt(h,addr,cnt) {
     buf:=GameReadBuf(h,addr-24,24+cnt*4)
