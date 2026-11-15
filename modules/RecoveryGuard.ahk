@@ -200,6 +200,13 @@ RecoveryGuardPostCheck(p) {
         p.rgDue:=0
         return
     }
+    ; 自動採礦中的角色：自動攻擊、擊殺數都由採礦自己管（礦場裡本來就關著 F6、也沒有擊殺）。
+    ; 11/15 21:55 椰奶重新登入後在礦場被這裡「補開 F6」，10 秒後王出現，自動攻擊還沒停下來就切打王技能，按 F5 切不過去、王沒打。
+    if p.HasOwnProp("mnActive") && p.mnActive {
+        EventLog(p.name,"RECOVERY_CHECK_OK","重新登入後檢查略過：自動採礦中，自動攻擊 / 擊殺由採礦負責")
+        p.rgDue:=0
+        return
+    }
     ; 死亡中 / 換地圖中：交給死亡監控與復活輔助，下一輪再看。
     if p.hpEventOpen || !GameInWorld(p.pid) || RecoveryGuardBusy()
         return

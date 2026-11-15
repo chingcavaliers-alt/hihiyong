@@ -1049,6 +1049,29 @@ MnBossSkillPlan(p) {
     }
     return {key: MN_BOSS_BAR > 0 ? "F" MN_BOSS_BAR : "", code: MN_BOSS_SKILL, byClass: false, cls: cls, slot: MN_BOSS_BAR}
 }
+; 等自動攻擊真的關掉：本來就關著回傳 false；等過（或補按了 F6）回傳 true。讀不到狀態（-1）就不等。
+MnWaitAutoAttackOff(p) {
+    global mnTestInput
+    if IsObject(mnTestInput)
+        return false
+    auto := -1, fnm := "ReadGameAutoAttack"   ; AutoAttack.ahk 沒載入時（單元測試）不呼叫
+    try {
+        rd := %fnm%
+        auto := rd(p.pid)
+    }
+    if auto != 1
+        return false
+    EventLog(p.name, "MN_BOSS_F6", "打王前自動攻擊還開著，等它停下來")
+    Loop 6 {
+        Sleep 500
+        try auto := rd(p.pid)
+        if auto != 1
+            return true
+        if A_Index = 3
+            ApKey(p, "F6")
+    }
+    return true
+}
 MnEnsureBossSkill(p) {
     global MN_BOSS_BAR
     pid := p.pid
@@ -1067,7 +1090,11 @@ MnEnsureBossSkill(p) {
         if me.runSkill != plan.code {
             if plan.key = ""
                 throw Error("右鍵技能是 " MnSkillText(pid, me.runSkill) "，要的是 " plan.code "，又沒有設定技能欄可以切，不開打")
-            Loop 2 {
+            ; 自動攻擊（F6）還在跑時，右鍵技能被它佔著、按 F 鍵切不過去（11/15 21:55 椰奶：F6 剛按關、遊戲 2 秒後才真的停）。
+            ; 先等它真的停下來（最多約 3 秒；還開著就再按一次 F6）。
+            if MnWaitAutoAttackOff(p)
+                me := MiningCharState(pid)
+            Loop 3 {
                 EventLog(p.name, "MN_BOSS_SKILLBAR", "右鍵技能是 " MnSkillText(pid, me.runSkill) "，要的是 " plan.code "，按 " plan.key " 選技能（第 " A_Index " 次）")
                 ApKey(p, plan.key)
                 Sleep 600

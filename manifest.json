@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.90.39",
+  "version": "v1.3.90.40",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "86720c5f2a9d7d2cb4718537f06dbfecc66bc6b17557e04855f598fdf89da39c"
+      "sha256": "cf43a2c92fd36dbcc76574100384ce2db9d1b85982e484da5ebf507bd4b24e24"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "a3961158379a64cca6496cd2ed99030c8a8e07092fa23734cb778e7d3a2fd373"
+      "sha256": "36a5d30d589e9f4c67630ae700691fb8b93449ca5ba1326c889cbd6d862ef15c"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -135,7 +135,7 @@
     },
     {
       "path": "modules\\AutoMining.ahk",
-      "sha256": "833ad9d968a943ed2f98df29598520d31dbd0507f13ee1599ea47fa4ae65a99b"
+      "sha256": "4dc3f7c4b023c03e7314dd8c5e1160cc89bc74d252b75809adc28f0e2860a4e5"
     },
     {
       "path": "modules\\AutoParty.ahk",
@@ -247,7 +247,7 @@
     },
     {
       "path": "modules\\RecoveryGuard.ahk",
-      "sha256": "f76055bd0c7484a09e30d6f3754e71df9001ec4ffe8ef8da70e411626278916a"
+      "sha256": "c9e35bd82c95cee21ecf0dcdfc167f0399a1eef805d3172da1b411aa39dbec3d"
     },
     {
       "path": "modules\\RecoveryQueue.ahk",
@@ -499,7 +499,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "a783d4c2aa1d335d9dd2affea8b0d1d86954e51890c586d09cf88b7d1b77712e"
+      "sha256": "27fdbaad0004d7457a0e0caf0f0d36bee0c4d740d37f9d1c6a4e6a90b36c3eec"
     }
   ]
 }
