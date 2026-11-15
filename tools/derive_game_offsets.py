@@ -293,6 +293,28 @@ class Finder:
         flag = rd(g.h, head + 0x19, 1)
         return bool(flag) and flag[0] == 1
 
+    def v_friend_named(self, rva):
+        """好友表裡至少有一個人、名字讀得出來。空的 std::map 到處都有（11/15 推到附近一個空表，組隊全部「不在好友名單」）。"""
+        if not self.v_friend(rva):
+            return False
+        g, H = self.g, self.H
+        head = self.data_u64(rva + H("FriendMapOffset"))
+        cnt = self.data_u64(rva + H("FriendMapOffset") + 8)
+        if not cnt:
+            return False
+        root = u64(g.h, head + 8)
+        node = rd(g.h, root, 0x40) if isptr(g.h, root) else None
+        if not node or node[0x19]:
+            return False
+        size, cap = struct.unpack_from("<QQ", node, 0x30)
+        if not 1 <= size <= 33:
+            return False
+        raw = node[0x20:0x20 + size] if cap < 16 else rd(g.h, struct.unpack_from("<Q", node, 0x20)[0], size)
+        try:
+            return bool(raw) and raw.decode("cp950").isprintable()
+        except UnicodeDecodeError:
+            return False
+
     def v_party(self, rva):
         g, H = self.g, self.H
         pid_ = self.data_u64(rva + H("PartyIdOffset"))
@@ -396,7 +418,11 @@ def derive_one(g, ref):
     for key, validator in (("ItemManInstanceRva", f.v_itemman), ("StringTableInstanceRva", f.v_strtable),
                            ("ViewPortInstanceRva", f.v_viewport), ("InnerInterfaceRva", f.v_inner),
                            ("GlobalStageRva", f.v_stage), ("FriendInstanceRva", f.v_friend)):
-        d = f.nearest(key, validator, dg)
+        d = None
+        if key == "FriendInstanceRva":     # 先找有好友、名字讀得出來的；所有行程都沒好友才退回只看表的形狀
+            d = f.nearest(key, f.v_friend_named, dg)
+        if d is None:
+            d = f.nearest(key, validator, dg)
         if d is None:
             raise Derive(f"對不上 {key}")
         deltas[key] = d
