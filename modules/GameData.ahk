@@ -1081,7 +1081,7 @@ ReadGameQuickKeys(pid, raw := false) {
 
 ; 快捷鍵表的位置要先核對：表前面 24 位元組是固定開頭（1,1,1.0f,1.0f,…；11/14 6AF77EDC 實測後兩項從 2,3 變 3,3），
 ; 後面 cnt 個掃描碼都在 1～255 而且不重複。2026-11-14 遊戲更新後推導工具誤中差 0x20 的另一組數字（4..9），
-; 寵物卡變成按 6（其實是魔法娃娃那格）、還把打王的右鍵技能蓋掉：核對不過就在附近 ±0x400 找「只有一處」對得上的位置，
+; 寵物卡變成按 6（其實是魔法娃娃那格）、還把打王的右鍵技能蓋掉：核對不過就在附近 ±0x400 找離原位置最近、對得上的位置，
 ; 找到就暫時改用並記日誌（同 ReadGameServerTime 的做法）；找不到回傳 0，呼叫端改用設定檔的備用鍵（DailyQuickInfo）或不按。
 global gameQuickKeysFix := Map(), gameQuickKeysWarned := Map()
 GameQuickKeysRva(pid,h,base,cnt) {
@@ -1111,8 +1111,18 @@ GameQuickKeysValidAt(h,addr,cnt) {
 GameQuickKeysValidBuf(buf,at,cnt) {
     if at<24 || buf.Size<at+cnt*4
         return false
-    if NumGet(buf,at-24,"Int")!=1 || NumGet(buf,at-20,"Int")!=1 || NumGet(buf,at-16,"UInt")!=0x3F800000 || NumGet(buf,at-12,"UInt")!=0x3F800000
-        return false
+    ; 開頭 24 位元組其實是遊戲選項（兩個開關、兩個 0～1 的比例、兩個小整數），每台電腦設定不同：
+    ; 11/15 另一台電腦的值和這台不一樣，正確位置被判成「核對不過」、寵物 / 雇傭兵改用備用鍵。只看形狀不看實際值；
+    ; 差 8 位元組（開頭 1.0f 落在開關位置）、差 0x20（開頭落在掃描碼 16,17,18…）的錯位置仍然對不上。
+    loop 2
+        if (v:=NumGet(buf,at-28+A_Index*4,"Int"))<0 || v>1
+            return false
+    loop 2
+        if !((f:=NumGet(buf,at-20+A_Index*4,"Float"))>=0 && f<=1)
+            return false
+    loop 2
+        if (v:=NumGet(buf,at-12+A_Index*4,"Int"))<0 || v>10
+            return false
     seen:=Map()
     Loop cnt {
         v:=NumGet(buf,at+(A_Index-1)*4,"Int")
@@ -1127,14 +1137,20 @@ GameQuickKeysScan(h,base,oldOff,cnt) {
     buf:=GameReadBuf(h,base+lo-24,0x800+24+cnt*4)
     if !buf
         return 0
-    hit:=0,n:=0
+    ; 開頭只看形狀之後，附近還有幾張長得像的表（6AF9AB5E 實測：正確位置後面 +0x130～+0x180 有 4 處）：
+    ; 取離原位置最近的一處；最近的有兩處（一樣遠）就不猜
+    hit:=0,best:=0x7FFFFFFF,tie:=false
     Loop 0x800//4 {
         o:=24+(A_Index-1)*4
         if GameQuickKeysValidBuf(buf,o,cnt) {
-            n+=1,hit:=lo+o-24
+            at:=lo+o-24,dist:=Abs(at-oldOff)
+            if dist<best
+                best:=dist,hit:=at,tie:=false
+            else if dist=best
+                tie:=true
         }
     }
-    return n=1 ? hit : 0
+    return tie ? 0 : hit
 }
 
 ; 寵物現在是否在外面：1 = 在外面，0 = 不在，讀不到（舊位置檔 / 讀取失敗）回傳 -1。

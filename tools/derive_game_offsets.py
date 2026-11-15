@@ -365,6 +365,17 @@ class Finder:
         d = rd(self.g.h, self.g.base + rva - 24, 16)
         return bool(d) and struct.unpack("<4i", d) == (1, 1, 0x3F800000, 0x3F800000)
 
+    def v_quick_shape(self, rva):
+        """前面 24 位元組其實是遊戲選項（兩個開關 0/1、兩個 0～1 的比例、兩個 0～10 的小整數），每台電腦值不同：
+        11/15 另一台電腦開頭和這台不同，head 對不上、tail 誤中差 0x20 的位置（0x1504310）。只看形狀（和管理程式執行時的核對相同）。"""
+        if not self.v_quick(rva):
+            return False
+        d = rd(self.g.h, self.g.base + rva - 24, 24)
+        if not d:
+            return False
+        a, b, f1, f2, c, e = struct.unpack("<2i2f2i", d)
+        return a in (0, 1) and b in (0, 1) and 0 <= f1 <= 1 and 0 <= f2 <= 1 and 0 <= c <= 10 and 0 <= e <= 10
+
     def v_quick_strict(self, rva):
         """在 v_quick 之外，還要求前面 24 位元組是已知的固定開頭（1,1,1.0f,1.0f,2,3）。
         11/06 發現只看「6 個不重複的掃描碼」會誤中旁邊另一張表（差 0x60），按錯鍵。"""
@@ -448,6 +459,8 @@ def derive_one(g, ref):
         d = f.nearest("QuickKeysRva", f.v_quick_strict, dg)
         if d is None:   # 完整開頭對不上：先退到「開頭前 4 項」，再退到「前面緊接著 (2, 3)」，再不行才退回只看掃描碼
             d = f.nearest("QuickKeysRva", f.v_quick_head, dg)
+        if d is None:
+            d = f.nearest("QuickKeysRva", f.v_quick_shape, dg)
         if d is None:
             d = f.nearest("QuickKeysRva", f.v_quick_tail, dg)
         if d is None:
