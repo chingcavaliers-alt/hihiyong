@@ -34,6 +34,7 @@ global MN_RUNNING := 0
 global MN_RESUME := 0, MN_RESUMED := false   ; 重開程式後自動接續採礦（設定檔 [AutoMining] ResumeOnStart / Running）
 global MN_HANG_MS := Max(2, Integer(MnIniGet("GatherHangMin", "5"))) * 60000   ; 採集動作一直沒結束（正常約 60 秒）累積超過這麼久 = 假在線，走假在線自動重新登入
 global MN_STALL_MS := 900000                 ; 15 分鐘沒有任何進展 = 卡住（通知 Discord）
+global MN_BOSS_SKILL_RECHECK_MS := 600000    ; 右鍵技能不對沒打王：10 分鐘後再按鍵試；期間每回合讀記憶體，改好就提早去打
 global mnBusy := false
 global MN_BOSS_BAR := Min(10, Max(0, Integer(MnIniGet("BossBar", "8"))))   ; 打王要求的技能欄 F1～F10（0 = 不檢查）
 global MN_BOSS_SKILL := Trim(MnIniGet("BossSkill", "15-0"))               ; 打王要求的右鍵技能代碼（預設 15-0 群魔亂舞；空白 = 只檢查技能欄）
@@ -789,6 +790,15 @@ MnPlan(p) {
         return {action: "wait", text: "等待：" fpWhy, wait: 2000}
     if MN_BOSS_ON {   ; 王活著（在怪物清單裡）就先去打；採集中的那一顆已經在上面先等它採完
         boss := MnFindBoss(pid)
+        ; 上次因右鍵技能不對沒打：等待期間每回合只讀記憶體（不按鍵），右鍵技能已經改成要的就提早去打
+        if IsObject(boss) && A_TickCount < st.bossSkip && st.HasOwnProp("bossSkillWant") && st.bossSkillWant != "" {
+            me := 0
+            try me := MiningCharState(pid)
+            if IsObject(me) && me.runSkill = st.bossSkillWant {
+                EventLog(p.name, "MN_BOSS_SKILL_OK", "右鍵技能已改成 " st.bossSkillWant "，去打王")
+                st.bossSkip := 0
+            }
+        }
         if IsObject(boss) && A_TickCount >= st.bossSkip
             return {action: "boss", boss: boss}
     }
@@ -849,6 +859,15 @@ MnRun(p, d) {
             st.next := A_TickCount + 20000
             st.text := "⏸ " e.Message "（稍後再試）"
             EventLog(p.name, "MN_STOP", e.Message "｜距離上次實體鍵鼠輸入 " A_TimeIdlePhysical " 毫秒")
+        } else if e.Extra = "skill" {
+            ; 右鍵技能不對：不是重試能好的錯，不退避、繼續採礦（11/15 椰奶每 2～3 分鐘試一次、每次停 30 秒，效率掉約 15%）
+            st.next := A_TickCount
+            EventLog(p.name, "MN_BOSS_SKILL_WRONG", e.Message "｜繼續採礦，" Round(MN_BOSS_SKILL_RECHECK_MS / 60000) " 分鐘內你改好右鍵技能就馬上去打")
+            if !st.HasOwnProp("bossSkillAlertAt") || A_TickCount - st.bossSkillAlertAt > 1800000 {
+                st.bossSkillAlertAt := A_TickCount
+                AddRecentEvent("⚔ " p.name " 王出現但右鍵技能不對，沒打：" e.Message)
+                try SendDiscordMessage("⚠️ HIHIYONG 礦場王出現但沒打`n角色：" p.name "`n" e.Message "`n改好後程式會自動去打。")
+            }
         } else {
             st.fails += 1
             wait := Min(600000, 30000 * (2 ** Min(st.fails - 1, 4)))
@@ -1102,8 +1121,12 @@ MnEnsureBossSkill(p) {
                 if IsObject(me) && me.runSkill = plan.code
                     break
             }
-            if !IsObject(me) || me.runSkill != plan.code
-                throw Error("右鍵技能是 " (IsObject(me) ? MnSkillText(pid, me.runSkill) : "?") "，要的是 " MnSkillText(pid, plan.code) "，按 " plan.key " 也切不過去（技能欄不在第 1 排？），不開打；請手動把右鍵技能選好" (plan.byClass ? "" : "，或到頁面改技能代碼"))
+            if !IsObject(me) || me.runSkill != plan.code {
+                ; 按 F 鍵是「施放」那一格，不會改右鍵技能（11/14 欸等等、11/15 椰奶每次都切不過去），重試也沒用：
+                ; 記下要的技能，交給 MnPlan 每回合讀記憶體確認（不按鍵），你手動改好就馬上去打；這段期間照常採礦、不退避
+                MnSt(p).bossSkillWant := plan.code
+                throw Error("右鍵技能是 " (IsObject(me) ? MnSkillText(pid, me.runSkill) : "?") "，要的是 " MnSkillText(pid, plan.code) "，按 " plan.key " 也切不過去，不開打；請手動把右鍵技能選好" (plan.byClass ? "" : "，或到頁面改技能代碼"), , "skill")
+            }
         }
     } else if MN_BOSS_BAR > 0 && Mod(me.skillBar, 10) + 1 != MN_BOSS_BAR {
         EventLog(p.name, "MN_BOSS_SKILLBAR", "技能欄是 F" (me.skillBar + 1) "，要求 F" MN_BOSS_BAR "，按 F" MN_BOSS_BAR " 切過去")
@@ -1282,9 +1305,10 @@ MnFightBossCore(p, boss) {
     try {
         MnEnsureBossSkill(p)
     } catch as e {
-        st.bossSkip := A_TickCount + (e.Extra = "stop" ? 20000 : 120000)
+        st.bossSkip := A_TickCount + (e.Extra = "stop" ? 20000 : e.Extra = "skill" ? MN_BOSS_SKILL_RECHECK_MS : 120000)
         throw e
     }
+    st.bossSkillWant := ""
     EventLog(p.name, "MN_BOSS_START", boss.name "#" boss.glob "｜(" Round(boss.x) "," Round(boss.z) ")｜HP 欄位 " boss.hp)
     AddRecentEvent("⚔ " p.name " 開始打王：" boss.name)
     st.text := "打王：走到 " boss.name " 旁邊"
