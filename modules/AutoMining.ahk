@@ -403,7 +403,7 @@ MnHardLoad() {
     MN_HARD := Map()
     raw := ""
     try raw := IniRead(INI, "MiningHard")
-    now := MnNowUnix()
+    now := MnNowUnix(), stale := []
     for line in StrSplit(raw, "`n", "`r") {
         eq := InStr(line, "=")
         if eq < 2
@@ -411,8 +411,15 @@ MnHardLoad() {
         f := StrSplit(SubStr(line, eq + 1), ",")
         if f.Length >= 3 && IsInteger(f[1]) && IsInteger(f[2]) && IsInteger(f[3]) && now - Integer(f[3]) < MN_HARD_KEEP_SEC
             MN_HARD[SubStr(line, 1, eq - 1)] := {fails: Integer(f[1]), slow: Integer(f[2]), at: Integer(f[3])}
+        else
+            stale.Push(SubStr(line, 1, eq - 1))
     }
+    ; 超過 24 小時沒再遇到（或格式壞掉）的紀錄從 INI 刪掉，不然會一直留著
+    for key in stale
+        try IniDelete INI, "MiningHard", key
 }
+; 紀錄還沒過期（24 小時內有再遇到）
+MnHardFresh(r) => MnNowUnix() - r.at < MN_HARD_KEEP_SEC
 MnHardSave(key) {
     global INI, MN_HARD
     if !MN_HARD.Has(key)
@@ -430,13 +437,14 @@ MnIsHard(o) {
     if !MN_SKIPHARD
         return false
     r := MN_HARD.Get(MnPosKey(o), 0)
-    return IsObject(r) && MnNowUnix() - r.at < MN_HARD_KEEP_SEC && (r.fails >= MN_HARD_FAILS || r.slow >= MN_HARD_SLOW)
+    return IsObject(r) && MnHardFresh(r) && (r.fails >= MN_HARD_FAILS || r.slow >= MN_HARD_SLOW)
 }
 ; 記一次：kind = "fail"（走不到 / 採不起來）、"slow"（走了很久）、"ok"（走得順、採起來了）
 MnHardNote(o, kind) {
     global MN_HARD
     key := MnPosKey(o)
-    if !MN_HARD.Has(key)
+    ; 沒有紀錄、或紀錄已經過期：從 0 開始算（過期的舊次數不能讓它一次就變回不好走）
+    if !MN_HARD.Has(key) || !MnHardFresh(MN_HARD[key])
         MN_HARD[key] := {fails: 0, slow: 0, at: MnNowUnix()}
     r := MN_HARD[key]
     r.at := MnNowUnix()
@@ -449,13 +457,26 @@ MnHardNote(o, kind) {
     }
     MnHardSave(key)
 }
+; 畫面上的「不好走 N 個」：只算還沒過期的
 MnHardCount() {
-    global MN_HARD
+    global MN_HARD, MN_HARD_FAILS, MN_HARD_SLOW
     n := 0
     for k, r in MN_HARD
-        if r.fails >= 2 || r.slow >= 3
+        if MnHardFresh(r) && (r.fails >= MN_HARD_FAILS || r.slow >= MN_HARD_SLOW)
             n += 1
     return n
+}
+; 診斷包用：每個有紀錄的位置（位置是礦石座標 x_z，四捨五入到 4 的倍數）
+MnHardListText() {
+    global MN_HARD, MN_HARD_FAILS, MN_HARD_SLOW
+    out := "", tz := Round(DateDiff(A_Now, A_NowUTC, "Seconds") / 60) * 60   ; 本機時區（秒）
+    for k, r in MN_HARD {
+        fresh := MnHardFresh(r)
+        hard := fresh && (r.fails >= MN_HARD_FAILS || r.slow >= MN_HARD_SLOW)
+        out .= "  " k "｜失敗 " r.fails " 次｜走很慢 " r.slow " 次｜最後遇到 " FormatTime(DateAdd("19700101000000", r.at + tz, "Seconds"), "MM-dd HH:mm")
+            . "｜" (hard ? "不好走" : fresh ? "觀察中" : "已過期") "`r`n"
+    }
+    return out = "" ? "  （沒有紀錄）`r`n" : out
 }
 AutoMiningHardReset() {
     global INI, MN_HARD

@@ -49,7 +49,9 @@ global DAILY_INV_COLS := 6, DAILY_INV_VISIBLE_ROWS := 9
 ; 同一頁內的第 (y mod 10) 列顯示在同樣的畫面位置。
 global DAILY_INV_ROWS_PER_PAGE := 10, DAILY_PAGE_WAIT_MS := 3000, DAILY_PAGE_CONFIRM_MS := 150
 ; 角色視窗的裝備欄（EMSLOT → 位移）；褲子 / 手套若位置互換，脫裝備時會依記憶體自動辨識
-global DAILY_CHAR_SLOTS := Map(0,[-163,127], 1,[-164,165], 2,[-163,239], 3,[-162,270], 4,[-159,312], 5,[-163,399], 19,[-48,393])
+; 2026-11-15 遊戲改版（6AF97F88）角色視窗變寬、多一排分頁：裝備格整個往左 60、往下約 30，每格間距 40。
+; 舊座標：Map(0,[-163,127], 1,[-164,165], 2,[-163,239], 3,[-162,270], 4,[-159,312], 5,[-163,399], 19,[-48,393])
+global DAILY_CHAR_SLOTS := Map(0,[-223,156], 1,[-223,196], 2,[-223,276], 3,[-223,316], 4,[-223,356], 5,[-223,436], 19,[-103,436])
 global DAILY_CHOICE_ICON0 := [-63,65], DAILY_CHOICE_STEP := 36, DAILY_CHOICE_SELECT := [36,205], DAILY_CHOICE_VISIBLE := 6
 global DAILY_CONFIRM_YES := [181,74]
 ; 要套上一日造型的裝備欄與造型名稱關鍵字
@@ -179,6 +181,8 @@ DailyRoutineBlocker(p) {
         return "沒有連接遊戲視窗"
     if !GameOffsetsReady(p.pid) || !GameCharacterLoaded(p.pid)
         return "角色資料尚未就緒"
+    if DailyCharDead(p.pid)
+        return "角色死亡中，請先復活"
     if IsObject(recorder)
         return "示範錄製中"
     if DailyItemsOf(p)="" && !DailyInProgress(p.name)
@@ -250,6 +254,8 @@ DailyRoutineRun(idx) {
         msg:="⚠️ HIHIYONG 每日道具自動更換停止`n角色：" p.name "`n原因：" e.Message (diag!="" ? "`n診斷：" diag : "") "`n已停止操作，請人工確認。"
         try (shot!="" && REPORT_ERROR_SHOTS) ? SendDiscordImage(msg,shot) : SendDiscordMessage(msg)
         p.dailyAcked:=1   ; 失敗後不再自動重試，等人工處理
+        if p.HasOwnProp("dailyExpiry")
+            p.dailyFailExpiry:=p.dailyExpiry
     }
     DailyRestorePosition(ctx)
     dailyCurWeaponKw:=""

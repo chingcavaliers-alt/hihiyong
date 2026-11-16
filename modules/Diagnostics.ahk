@@ -48,6 +48,12 @@ DiagInfoText() {
             out .= "  （沒有檔案）`r`n"
     } catch
         out .= "  讀不到`r`n"
+    ; 自動採礦記下的「不好走」位置（設定檔不收，所以另外抄一份；只有座標和次數）
+    out .= "`r`n[自動採礦：不好走的礦]（位置 = 礦石座標 x_z，失敗 2 次或走很慢 3 次算不好走，24 小時沒再遇到就過期）`r`n"
+    fn := "MnHardListText"   ; 在 AutoMining.ahk（測試只載入這個檔時沒有）
+    try out .= %fn%()
+    catch
+        out .= "  讀不到`r`n"
     out .= "`r`n[遊戲視窗]（視窗標題 " GAME_TITLE "）`r`n"
     for p in profiles {
         line := "  " p.name "｜" (p.enabled ? "監控中勾選" : "未勾選") "｜狀態 " p.state

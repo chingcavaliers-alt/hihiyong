@@ -82,11 +82,18 @@ DailyItemsTick() {
             p.dailyPacks:=packs,p.dailyPacksStale:=0
         }
         ; 到期時間改變（換上新的每日道具）→ 新的一輪，清除提醒紀錄
+        ; 自動更換失敗後重新讀到同一個到期時間不算新的一輪（否則失敗後每 2 分鐘重試一次、一直搶前景）
         if !p.HasOwnProp("dailyExpiry") || p.dailyExpiry!=expiry {
-            p.dailyExpiry:=expiry,p.dailyAcked:=0,p.dailySnoozeUntil:=0
-            EventLog(p.name,"DAILY_EXPIRY",expiry ? "每日道具到期 " GameTimeText(expiry,"MM-dd HH:mm") "｜預定 " GameTimeText(expiry+DAILY_DELAY_MIN*60,"HH:mm") " 更換" : "未穿戴每日道具")
+            failed:=p.HasOwnProp("dailyFailExpiry") && p.dailyFailExpiry=expiry
+            p.dailyExpiry:=expiry
+            if !failed {
+                p.dailyAcked:=0,p.dailySnoozeUntil:=0,p.dailyFailExpiry:=""
+                EventLog(p.name,"DAILY_EXPIRY",expiry ? "每日道具到期 " GameTimeText(expiry,"MM-dd HH:mm") "｜預定 " GameTimeText(expiry+DAILY_DELAY_MIN*60,"HH:mm") " 更換" : "未穿戴每日道具")
+            }
         }
         if p.dailyAcked || now<p.dailySnoozeUntil || p.state!="監控中" || dailyRunning=p.name
+            continue
+        if DailyCharDead(p.pid)
             continue
         if (!expiry || now>=expiry+DAILY_DELAY_MIN*60) && !DailyRecentlyDone(p)
             due.Push(i)
@@ -94,6 +101,9 @@ DailyItemsTick() {
     if due.Length && !IsObject(recorder)
         DailyItemsRemind(due)
 }
+
+; 角色死亡中（HP 0）：按 Q 回城沒有用，等復活後再換
+DailyCharDead(pid) => ReadGameHP(pid,&hpNow,&hpMax) && hpMax>0 && hpNow=0
 
 DailyStatusText(p) {
     global DAILY_DELAY_MIN
