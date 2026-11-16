@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.45",
+    "version":  "v1.3.90.46",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "9be4476731d0c8da5dfa02b23b5e28c3f3c3674ba0dc9281477b9aace193e975"
+                      "sha256":  "56b47b1c0e7f220c7202d3eebc2a4abd28b109218a51fecb1242a40f1609203c"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "fd6615d88f1e6ef527013b678b293daf0a4bfbf3306aa34bddbe008d5fa53c55"
+                      "sha256":  "b45baffaf9fbde1f0bb9fc9e08962edfde17fff0758ec5828567de4c23d5664f"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -131,7 +131,7 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "99f6a639b5a21b16cd635c3a2a02826aab1e1190bfd811e0e6f4b602e7400e03"
+                      "sha256":  "e3bf4fb488b01e2271dcc7209872978c116560c7b0874d3976741e328e1eb59f"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -326,6 +326,10 @@
                       "sha256":  "ad4e71dfd6e2650ed8c8a39d9c8a07239bc57939fc853f43372c808b65b1f717"
                   },
                   {
+                      "path":  "offsets_db\\6AFB1368-21D8000.ini",
+                      "sha256":  "7b6fe82f2252b6582aaed03feb8f395bb61b29dee033190ab1e55effa66536ae"
+                  },
+                  {
                       "path":  "README_v1.3.13.0.txt",
                       "sha256":  "c73bda8e35485f805d96ae0ab390d7c1e9707a1e8f36499a509c9e5076a44893"
                   },
@@ -495,7 +499,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "47ff5c316fe6dded24aaeb317d7cd0e4bbb566686b63a259ed56aa8fd5d5030e"
+                      "sha256":  "b2382e2d8ede2ac226465b2ff35c3579584e2d690ea2def8b7953759a662dd10"
                   },
                   {
                       "path":  "登入測試.bat",

@@ -75,6 +75,7 @@ MnParseCharSlots(text) {
 global MN_BOSS_CHAR_SLOTS := MnParseCharSlots(MnIniGet("BossCharSlots", ""))
 global MN_BOSS_NAME := "虹光秘脈礦主"      ; 水晶礦場的王（固定地點，2 小時重生一次）
 global MN_BOSS_STAND := 14                ; 站在離王幾單位的旁邊打
+global MN_BOSS_WALK_TRIES := 6            ; 走去王旁邊連續失敗幾次才放棄（每次換站位）
 global MN_BOSS_AIM_H := 12                ; 游標對準王身上離地多高（錄製時游標在王的身體 / 血條下方）
 global MN_BOSS_SPACE_PICK := MnIniGet("BossSpacePick", "1") = "0" ? 0 : 1   ; 等不到秘笈進背包就按兩下空白鍵自己撿（INI [AutoMining] BossSpacePick=0 關閉）
 global MN_BOSS_SPACE_AFTER_MS := Min(30, Max(1, Integer(MnIniGet("BossSpaceAfterSec", "5")))) * 1000   ; 王死後幾秒背包還沒有秘笈就先按空白鍵（INI [AutoMining] BossSpaceAfterSec，預設 5）
@@ -1435,7 +1436,7 @@ MnFightBossCore(p, boss) {
     EventLog(p.name, "MN_BOSS_START", boss.name "#" boss.glob "｜(" Round(boss.x) "," Round(boss.z) ")｜HP 欄位 " boss.hp)
     AddRecentEvent("⚔ " p.name " 開始打王：" boss.name)
     st.text := "打王：走到 " boss.name " 旁邊"
-    start := A_TickCount, held := false, hidden := 0, overlapLogged := false
+    start := A_TickCount, held := false, hidden := 0, overlapLogged := false, walkFails := 0
     try {
         try MnLootSettle(p, st, true)   ; 上一顆還沒結算的收穫先算掉，免得和王的掉落混在一起
         bossBase := MnInvSnap(pid)
@@ -1478,7 +1479,21 @@ MnFightBossCore(p, boss) {
                 if held
                     MnRightButton(false), held := false
                 st.text := "打王：走到 " b.name " 旁邊（距離 " Round(d) "）"
-                MnWalkBeside(p, b, MN_BOSS_STAND, 0, MN_BOSS_STAND + 12)
+                ; 走不到不馬上放棄：原本失敗一次就離開王 2 分鐘、先去採一顆礦（約 70 秒），別人打王時王 6 分鐘就死了，
+                ; 一隻王只來得及試 3 次（11/16 17:51 小柯基）。改成留在王這邊換站位再走（距離 14 → 20 → 8 輪流、方向每次轉 90 度），
+                ; 連續 MN_BOSS_WALK_TRIES 次都走不到才放棄。
+                try {
+                    MnWalkBeside(p, b, [MN_BOSS_STAND, MN_BOSS_STAND + 6, MN_BOSS_STAND - 6][Mod(walkFails, 3) + 1], Mod(walkFails, 4) * 90, MN_BOSS_STAND + 12)
+                    walkFails := 0
+                } catch as e {
+                    if e.Extra = "stop"
+                        throw e
+                    walkFails += 1
+                    if walkFails >= MN_BOSS_WALK_TRIES
+                        throw Error("連續 " walkFails " 次走不到王旁邊：" e.Message, , e.Extra)
+                    EventLog(p.name, "MN_BOSS_WALK_RETRY", "走不到王旁邊（第 " walkFails " 次）：" e.Message "｜換個站位再走，不離開王")
+                    Sleep 1000
+                }
                 continue
             }
             aim := MnBossAimPoint(pid, b)
@@ -1505,7 +1520,8 @@ MnFightBossCore(p, boss) {
             Sleep MN_BOSS_TICK_MS
         }
     } catch as e {
-        st.bossSkip := A_TickCount + (e.Extra = "stop" ? 20000 : 120000)   ; 出錯先離開王一陣子，免得一直卡在打王
+        ; 出錯先離開王一陣子，免得一直卡在打王；走不到王已經在上面重試過很多次，離開 30 秒就回來（王可能走開了）
+        st.bossSkip := A_TickCount + (e.Extra = "stop" ? 20000 : InStr(e.Message, "走不到王旁邊") ? 30000 : 120000)
         throw e
     } finally {
         if held
