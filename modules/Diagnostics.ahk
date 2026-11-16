@@ -54,6 +54,11 @@ DiagInfoText() {
     try out .= %fn%()
     catch
         out .= "  讀不到`r`n"
+    out .= "`r`n[自動採礦：這台電腦學到的各位置成功率]（試過 4 次以上、失敗率 40% 以上 = 不去採，3 天後再試一次）`r`n"
+    fn := "MnPosListText"
+    try out .= %fn%()
+    catch
+        out .= "  讀不到`r`n"
     out .= "`r`n[遊戲視窗]（視窗標題 " GAME_TITLE "）`r`n"
     for p in profiles {
         line := "  " p.name "｜" (p.enabled ? "監控中勾選" : "未勾選") "｜狀態 " p.state

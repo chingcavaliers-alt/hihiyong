@@ -479,14 +479,114 @@ MnHardListText() {
     return out = "" ? "  （沒有紀錄）`r`n" : out
 }
 AutoMiningHardReset() {
-    global INI, MN_HARD
-    MN_HARD := Map()
+    global INI, MN_HARD, MN_POS
+    MN_HARD := Map(), MN_POS := Map()
     try IniDelete INI, "MiningHard"
-    AddRecentEvent("⛏ 自動採礦：「不好走」的位置紀錄已清除")
+    try IniDelete INI, "MiningPos"
+    AddRecentEvent("⛏ 自動採礦：「不好走」和「不去採」的位置紀錄已清除")
+}
+
+; ---------------------------------------------------------------- 每台電腦自己學：每個位置採得到的機率
+; 上面的「不好走」只看 24 小時內的次數；這裡長期記每個位置「成功 / 失敗幾次、失敗一次平均浪費幾秒」（存 INI [MiningPos]，每台電腦各自一份）。
+; 挑礦時把「預期浪費的秒數」= 失敗率 × 平均浪費秒數 加進成本：偶爾失敗的常用礦照樣採，常失敗的自然排到後面。
+; 試過 4 次以上、失敗率 40% 以上的位置「不去採」（2026-11-16 兩台電腦 8 天的日誌：常採的 56 個位置裡只有 4 個這麼差，
+; 其他會失敗的位置失敗率大多 5～20%，封掉反而少採很多）。不去採的位置 3 天後放行一次重新試（地形或路線可能變了），
+; 只剩不去採的礦時還是會挑（不會因此閒著）。最近 30 次為準（超過就減半），14 天沒再遇到就刪掉。
+global MN_POS := Map()
+global MN_POS_MIN_TRIES := 4, MN_POS_BLOCK_RATE := 0.4, MN_POS_RETRY_SEC := 3 * 86400, MN_POS_KEEP_SEC := 14 * 86400, MN_POS_WINDOW := 30
+MnPosLoad() {
+    global INI, MN_POS, MN_POS_KEEP_SEC
+    MN_POS := Map()
+    raw := ""
+    try raw := IniRead(INI, "MiningPos")
+    now := MnNowUnix(), stale := []
+    for line in StrSplit(raw, "`n", "`r") {
+        eq := InStr(line, "=")
+        if eq < 2
+            continue
+        f := StrSplit(SubStr(line, eq + 1), ",")
+        if f.Length >= 4 && IsInteger(f[1]) && IsInteger(f[2]) && IsNumber(f[3]) && IsInteger(f[4]) && now - Integer(f[4]) < MN_POS_KEEP_SEC
+            MN_POS[SubStr(line, 1, eq - 1)] := {ok: Integer(f[1]), fail: Integer(f[2]), lost: Number(f[3]), at: Integer(f[4])}
+        else
+            stale.Push(SubStr(line, 1, eq - 1))
+    }
+    for key in stale
+        try IniDelete INI, "MiningPos", key
+}
+MnPosBlocked(r) {
+    global MN_POS_MIN_TRIES, MN_POS_BLOCK_RATE, MN_POS_RETRY_SEC
+    n := r.ok + r.fail
+    return n >= MN_POS_MIN_TRIES && r.fail / n >= MN_POS_BLOCK_RATE && MnNowUnix() - r.at < MN_POS_RETRY_SEC
+}
+; 挑礦成本要多加幾秒（沒開「自動略過」一律 0）
+MnPosPenalty(o) {
+    global MN_SKIPHARD, MN_POS
+    if !MN_SKIPHARD
+        return 0
+    r := MN_POS.Get(MnPosKey(o), 0)
+    if !IsObject(r)
+        return 0
+    if MnPosBlocked(r)
+        return 1000000   ; 不去採：沒有別顆才挑
+    ; 失敗率用 fail / (次數 + 1)：只試過一次就失敗不會被當成 100%
+    return r.fail ? r.fail / (r.ok + r.fail + 1) * (r.lost / r.fail) : 0
+}
+; 記一次結果：ok = 採起來了；失敗時 lostMs = 這趟浪費的時間（從出發到放棄）
+MnPosNote(who, o, ok, lostMs := 0) {
+    global INI, MN_POS, MN_POS_WINDOW
+    key := MnPosKey(o)
+    r := MN_POS.Get(key, 0)
+    if !IsObject(r)
+        r := MN_POS[key] := {ok: 0, fail: 0, lost: 0, at: 0}
+    was := r.at && MnPosBlocked(r)
+    if ok
+        r.ok += 1
+    else
+        r.fail += 1, r.lost += Max(1, lostMs / 1000)
+    r.at := MnNowUnix()
+    if r.ok + r.fail > MN_POS_WINDOW   ; 只看最近的：舊的次數減半
+        r.lost := r.fail ? r.lost * Round(r.fail / 2) / r.fail : 0, r.ok := Round(r.ok / 2), r.fail := Round(r.fail / 2)
+    try IniWrite r.ok "," r.fail "," Round(r.lost, 1) "," r.at, INI, "MiningPos", key
+    now := MnPosBlocked(r)
+    if now && !was
+        EventLog(who, "MN_POS_BLOCK", o.name " 位置 (" Round(o.x) "," Round(o.z) ") 成功 " r.ok " 次、失敗 " r.fail " 次，之後不去採（3 天後再試一次）")
+    else if was && !now
+        EventLog(who, "MN_POS_UNBLOCK", o.name " 位置 (" Round(o.x) "," Round(o.z) ") 成功 " r.ok " 次、失敗 " r.fail " 次，恢復可以採")
+}
+MnPosBlockCount() {
+    global MN_POS
+    n := 0
+    for k, r in MN_POS
+        if MnPosBlocked(r)
+            n += 1
+    return n
+}
+; 診斷包用：試過 3 次以上的位置，失敗率高的排前面
+MnPosListText() {
+    global MN_POS
+    rows := []
+    for k, r in MN_POS
+        if r.ok + r.fail >= 3
+            rows.Push({k: k, r: r, rate: r.fail / (r.ok + r.fail)})
+    if !rows.Length
+        return "  （沒有紀錄）`r`n"
+    ; 失敗率由高到低（插入排序，筆數不多）
+    loop rows.Length - 1 {
+        i := A_Index + 1, x := rows[i], j := i - 1
+        while j >= 1 && rows[j].rate < x.rate
+            rows[j + 1] := rows[j], j -= 1
+        rows[j + 1] := x
+    }
+    tz := Round(DateDiff(A_Now, A_NowUTC, "Seconds") / 60) * 60, out := ""
+    for x in rows
+        out .= "  " x.k "｜成功 " x.r.ok "｜失敗 " x.r.fail "（" Round(x.rate * 100) "%）｜失敗平均浪費 " (x.r.fail ? Round(x.r.lost / x.r.fail) : 0) " 秒｜最後 "
+            . FormatTime(DateAdd("19700101000000", x.r.at + tz, "Seconds"), "MM-dd HH:mm") (MnPosBlocked(x.r) ? "｜不去採" : "") "`r`n"
+    return out
 }
 global MN_CHARS := MnParseChars(MnIniGet("Chars", ""))
 MnStatsLoad()
 MnHardLoad()
+MnPosLoad()
 MN_RESUME := MnIniGet("ResumeOnStart", "0") = "1" ? 1 : 0
 if MN_RESUME && MnIniGet("Running", "0") = "1" && MN_CHARS.Count {   ; 上次是啟動狀態，重開後接續（趟數也接續）
     MN_RUNNING := 1, MN_RESUMED := true
@@ -544,6 +644,8 @@ MnPickOre(ores, me, skip, now, isHard := 0, near := 0) {
         ; 成本（秒）= 走過去的時間 + 顏色順序差一名要付的代價（預設 4 秒）：旁邊有選定顏色的礦就挑旁邊的，不會為了顏色多跑幾百單位；
         ; 「嚴格依顏色」把代價設成很大，就變回顏色優先。
         cost := d / MN_WALK_SPEED + (r - 1) * MN_RANK_SEC
+        if IsObject(isHard)
+            cost += MnPosPenalty(o)   ; 這台電腦學到的：這個位置預期會浪費幾秒（常失敗的 = 不去採）
         if IsObject(isHard) && isHard(o)
             cost += 100000        ; 不好走：沒有別顆才挑
         else if near > 0 && d <= near
@@ -935,7 +1037,7 @@ MnMine(p, ore) {
             } catch as e {
                 if e.Extra = "stop"
                     throw e
-                MnHardNote(ore, "fail")
+                MnHardNote(ore, "fail"), MnPosNote(p.name, ore, false, A_TickCount - t0)
                 st.skip[ore.glob] := A_TickCount + MN_SKIP_MS
                 ; 走不到這顆：看看角色現在周圍有沒有別顆採得到的（離得近就不必精準、直接採）
                 alt := MnNearbyOre(p, ore, um - 1)
@@ -974,7 +1076,7 @@ MnMine(p, ore) {
                 MnLootSettle(p, st, true)
                 st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
                 st.text := "採集中（約 60 秒）"
-                MnHardNote(ore, A_TickCount - t0 > MN_SLOW_MS ? "slow" : "ok")
+                MnHardNote(ore, A_TickCount - t0 > MN_SLOW_MS ? "slow" : "ok"), MnPosNote(p.name, ore, true)
                 EventLog(p.name, "MN_GATHER_START", ore.name "#" ore.glob "｜晚幾秒才開始，不重複右鍵")
                 return
             }
@@ -1005,7 +1107,7 @@ MnMine(p, ore) {
                 walkMs := A_TickCount - t0
                 if how = "fast"
                     st.fastFails := 0
-                MnHardNote(ore, walkMs > MN_SLOW_MS ? "slow" : "ok")
+                MnHardNote(ore, walkMs > MN_SLOW_MS ? "slow" : "ok"), MnPosNote(p.name, ore, true)
                 EventLog(p.name, "MN_GATHER_START", ore.name "#" ore.glob "｜離礦石 " Round(d, 1) "｜從出發到開始採集 " Round(walkMs / 1000) " 秒" (MnIsHard(ore) ? "｜（這個位置不好走）" : ""))
                 return
             }
@@ -1023,7 +1125,7 @@ MnMine(p, ore) {
             EventLog(p.name, "MN_USEMAX_LEARN", "離 " Round(d, 1) " 單位採不起來，距離上限調成 " Round(um, 1))
         }
     }
-    MnHardNote(ore, "fail")
+    MnHardNote(ore, "fail"), MnPosNote(p.name, ore, false, A_TickCount - t0)
     st.skip[ore.glob] := A_TickCount + MN_SKIP_MS
     EventLog(p.name, "MN_SKIP", ore.name "#" ore.glob " 靠近到 " Round(stands[stands.Length], 1) " 單位也採不起來｜略過 10 分鐘")
     st.text := "這顆採不起來，換下一顆"
@@ -1900,7 +2002,7 @@ AutoMiningPushWeb() {
     colors := ""
     for c in MN_COLORS
         colors .= (colors = "" ? "" : ",") '"' c '"'
-    try WVCore.PostWebMessageAsJson('{"type":"automining","data":{"running":' (MN_RUNNING ? "true" : "false") ',"autoEnter":' (MN_AUTOENTER ? "true" : "false") ',"keepInv":' (MN_KEEP_INV ? "true" : "false") ',"colors":[' colors '],"boss":' (MN_BOSS_ON ? "true" : "false") ',"bossBar":' MN_BOSS_BAR ',"bossSkill":"' JsonEscapeWeb(MN_BOSS_SKILL) '","loops":' MN_LOOPS ',"resume":' (MN_RESUME ? "true" : "false") ',"resumed":' (MN_RESUMED ? "true" : "false") ',"strictColor":' (MN_RANK_SEC >= 100 ? "true" : "false") ',"skipHard":' (MN_SKIPHARD ? "true" : "false") ',"hardCount":' MnHardCount() ',"curSkill":' (cur = "" ? "null" : cur) ',"stats":[' stats ']'
+    try WVCore.PostWebMessageAsJson('{"type":"automining","data":{"running":' (MN_RUNNING ? "true" : "false") ',"autoEnter":' (MN_AUTOENTER ? "true" : "false") ',"keepInv":' (MN_KEEP_INV ? "true" : "false") ',"colors":[' colors '],"boss":' (MN_BOSS_ON ? "true" : "false") ',"bossBar":' MN_BOSS_BAR ',"bossSkill":"' JsonEscapeWeb(MN_BOSS_SKILL) '","loops":' MN_LOOPS ',"resume":' (MN_RESUME ? "true" : "false") ',"resumed":' (MN_RESUMED ? "true" : "false") ',"strictColor":' (MN_RANK_SEC >= 100 ? "true" : "false") ',"skipHard":' (MN_SKIPHARD ? "true" : "false") ',"hardCount":' MnHardCount() ',"blockCount":' MnPosBlockCount() ',"curSkill":' (cur = "" ? "null" : cur) ',"stats":[' stats ']'
         . ',"licensed":' (MnFeatureOK() ? "true" : "false") ',"chars":[' chars '],"states":[' states ']}}')
 }
 
