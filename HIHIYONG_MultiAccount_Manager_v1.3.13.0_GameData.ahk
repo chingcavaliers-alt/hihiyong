@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.47"
+global APP_VERSION := "v1.3.90.48"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -17,6 +17,11 @@ global UPDATE_TITLE := "Update - HiHiYong"
 global INI := A_ScriptDir "\HIHIYONG_AutoRecovery.ini"
 global PROFILE_INI := A_ScriptDir "\HIHIYONG_Recovery_Profiles.ini"
 global EVENT_LOG := A_ScriptDir "\HIHIYONG_Recovery_Events.log"
+; 設定檔沒有 UTF-16 BOM 時 IniRead 會用 CP950 讀，中文設定變亂碼：任何 IniRead 之前先轉好（見 modules\IniEncoding.ahk）
+try {
+    if IsObject(iniFix := IniEnsureUnicode(INI))
+        EventLog("GLOBAL", "INI_ENCODING_FIXED", "設定檔改存成 UTF-16（原本沒有 BOM）｜CP950 行 " iniFix.cp950 "｜重複項目 " iniFix.dropped "｜原檔備份 .bak_encoding_*")
+}
 ; 「你開始操作電腦就暫停」要靠 A_TimeIdlePhysical 判斷；沒裝鍵盤 / 滑鼠監聽時它和 A_TimeIdle 一樣，遠端桌面（Chrome 遠端桌面等）送進來的
 ; 滑鼠 / 鍵盤事件也會算成「你在操作」，只是遠端看畫面也會讓每個自動功能一直暫停。裝了監聽之後，遠端軟體模擬的輸入帶「模擬」旗標，不會算進去，
 ; 只有實體鍵盤滑鼠才算。[General] IgnoreRemoteInput=0 可以關掉（遠端時要它也讓路）。
@@ -76,6 +81,7 @@ global MEMORY_HP_RUNTIME_OFFSET:=Integer(IniRead(INI,"MemoryHP","LastDetectedOff
 ; v1.3.12.6: offset 綁定 game.exe 版本（PE TimeDateStamp + 映像大小）；版本變了就不沿用舊 offset。
 global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 ; v1.3.13.0: Game.pdb 資料位置（HP / 金幣 / 經驗 / 背包）與每日背包統計。
+#Include modules\IniEncoding.ahk
 #Include modules\GameData.ahk
 #Include modules\InventoryStats.ahk
 ; v1.3.14.0: 背景等待遊戲載入（佇列不再被慢載入卡住）與假在線訊號紀錄。
@@ -5918,6 +5924,9 @@ WebRunAction(action,value:=0,rawValue:="") {
         SkillComboPushWeb()
     } else if action="dailyhuntstate" {
         DailyHuntPushWeb()
+    } else if action="dailyhuntafter" {
+        DailyHuntAfter(WebUrlDecode(rawValue))
+        DailyHuntPushWeb()
     } else if action="dailyhuntspot" {
         DailyHuntSpot(WebUrlDecode(rawValue))
         DailyHuntPushWeb()
@@ -6513,6 +6522,8 @@ WebSetDailyConfig(rawValue) {
     if p.HasOwnProp("dailyExpiry")
         p.DeleteProp("dailyExpiry")
     AddRecentEvent(p.name " → 每日道具：" (items="" ? "不更換" : (p.dailyMode="here" ? "原地換" : p.dailyMode="auto" ? "自動（依快捷欄）" : "回城換")))
+    ; 11/17 小柯基「明明選回城卻原地換」：設定是 11/10～11/16 間被改成原地換，只在畫面事件裡有，日誌查不到，改設定也記進日誌
+    EventLog(p.name,"DAILY_CFG","每日道具設定：" DailyModeText(p) "｜項目 " (items="" ? "（不更換）" : items) (p.dailyWeapon!="" ? "｜武器 " p.dailyWeapon : ""))
     if items="" && DailyInProgress(p.name)
         AddRecentEvent("⚠ " p.name " 上次每日道具更換沒有完成，裝備可能還在背包：請按「立即更換」穿回")
 }

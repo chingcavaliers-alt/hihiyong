@@ -25,11 +25,13 @@ global DH_MAPS := Map(
     286, ["冥神禁域", 19])
 
 ; 對話框第幾行（1～12）；不合理的值用 4
+global DH_FINISH_GIVEUP_ROUNDS := 2, DH_FINISH_GIVEUP_MS := 3600000
 DhRowOf(v) => IsInteger(v) && Integer(v) >= 1 && Integer(v) <= 12 ? Integer(v) : 4
 ; NPC / 傳送卡名稱：去掉分隔符號、最長 20 字；空白用預設
+; 名稱裡有「?」或替代字元 = 設定檔編碼壞掉時寫回的亂碼（11/17「起點傳送卡」變成「起??送卡」），用預設
 DhCleanName(v, def) {
     v := Trim(StrReplace(StrReplace(StrReplace(v, "~", ""), "|", ""), ",", ""))
-    return v = "" ? def : SubStr(v, 1, 20)
+    return v = "" || InStr(v, "?") || InStr(v, Chr(0xFFFD)) ? def : SubStr(v, 1, 20)
 }
 ; 每張圖到了之後怎麼選要打的地方：
 ;   "dense" = 怪平均鋪滿、中間最密（電算室、機械區、黑暗後裔集結區）→ 跑到最密的中心；
@@ -308,7 +310,7 @@ DhBuildText() {
     return txt
 }
 DailyHuntPushWeb() {
-    global DH_TEST, webReady, WVCore, profiles, DH_RUNNING, DH_CHARS, DH_MAPS_ON, DH_MAPS, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_SPOTS, dhSpotMsg, DH_RESUME
+    global DH_TEST, webReady, WVCore, profiles, DH_RUNNING, DH_CHARS, DH_MAPS_ON, DH_MAPS, DH_NPC_NAME, DH_START_CARD, DH_NPC_ROW, DH_SPOTS, dhSpotMsg, DH_RESUME, DH_AFTER_ON, DH_AFTER_MAP, dhAfterMsg
     if !webReady || !WVCore
         return
     chars := "", states := ""
@@ -341,7 +343,7 @@ DailyHuntPushWeb() {
             pending += 1
     status := DH_CHARS.Count = 0 ? "請勾選要跑的角色" : (!p ? "勾選的角色都沒有遊戲視窗" : (IsObject(tasks) ? "" : "讀不到任務：" (DH_RUNNING ? "啟動後程式會自己按 T 讀取" : "按「▶ 啟動」會自己按 T 讀取，或在「" p.name "」的遊戲裡按 T 打開一次")))
     try WVCore.PostWebMessageAsJson('{"type":"dailyhunt","data":{"running":' (DH_RUNNING ? "true" : "false") ',"test":' (DH_TEST ? "true" : "false") ',"resume":' (DH_RESUME ? "true" : "false")
-        . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"pending":' pending ',"selected":[' sel '],' DhSchedJson() ',"tasks":[' rows ']}}')
+        . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"after":{"on":' (DH_AFTER_ON ? "true" : "false") ',"map":' DH_AFTER_MAP ',"name":"' JsonEscapeWeb(DH_AFTER_MAP && DH_MAPS.Has(DH_AFTER_MAP) ? DH_MAPS[DH_AFTER_MAP][1] : "") '","spot":"' JsonEscapeWeb(DH_AFTER_MAP ? DhAfterSpotText() : "") '","msg":"' JsonEscapeWeb(dhAfterMsg) '"},"pending":' pending ',"selected":[' sel '],' DhSchedJson() ',"tasks":[' rows ']}}')
 }
 
 ; ============================================================================
@@ -360,8 +362,82 @@ DhFileStamp() {
     return ""
 }
 global DH_NPC_NAME := DhCleanName(DhIniGet("Npc", "護士"), "護士")
-global DH_START_CARD := DhIniGet("Card", "起點傳送卡")
+global DH_START_CARD := DhCleanName(DhIniGet("Card", "起點傳送卡"), "起點傳送卡")
 global DH_NPC_ROW := DhRowOf(DhIniGet("Row", 4))
+; 每日討伐全部完成後去掛機：開關、地圖編號、座標（在遊戲裡站到想掛機的地方按「記錄現在位置」，同時記下地圖和座標）
+global DH_AFTER_ON := DhIniGet("AfterOn", "0") = "1"
+global DH_AFTER_MAP := IsInteger(v := DhIniGet("AfterMap", "0")) ? Integer(v) : 0
+global DH_AFTER_SPOT := DhParseXZ(DhIniGet("AfterSpot", ""))
+global dhAfterMsg := ""
+DhParseXZ(s) {
+    xz := StrSplit(s, ",")
+    return xz.Length = 2 && IsNumber(Trim(xz[1])) && IsNumber(Trim(xz[2])) ? {x: Number(Trim(xz[1])), z: Number(Trim(xz[2]))} : 0
+}
+; 有開、而且地圖在公車清單支援範圍內才回傳目標 {map, name, done, target}
+DhAfterGoal() {
+    global DH_AFTER_ON, DH_AFTER_MAP, DH_MAPS
+    return DH_AFTER_ON && DH_AFTER_MAP && DH_MAPS.Has(DH_AFTER_MAP) ? {map: DH_AFTER_MAP, name: DH_MAPS[DH_AFTER_MAP][1], done: 0, target: 0} : 0
+}
+DhAfterSpotText() {
+    global DH_AFTER_SPOT
+    return IsObject(DH_AFTER_SPOT) ? "(" Round(DH_AFTER_SPOT.x) ", " Round(DH_AFTER_SPOT.z) ")" : "（沒有座標，自動找怪多的地方）"
+}
+; value：on~1 / on~0 / teach（記錄角色現在的地圖和位置）/ clear
+DailyHuntAfter(rawValue) {
+    global dhAfterMsg
+    dhAfterMsg := DhAfterDo(rawValue)
+    return dhAfterMsg
+}
+DhAfterDo(rawValue) {
+    global INI, DH_AFTER_ON, DH_AFTER_MAP, DH_AFTER_SPOT, DH_MAPS
+    parts := StrSplit(rawValue, "~")
+    what := parts.Length ? parts[1] : ""
+    if what = "on" {
+        DH_AFTER_ON := parts.Length >= 2 && parts[2] = "1"
+        IniWrite DH_AFTER_ON ? 1 : 0, INI, "DailyHunt", "AfterOn"
+        if DH_AFTER_ON && !DH_AFTER_MAP
+            return "已開啟，但還沒記錄掛機位置：請讓角色站到想掛機的地方，按「記錄現在位置」"
+        return DH_AFTER_ON ? "已開啟：全部完成後回到「" DH_MAPS[DH_AFTER_MAP][1] "」" DhAfterSpotText() " 掛機" : "已關閉：全部完成後照舊回起點"
+    }
+    if what = "clear" {
+        DH_AFTER_MAP := 0, DH_AFTER_SPOT := 0
+        try IniDelete INI, "DailyHunt", "AfterMap"
+        try IniDelete INI, "DailyHunt", "AfterSpot"
+        return "已清除掛機位置"
+    }
+    if what = "teach" {
+        p := DhProfile()
+        if !p
+            return "沒有勾選的角色有遊戲視窗"
+        here := DhMapMain(p.pid), me := MiningCharState(p.pid)
+        if here = -1 || !IsObject(me)
+            return "讀不到「" p.name "」現在的地圖或位置（要先進遊戲世界）"
+        if !DH_MAPS.Has(here)
+            return "「" p.name "」現在在地圖 " here "，這張圖不在公車可以到的清單裡，沒辦法自動回去"
+        DH_AFTER_MAP := here, DH_AFTER_SPOT := {x: me.x, z: me.z}
+        IniWrite here, INI, "DailyHunt", "AfterMap"
+        IniWrite DhNum(me.x) "," DhNum(me.z), INI, "DailyHunt", "AfterSpot"
+        EventLog(p.name, "DH_AFTER_SET", "完成後掛機位置：" DH_MAPS[here][1] " (" Round(me.x) "," Round(me.z) ")")
+        return "已記錄「" p.name "」現在的位置：" DH_MAPS[here][1] " " DhAfterSpotText() (DH_AFTER_ON ? "" : "（還沒勾選「全部完成後去掛機」）")
+    }
+    return ""
+}
+; 去掛機：不在那張圖就搭公車過去 → 走到座標（沒座標就找怪多的地方）→ 開 F6
+DhGoAfter(p, g) {
+    global DH_AFTER_SPOT
+    pid := p.pid
+    if DhMapMain(pid) != g.map
+        DhActTravel(p, g)
+    DhEnsureAutoHuntOff(p)
+    if IsObject(DH_AFTER_SPOT)
+        DhStartAtSpot(p, g, DH_AFTER_SPOT, "")
+    else
+        DhStartByCluster(p, g, "")
+    ApKey(p, "F6")
+    if !ApWait(() => (ApGuardAny(), ReadGameAutoHunt(pid) = 1), 6000)
+        throw Error("按了 F6 但自動打怪沒有開起來")
+    EventLog(p.name, "DH_AFTER", "全部完成，回到 " g.name " " DhAfterSpotText() " 開自動打怪掛機")
+}
 global DH_BUS_OPTION_X := 576, DH_BUS_OPTION_Y0 := 322, DH_BUS_OPTION_PITCH := 20    ; NPC 對話框選項：第 1 行在 y=322，每行 20
 global DH_BUS_LIST_X := 131, DH_BUS_ROW0_Y := 149, DH_BUS_ROW_H := 14.05, DH_BUS_OK_X := 188, DH_BUS_OK_Y := 594
 global DH_REFRESH_MS := 45000, DH_STALL_MS := 180000, DH_TICK_MS := 3000
@@ -593,6 +669,7 @@ DhRun(p, d) {
         } else if d.action = "finish" {
             st.text := "全部做完，回起點"
             DhActFinish(p)
+            st.finishFails := 0
         }
         st.fails := 0
     } catch as e {
@@ -618,6 +695,16 @@ DhRun(p, d) {
                 if IsObject(g) {
                     st.skip[g.map] := 1
                     AddRecentEvent("🎯 " p.name "：" g.name " 連續失敗，先略過這張圖：" e.Message)
+                } else {
+                    ; 回起點沒有圖可以略過，原本 3 次後歸零重來，11/17 欸等找不到起點卡重試了一個多小時：連續 2 輪（6 次）就停 1 小時並通知
+                    st.finishFails := (st.HasOwnProp("finishFails") ? st.finishFails : 0) + 1
+                    if st.finishFails >= DH_FINISH_GIVEUP_ROUNDS {
+                        st.finishFails := 0
+                        st.next := A_TickCount + DH_FINISH_GIVEUP_MS
+                        st.text := "⚠ 回起點連續失敗 " st.fails * DH_FINISH_GIVEUP_ROUNDS " 次，" Round(DH_FINISH_GIVEUP_MS / 60000) " 分鐘後再試：" e.Message
+                        EventLog(p.name, "DH_FINISH_GIVEUP", "回起點連續失敗 " st.fails * DH_FINISH_GIVEUP_ROUNDS " 次｜" Round(DH_FINISH_GIVEUP_MS / 60000) " 分鐘後再試｜" e.Message)
+                        DhNotify("⚠ 每日討伐｜" p.name "｜回起點連續失敗（" e.Message "），先停 " Round(DH_FINISH_GIVEUP_MS / 60000) " 分鐘；請檢查道具快捷欄和「回起點用的傳送卡」名稱")
+                    }
                 }
                 st.fails := 0
             }
@@ -1016,10 +1103,32 @@ DhActTestWalk(p, g) {
 }
 
 ; 全部做完：關自動打怪、用起點傳送卡回起點（復活點）、通報 Discord；這個角色之後不再動作（隔天 00:00 任務換了才重來）。
+; 有設定「完成後去掛機」：不停在起點，改搭公車到那張圖、走到記下的座標開自動打怪（失敗就留在原地並通知，不重試，避免一直來回）。
 DhActFinish(p) {
     global DH_NPC_NAME
     st := DhSt(p)
     finT0 := A_TickCount
+    after := DhAfterGoal()
+    if IsObject(after) {
+        st.done := true   ; 任務已經打完：去掛機途中出錯也不再回頭跑任務
+        try {
+            DhGoAfter(p, after)
+            st.text := "✅ 指定任務全部完成，已回到「" after.name "」掛機"
+            DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，已回到「" after.name "」" DhAfterSpotText() " 開自動打怪掛機")
+            AddRecentEvent("🎯 " p.name "：指定任務全部完成，已回到 " after.name " 掛機")
+        } catch as e {
+            if e.Extra = "stop" {   ; 被叫停（你在操作 / 死亡）：下一輪再去掛機
+                st.done := false
+                throw e
+            }
+            st.text := "✅ 指定任務全部完成｜⚠ 回「" after.name "」掛機失敗：" e.Message
+            EventLog(p.name, "DH_AFTER_FAIL", after.name "｜" e.Message)
+            DhNotify("⚠ 每日討伐｜" p.name "｜指定任務全部完成，但回「" after.name "」掛機失敗：" e.Message "（人物留在原地，請手動處理）")
+        }
+        try DhStatFinish(p, A_TickCount - finT0)
+        try DhSchedFinish(p)
+        return
+    }
     npc := DhFindCrow(p.pid, DH_NPC_NAME), me := MiningCharState(p.pid)
     if IsObject(npc) && IsObject(me) && Sqrt((npc.x - me.x) ** 2 + (npc.z - me.z) ** 2) <= 400
         EventLog(p.name, "DH_RETURN", "人物已經在起點（「" DH_NPC_NAME "」就在附近），不用再按傳送卡")

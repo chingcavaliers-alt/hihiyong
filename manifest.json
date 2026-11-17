@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.47",
+    "version":  "v1.3.90.48",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "35769678440ea84d23352a4f99baf744fbbf2c80369f47fae533dcdee2f2c511"
+                      "sha256":  "8d50852359189d445007305af61303a1202724f57a484a39f597dbefa872222f"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "a466b5d2b7ff2b5bf7096db6b69fe70126eaa48d791e9bfa4de99c85f233b1bd"
+                      "sha256":  "2b24b13bf95fdddb6a77930c0d0c59b359ad1f7baf081b3a192b778a0ebc8ef1"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -147,7 +147,7 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "297b926f73f9a6b2ce5acfb6c112ca72d51ae129a1988fcf403b7f2e3530640f"
+                      "sha256":  "f8872e5fb12ae3ce9c2d4e8b261d6a337bc5b49d8fe245d3f6879251af16df62"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -159,7 +159,7 @@
                   },
                   {
                       "path":  "modules\\DailyRoutine.ahk",
-                      "sha256":  "ac8538c51b5c381a7da6adcc4685b349b443fa0e951f62d59c4e07f85dd24857"
+                      "sha256":  "cefc069aa97c4da54d86ebc8a6289d81b709ccb37d7623933c7631e539610e8b"
                   },
                   {
                       "path":  "modules\\DeathStats.ahk",
@@ -188,6 +188,10 @@
                   {
                       "path":  "modules\\GameData.ahk",
                       "sha256":  "fe3ab6ef8499175898d2fcd1593c2e70501a4372d0131041e0233f45209e76a4"
+                  },
+                  {
+                      "path":  "modules\\IniEncoding.ahk",
+                      "sha256":  "83c3328628e3ddee1b424bef81c5cfd9974d182b52af6c5c7a9e5d114b637eac"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -503,7 +507,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "df089ff6a141d4d9855587a081cd8945925ef7c3f74e5172572e5b395824bf4a"
+                      "sha256":  "f6afdde1190643366e74b38944d86f014e8654ca6ff7d19e6a5f5f8ce5e53c4d"
                   },
                   {
                       "path":  "登入測試.bat",

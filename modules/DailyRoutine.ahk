@@ -70,6 +70,7 @@ DailyWants(p, opt) => InStr("," DailyItemsOf(p) ",","," opt ",")>0
 ; 裝備欄 slot 屬於哪個選項；不在清單內的欄位（其他一日道具）照舊計算 → true
 DailyWantsSlot(p, slot) => !DAILY_SLOT_OPTION.Has(slot) || DailyWants(p,DAILY_SLOT_OPTION[slot])
 ; "town" = 回城換（Q 回城、換完 W 回怪區）；"here" = 原地換（不過圖，換完留在原地）
+DailyModeText(p) => DailyModeOf(p)="here" ? "原地換" : DailyModeOf(p)="auto" ? "自動（看快捷欄）" : "回城換"
 DailyModeOf(p) => p.HasOwnProp("dailyMode") && (p.dailyMode="here" || p.dailyMode="auto") ? p.dailyMode : "town"
 
 ; H-032 "auto" = 依道具快捷欄決定：起點卡和前點卡都放在快捷欄 → 回城換；有一張不在 → 原地換（不用人工設定每個角色）。
@@ -227,7 +228,7 @@ DailyRoutineRun(idx) {
     foregroundOwner:="daily",dailyRunning:=p.name
     activeRecoveryHwnd:=p.hwnd,activeRecoveryPid:=p.pid
     envText:=DailyEnvText(ctx)
-    EventLog(p.name,"DAILY_START","開始自動更換每日道具" (envText!="" ? "｜" envText : ""))
+    EventLog(p.name,"DAILY_START","開始自動更換每日道具｜設定：" DailyModeText(p) (envText!="" ? "｜" envText : ""))
     AddRecentEvent("🎁 " p.name " 開始自動更換每日道具（請勿操作鍵盤滑鼠，F10 可中止）")
     ok:=true
     try {
