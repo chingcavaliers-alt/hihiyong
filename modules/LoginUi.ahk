@@ -183,6 +183,13 @@ LoginUiKeyReady(snap, pid, key) {
 
 ; 以記憶體確認登入畫面已經到這個步驟。回傳 true = 已確認；false = 記憶體讀不到（呼叫端改用畫面樣板 / 固定等待）；
 ; 逾時（畫面讀得到卻一直沒到這一步）丟錯，和畫面樣板逾時一樣。連續 2 次都到才算（避免畫面轉場中途誤判）。
+; 離線比對（遊戲剛更新時，約 20 秒）還在跑：它可能讓新版位置資料馬上能用，等它（測試環境沒有這個函式）
+GameOffsetsStaticRunningSafe() {
+    fn:="GameOffsetsStaticRunning"
+    try return %fn%()
+    return false
+}
+
 LoginMemoryGate(hwnd, key, profileName, timeoutSec:=60) {
     global abortRequested,Status,LOGIN_MEM_UI
     if !LOGIN_MEM_UI
@@ -199,7 +206,7 @@ LoginMemoryGate(hwnd, key, profileName, timeoutSec:=60) {
         if abortRequested
             throw Error("使用者停止測試。")
         ; 解析工具結束後還要等 GameOffsetsResolveTick 載入結果（gameOffsetsResolvePid 歸零）才算處理完
-        if GameBuildOf(gpid)!="" && !GameOffsetsResolving() && !gameOffsetsResolvePid {
+        if GameBuildOf(gpid)!="" && !GameOffsetsResolving() && !gameOffsetsResolvePid && !GameOffsetsStaticRunningSafe() {
             pid:=LoginUiPid(hwnd)
             break
         }

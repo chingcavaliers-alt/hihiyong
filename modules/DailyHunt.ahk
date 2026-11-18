@@ -25,6 +25,7 @@ global DH_MAPS := Map(
     286, ["冥神禁域", 19])
 
 ; 對話框第幾行（1～12）；不合理的值用 4
+global DH_STOP_NOTIFY := 5, DH_STOP_BACKOFF_MS := 300000
 global DH_FINISH_GIVEUP_ROUNDS := 2, DH_FINISH_GIVEUP_MS := 3600000
 DhRowOf(v) => IsInteger(v) && Integer(v) >= 1 && Integer(v) <= 12 ? Integer(v) : 4
 ; NPC / 傳送卡名稱：去掉分隔符號、最長 20 字；空白用預設
@@ -234,6 +235,12 @@ DhSt(p) {
 }
 
 ; 勾選的角色裡遊戲視窗還在的（依角色列表順序）
+; 每日討伐正在幫這個角色跑（還沒完成）：其他功能不要把它帶離地圖（例如一直死亡時回城）
+DhActiveFor(p) {
+    global DH_RUNNING, DH_CHARS
+    return DH_RUNNING && DH_CHARS.Has(p.name) && !DhSt(p).done
+}
+
 DhSelectedAlive() {
     global profiles, DH_CHARS
     out := []
@@ -671,7 +678,7 @@ DhRun(p, d) {
             DhActFinish(p)
             st.finishFails := 0
         }
-        st.fails := 0
+        st.fails := 0, st.stopCount := 0
     } catch as e {
         if e.Extra = "stop" {
             stopped := true
@@ -685,6 +692,20 @@ DhRun(p, d) {
             }
             st.text := "⏸ " e.Message "（稍後再試）"
             EventLog(p.name, "DH_STOP", e.Message "｜距離上次實體鍵鼠輸入 " A_TimeIdlePhysical " 毫秒")   ; 被「使用者在操作」叫停時，這個數字很小 = 剛剛真的有實體輸入
+            ; 同一個原因（不是你在操作電腦、也不是死亡）連續停 DH_STOP_NOTIFY 次：11/18 被視窗擋住每 24 秒重試一次、停了快 2 小時沒人知道
+            ; → 通知一次，之後改成每 5 分鐘試一次
+            if !(p.HasOwnProp("hpEventOpen") && p.hpEventOpen) && !InStr(e.Message, "你開始操作") {
+                st.stopCount := (st.HasOwnProp("stopMsg") && st.stopMsg = e.Message && st.HasOwnProp("stopCount") ? st.stopCount : 0) + 1
+                st.stopMsg := e.Message
+                if st.stopCount >= DH_STOP_NOTIFY {
+                    st.next := A_TickCount + DH_STOP_BACKOFF_MS
+                    st.text := "⚠ 連續 " st.stopCount " 次停在同一個原因，" Round(DH_STOP_BACKOFF_MS / 60000) " 分鐘後再試：" e.Message
+                    if st.stopCount = DH_STOP_NOTIFY {
+                        EventLog(p.name, "DH_STOP_STUCK", "連續 " st.stopCount " 次：" e.Message "｜改成每 " Round(DH_STOP_BACKOFF_MS / 60000) " 分鐘試一次")
+                        DhNotify("⚠ 每日討伐｜" p.name "｜連續 " st.stopCount " 次卡在：" e.Message "。請看一下遊戲視窗是不是被別的視窗蓋住；之後每 " Round(DH_STOP_BACKOFF_MS / 60000) " 分鐘自動再試")
+                    }
+                }
+            }
         } else {
             st.fails += 1
             wait := Min(600000, 30000 * (2 ** Min(st.fails - 1, 4)))

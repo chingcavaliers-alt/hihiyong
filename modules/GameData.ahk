@@ -35,6 +35,11 @@ global gameOffsetsResolveKind := "pdb"   ; 目前背景工作是 "pdb"（Game.pd
 global gameOffsetsDeriveTried := Map()   ; build → 上次開始推算的 A_TickCount
 global gameOffsetsRefKept := Map(), gameOffsetsStaticTried := Map()   ; build → 已保留參考 exe / 已啟動離線比對
 global GAME_OFFSETS_DERIVE_RETRY_MS := 300000
+; 遊戲剛更新、還沒有新版位置資料時，離線比對（不用登入）結果和上一個已驗證版本「每一項都一樣」就先暫用（Provisional=static），
+; 讓改版當下的重新登入也能用記憶體判斷畫面（11/18 08:00 改版，小柯基重新登入只能退回畫面樣板）；
+; 不寫進位置檔，之後照舊向 GitHub 下載 / 由遊戲推算，拿到驗證過的就取代。
+global gameOffsetsStaticPid := 0, gameOffsetsStaticBuild := "", gameOffsetsStaticRef := "", gameOffsetsStaticStart := 0
+global gameOffsetsProvisional := 0
 ; 沒有這個版本的位置資料時，從 GitHub（offsets_db\<Build>.ini）補抓；還沒上傳就每 10 分鐘再試
 global GAME_OFFSETS_REMOTE_RETRY_MS := 600000
 global gameOffsetsRemoteReq := 0
@@ -151,6 +156,11 @@ GameOffsetsReady(pid) {
     if GameOffsetsLoadedOk() && gameOffsets.Has("Build") && gameOffsets["Build"]=build {
         if gameOffsetsWaitBuild=build
             gameOffsetsWaitBuild:=""
+        if gameOffsets.Has("Provisional") {   ; 暫用離線比對的結果：繼續向 GitHub 要 / 由遊戲推算驗證過的（兩者各自有重試間隔）
+            if !GameOffsetsResolving()
+                try StartGameOffsetsResolve(pid,build)
+            return true
+        }
         GameOffsetsKeepRef(pid,build)
         return true
     }
@@ -239,10 +249,61 @@ GameOffsetsStartStatic(pid,build) {
     refBuild:=SubStr(names[names.Length],1,-4)
     out:=dir "\" build ".static.ini",log:=dir "\" build ".static.log"
     cmd:=A_ComSpec ' /c ' python ' -I "' tool '" --ref-exe "' dir "\" refBuild '.exe" --ref-ini "' GAME_OFFSETS_DB_DIR "\" refBuild '.ini" --exe "' exe '" --out "' out '" > "' log '" 2>&1'
-    try Run(cmd,A_ScriptDir,"Hide")
+    spid:=0
+    try Run(cmd,A_ScriptDir,"Hide",&spid)
     catch
         return
-    EventLog("GLOBAL","GAME_OFFSETS_STATIC","版本 " build "｜用 " refBuild " 的 game.exe 離線比對推算候選位置（不用登入，只當佐證）")
+    gameOffsetsStaticPid:=spid,gameOffsetsStaticBuild:=build,gameOffsetsStaticRef:=refBuild,gameOffsetsStaticStart:=A_TickCount
+    SetTimer GameOffsetsStaticPoll,500
+    EventLog("GLOBAL","GAME_OFFSETS_STATIC","版本 " build "｜用 " refBuild " 的 game.exe 離線比對推算候選位置（不用登入；和參考版完全一樣就先暫用）")
+}
+
+GameOffsetsStaticRunning() {
+    global gameOffsetsStaticPid
+    return gameOffsetsStaticPid && ProcessExist(gameOffsetsStaticPid)
+}
+
+GameOffsetsStaticPoll() {
+    global gameOffsetsStaticPid,gameOffsetsStaticBuild,gameOffsetsStaticRef,gameOffsetsStaticStart
+    if GameOffsetsStaticRunning() && A_TickCount-gameOffsetsStaticStart<180000
+        return
+    SetTimer GameOffsetsStaticPoll,0
+    try if GameOffsetsStaticRunning()
+        ProcessClose gameOffsetsStaticPid
+    gameOffsetsStaticPid:=0
+    GameOffsetsTryProvisional(gameOffsetsStaticBuild,gameOffsetsStaticRef)
+}
+
+; 離線比對結果 = 參考版的每一個全域位置（*Rva / *Rvas）都沒變、結構欄位也都一樣 → 暫用。回傳是否已採用。
+GameOffsetsTryProvisional(build,refBuild) {
+    global gameOffsets,gameOffsetsProvisional,GAME_OFFSETS_DB_DIR,GAME_OFFSETS_TOOL_VERSION
+    if GameOffsetsLoadedOk() && gameOffsets.Get("Build","")=build
+        return false   ; 已經有了（GitHub / 推算比較快）
+    c:=GameOffsetsReadMap(A_ScriptDir "\game_ref\" build ".static.ini")
+    r:=GameOffsetsReadMap(GAME_OFFSETS_DB_DIR "\" refBuild ".ini")
+    if c.Get("Status","")!="OK" || c.Get("Build","")!=build || r.Get("Status","")!="OK"
+        || !IsInteger(c.Get("ToolVersion","")) || Integer(c["ToolVersion"])<GAME_OFFSETS_TOOL_VERSION {
+        EventLog("GLOBAL","GAME_OFFSETS_PROVISIONAL_SKIP","離線比對沒有結果（" c.Get("Error",c.Get("Status","沒有輸出")) "），不暫用")
+        return false
+    }
+    diff:="",n:=0
+    for k,v in r {
+        if k~="^(Build|ResolvedAt|DerivedFrom|Method|Verified|Source|ToolVersion|Status)$" || RegExMatch(k,"^(Field|Note|Error)|(Error|Note)$")   ; 說明文字（例如 MaterialError）不算位置
+            continue
+        n++
+        if c.Get(k,"")!=v
+            diff.=(diff="" ? "" : "、") k
+    }
+    if diff!="" || n<10 {
+        EventLog("GLOBAL","GAME_OFFSETS_PROVISIONAL_SKIP","離線比對和 " refBuild " 不完全一樣（" (diff="" ? "項目太少" : diff) "），等驗證過的位置資料")
+        return false
+    }
+    cand:=c.Clone()
+    cand["Provisional"]:="static"
+    gameOffsets:=cand,gameOffsetsProvisional:=cand
+    EventLog("GLOBAL","GAME_OFFSETS_PROVISIONAL","版本 " build " 離線比對和 " refBuild " 的 " n " 項位置完全一樣｜先暫用（登入畫面 / HP 可用記憶體判斷），之後由 GitHub 或遊戲推算的驗證結果取代")
+    AddRecentEvent("✓ 新版遊戲 " build " 的位置和上一版一樣，先暫用（等驗證）")
+    return true
 }
 
 ; 遊戲推算完成後：和離線候選互相核對，結果寫進日誌。
@@ -508,6 +569,7 @@ GameOffsetsStartDerive(pid,build) {
 }
 
 GameOffsetsResolveTick() {
+    global gameOffsetsProvisional
     global gameOffsets,gameOffsetsResolvePid,gameOffsetsResolveBuild,gameOffsetsResolveStart,GAME_OFFSETS_RESOLVE_TIMEOUT_MS,profiles,gameOffsetsResolveKind
     if GameOffsetsResolving() {
         if A_TickCount-gameOffsetsResolveStart<GAME_OFFSETS_RESOLVE_TIMEOUT_MS
@@ -541,6 +603,12 @@ GameOffsetsResolveTick() {
         }
     } else {
         err:=gameOffsets.Has("Error") ? gameOffsets["Error"] : "沒有產生結果"
+        ; 暫用中的離線比對結果不能被失敗的推算蓋掉
+        if IsObject(gameOffsetsProvisional) && gameOffsetsProvisional.Get("Build","")=gameOffsetsResolveBuild {
+            gameOffsets:=gameOffsetsProvisional.Clone()
+            EventLog("GLOBAL","GAME_OFFSETS_FAIL","推算：" err "｜繼續暫用離線比對的位置，稍後再推算")
+            return
+        }
         EventLog("GLOBAL","GAME_OFFSETS_FAIL",(gameOffsetsResolveKind="derive" ? "推算：" : "") err "｜HP 改用動態校正")
         AddRecentEvent(gameOffsetsResolveKind="derive" ? "⚠ 無法由遊戲推算新版資料位置，HP 改用動態校正（詳見 Log）" : "⚠ Game.pdb 解析失敗，HP 改用動態校正（詳見 Log）")
         ; Game.pdb 那條路失敗：立刻接著用遊戲記憶體推算

@@ -55,6 +55,22 @@ CwPetPressedRecently(p) {
     global CW_COOLDOWN_MS
     return p.HasOwnProp("petPressedPid") && p.petPressedPid = p.pid && p.HasOwnProp("petPressedAt") && A_TickCount - p.petPressedAt < CW_COOLDOWN_MS
 }
+; 死亡中（死亡事件還沒結案，或 HP 讀到 0）：按了也叫不出來，不能算成「叫不出來」
+; 11/17～11/18 CW_FAIL 有 3 次是按完 S 的那幾秒角色剛好死掉（DEATH 在按鍵同一秒才成立）
+CwDeadNow(p) {
+    if p.HasOwnProp("hpEventOpen") && p.hpEventOpen
+        return true
+    hpNow := 0, hpMax := 0, fn := "ReadGameHP"   ; 測試環境可能沒有這個函式
+    try if %fn%(p.pid, &hpNow, &hpMax) && hpMax > 0 && hpNow = 0
+        return true
+    return false
+}
+; 在城裡（安全區 / 學院）：遊戲不能召喚（「這裡是無法呼叫召喚獸的地方」），讀不到地圖資訊不算
+CwInTown(p) {
+    fn := "LfTownMap"
+    try return %fn%(p.pid) ? true : false
+    return false
+}
 CwReset(p, kind, text := "") {
     s := CwState(p, kind)
     s.since := 0
@@ -118,6 +134,11 @@ CompanionTick() {
             ; 自動採礦的角色被踢出礦場會回到學院廣場（22-*），那裡不能召喚寵物 / 傭兵 / 娃娃：不按鍵，進礦場後再叫
             if p.HasOwnProp("mnActive") && p.mnActive && SubStr(map, 1, 3) = "22-" {
                 s.text := "在學院廣場不能召喚，進水晶礦場後再叫"
+                continue
+            }
+            ; 城裡 / 安全區不能召喚（11/18 欸等每日討伐回起點、豆奶回城換道具時白按 8 次，CW_FAIL 連續 7 次）：出城後再叫
+            if CwInTown(p) {
+                s.text := "在城裡 / 安全區不能召喚，出城後再叫"
                 continue
             }
             ; 自動採礦的角色：同一張圖連續叫不出來 2 次（水晶礦場「此地圖無法使用傭兵」）就不再按，換地圖再試；
@@ -197,7 +218,7 @@ CompanionRun(p, kind) {
             return
         }
         ; 切到前景後再確認一次（這幾秒內它可能自己出現了：再按就收起來了）
-        if CwRead(p, kind) != 0 || !ApReady(p)
+        if CwRead(p, kind) != 0 || !ApReady(p) || CwDeadNow(p)
             return
         ApKey(p, info.key)
         s.next := A_TickCount + CW_COOLDOWN_MS   ; 先記冷卻：開關型，不連續切換
@@ -208,6 +229,11 @@ CompanionRun(p, kind) {
             s.fails := 0, s.notified := false, s.since := 0, s.text := "✓ 剛剛已叫出（" FormatTime(, "HH:mm:ss") "）"
             EventLog(p.name, "CW_OK", label "不在外面｜已按 " StrUpper(info.key) "（快捷欄第 " info.slot " 格）叫出")
             AddRecentEvent("🐾 " p.name "：" label "不在外面，已叫出")
+        } else if CwDeadNow(p) {
+            ; 按完的這幾秒角色死了：不算失敗，不累加退避，復活後重新確認再叫
+            s.next := A_TickCount + 30000, s.since := 0
+            s.text := "角色死亡中，復活後再叫"
+            EventLog(p.name, "CW_DEAD", "按 " StrUpper(info.key) " 後角色死亡，" label "沒出來不算失敗｜復活後再叫")
         } else {
             s.fails += 1, s.failMap := CwMap(p)
             wait := Min(CW_BACKOFF_MAX_MS, CW_COOLDOWN_MS * (2 ** Min(s.fails - 1, 5)))   ; 指數上限 5：連續失敗很多次也不會整數溢位

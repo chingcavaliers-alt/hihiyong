@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.49"
+global APP_VERSION := "v1.3.90.50"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -1884,6 +1884,17 @@ GetGameModuleSize(pid) {
 ; v1.3.12.6: game.exe 版本識別 = PE header TimeDateStamp + 映像大小。維修更新後會改變。
 GetGameBuildStamp(pid) {
     global memoryHpHandles
+    ; 只認 game.exe：遊戲關掉後 PID 可能被別的程式用掉（11/18 08:03 豆奶舊遊戲的 PID 變成 python.exe，被當成新版遊戲去推算位置）
+    try {
+        if StrLower(ProcessGetName(pid))!="game.exe" {
+            if (h:=memoryHpHandles.Get(pid,0)) {
+                DllCall("CloseHandle","Ptr",h)
+                memoryHpHandles.Delete(pid)
+            }
+            return ""
+        }
+    } catch
+        return ""
     hProc:=memoryHpHandles.Get(pid,0)
     if !hProc {
         hProc:=DllCall("OpenProcess","UInt",0x0410,"Int",0,"UInt",pid,"Ptr")

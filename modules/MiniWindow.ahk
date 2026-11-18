@@ -4,6 +4,9 @@
 global MINI_ENABLED := Integer(IniRead(INI, "MiniWindow", "Enabled", "0"))
 global MINI_PAGES := 3, MINI_ROWS := 7
 global miniGui := 0, miniPage := 1, miniPageCtl := Map(), miniToggleCtl := Map(), miniText := Map(), miniLastSave := 0
+; 自動化操作遊戲視窗時小窗暫時讓開（11/18 只剩一台螢幕，小窗蓋在欸等 / 豆奶的遊戲畫面上，
+; 每日討伐點護士、換每日道具找視窗連續失敗快 2 小時）：miniShown = 應該顯示，miniYielded = 暫時藏起來
+global miniShown := false, miniYielded := false, miniIdleSince := 0
 
 ; 可在小窗開關的功能：{key, label, on}
 MiniFeatures() {
@@ -195,22 +198,85 @@ MiniRefresh() {
 }
 
 MiniShow() {
-    global miniGui, miniPage
+    global miniGui, miniPage, miniShown, miniYielded
     if !IsObject(miniGui)
         MiniBuild()
     pos := MiniSavedPos()
     miniGui.Show("NoActivate x" pos.x " y" pos.y " w282 h238")
+    miniShown := true, miniYielded := false
     MiniRefresh()
     SetTimer MiniRefresh, 1000
+    SetTimer MiniGuardTick, 200
 }
 
 MiniHide() {
-    global miniGui
+    global miniGui, miniShown, miniYielded
     SetTimer MiniRefresh, 0
+    SetTimer MiniGuardTick, 0
     if !IsObject(miniGui)
         return
+    if !miniYielded
+        MiniSavePos()
+    miniShown := false, miniYielded := false
+    miniGui.Hide()
+}
+
+; 有自動化在操作遊戲視窗（前景鎖、重新登入）
+MiniAutomationBusy() {
+    global foregroundOwner, activeRecoveryHwnd
+    return foregroundOwner != "" || activeRecoveryHwnd
+}
+
+; 小窗蓋住任何一個遊戲視窗
+MiniOverlapsGame() {
+    global miniGui, profiles
+    try WinGetPos &mx, &my, &mw, &mh, "ahk_id " miniGui.Hwnd
+    catch
+        return false
+    for p in profiles {
+        if !p.hwnd
+            continue
+        try {
+            WinGetPos &gx, &gy, &gw, &gh, "ahk_id " p.hwnd
+            if mx < gx + gw && gx < mx + mw && my < gy + gh && gy < my + mh
+                return true
+        }
+    }
+    return false
+}
+
+; 暫時藏起來（不記位置、不停計時器）；自動化做完 2 秒後 MiniGuardTick 會放回來
+MiniYield() {
+    global miniGui, miniShown, miniYielded, miniIdleSince
+    if !miniShown || miniYielded || !IsObject(miniGui)
+        return false
     MiniSavePos()
     miniGui.Hide()
+    miniYielded := true, miniIdleSince := 0
+    return true
+}
+
+MiniGuardTick() {
+    global miniGui, miniShown, miniYielded, miniIdleSince
+    if !miniShown || !IsObject(miniGui)
+        return
+    if MiniAutomationBusy() {
+        miniIdleSince := 0
+        if !miniYielded && MiniOverlapsGame()
+            MiniYield()
+        return
+    }
+    if !miniYielded
+        return
+    if !miniIdleSince {
+        miniIdleSince := A_TickCount
+        return
+    }
+    if A_TickCount - miniIdleSince >= 2000 {
+        pos := MiniSavedPos()
+        miniGui.Show("NoActivate x" pos.x " y" pos.y " w282 h238")
+        miniYielded := false
+    }
 }
 
 MiniSavedPos() {

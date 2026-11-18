@@ -1025,7 +1025,27 @@ ApCursorOn(p, px, py) {
     if Abs(cx - px) > 2 || Abs(cy - py) > 2
         return false
     hw := DllCall("WindowFromPoint", "Int64", (cy << 32) | (cx & 0xFFFFFFFF), "Ptr")
-    return hw && DllCall("GetAncestor", "Ptr", hw, "UInt", 2, "Ptr") = p.hwnd   ; GA_ROOT
+    root := hw ? DllCall("GetAncestor", "Ptr", hw, "UInt", 2, "Ptr") : 0   ; GA_ROOT
+    if root = p.hwnd
+        return true
+    ; 擋住的是管理程式自己的小窗：先讓開再看一次（不讓自己的視窗害自己點不到）
+    if root && ApOwnWindow(root) {
+        fn := "MiniYield"
+        yielded := false
+        try yielded := %fn%()
+        if yielded {
+            Sleep 120
+            hw := DllCall("WindowFromPoint", "Int64", (cy << 32) | (cx & 0xFFFFFFFF), "Ptr")
+            return hw && DllCall("GetAncestor", "Ptr", hw, "UInt", 2, "Ptr") = p.hwnd
+        }
+    }
+    return false
+}
+
+ApOwnWindow(hwnd) {
+    wpid := 0
+    DllCall("GetWindowThreadProcessId", "Ptr", hwnd, "UInt*", &wpid)
+    return wpid = DllCall("GetCurrentProcessId", "UInt")
 }
 
 ; 條件成立才算過關：每 0.1 秒看一次，最多等 ms 毫秒。
