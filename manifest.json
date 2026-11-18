@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.50",
+    "version":  "v1.3.90.51",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "0379501b078078ebade0e7a0e9bde31e52beefdd8c44bd7b8ed08f4cf0dde820"
+                      "sha256":  "0a0046d7f1f0bcf0ed91205151904d9dba196aaca44ff89a80b2ac82d5e6cd53"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "86e41ac52b9e647d62150bc7ec12b615c03f830f55763ce1cee88776b1eef926"
+                      "sha256":  "6060607e07559e0fb870ca73bfe2d44ec357f912fb53ce2e6caf0f64f234e17d"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -147,7 +147,7 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "04c1ae1df02fb952e8fc1e7c21fcd239313471c824d7f9767949db92594887d4"
+                      "sha256":  "24e1928bc2043d8166344e43a9bb32d9b2dba51d58fe75a86b7b0831f7437dc7"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -247,7 +247,7 @@
                   },
                   {
                       "path":  "modules\\RecoveryGuard.ahk",
-                      "sha256":  "eab98ec0cfc7c67917629c2f1a5dced457f799d89dddb4de0f55d33c84a73baa"
+                      "sha256":  "6b3319df3200a542158e300361b57a83164ccb8a9730c86206088306700c46e0"
                   },
                   {
                       "path":  "modules\\RecoveryQueue.ahk",
@@ -511,7 +511,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "5f1721f44652fe962b53f28900242db476e2b8e460f64400ba95e38a942560dc"
+                      "sha256":  "ee8bd675daff2e28781e85169de26ef0e5d7bcb2177a166ba9298b4e26e2e73e"
                   },
                   {
                       "path":  "登入測試.bat",

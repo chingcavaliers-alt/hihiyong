@@ -235,12 +235,6 @@ DhSt(p) {
 }
 
 ; 勾選的角色裡遊戲視窗還在的（依角色列表順序）
-; 每日討伐正在幫這個角色跑（還沒完成）：其他功能不要把它帶離地圖（例如一直死亡時回城）
-DhActiveFor(p) {
-    global DH_RUNNING, DH_CHARS
-    return DH_RUNNING && DH_CHARS.Has(p.name) && !DhSt(p).done
-}
-
 DhSelectedAlive() {
     global profiles, DH_CHARS
     out := []

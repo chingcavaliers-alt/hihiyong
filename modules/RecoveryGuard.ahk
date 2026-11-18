@@ -10,9 +10,6 @@
 ;    全部正常就結束；補做幾輪仍不正常，才發一次 Discord。
 ; 2. 一直死亡（RG_DEATH_WINDOW_MIN 分鐘內 RG_DEATH_COUNT 次）時檢查 F6，沒開就開啟（只寫紀錄）。
 ;    正在挖礦（採集中、或 5 分鐘內挖過）的角色不開 F6（11/17 椰奶手動挖礦被按了兩次 F6，採集被打斷）。
-; 3. F6 開著還是一直死（RG_FLEE_WINDOW_MIN 分鐘內 RG_FLEE_COUNT 次，通常是 PK 時段被別的學院殺、或王在旁邊）：
-;    關 F6、用起點傳送卡回城，發 Discord 通知，留在城裡等人處理（11/17～11/18 椰奶、小柯基、欸等、豆奶各一次，7 分鐘死 17～19 次）。
-;    自動採礦（採礦自己處理王）和每日討伐進行中的角色不做（討伐會重新搭車，回城只會一直來回）。
 ; 需要前景時與復活輔助相同：等其他自動化結束、鍵盤滑鼠閒置後才動作。
 ; ============================================================================
 
@@ -21,8 +18,6 @@ global RG_POST_CHECK_ROUNDS := 3
 global RG_DEATH_WINDOW_MIN := Integer(IniRead(INI,"Recovery","DeathLoopWindowMinutes","10"))
 global RG_DEATH_COUNT := Integer(IniRead(INI,"Recovery","DeathLoopCount","3"))
 global RG_IDLE_SEC := 10
-global RG_FLEE_COUNT := Integer(IniRead(INI,"Recovery","DeathFleeCount","5"))   ; 0 = 關閉
-global RG_FLEE_WINDOW_MIN := Integer(IniRead(INI,"Recovery","DeathFleeWindowMinutes","5"))
 global RG_MINING_GRACE_MS := 300000
 ; H-032：登入後依快捷欄找「寵物卡」，寵物不在外面才按（0 = 關閉，沿用設定檔 PostKeys 的鍵）
 global RG_AUTO_PET := Integer(IniRead(INI,"Recovery","AutoPet","1"))
@@ -188,7 +183,7 @@ RecoveryGuardNoteDeath(p) {
 
 RecoveryGuardPruneDeaths(p) {
     global RG_DEATH_WINDOW_MIN
-    cutoff:=A_TickCount-Max(RG_DEATH_WINDOW_MIN,RG_FLEE_WINDOW_MIN)*60000
+    cutoff:=A_TickCount-RG_DEATH_WINDOW_MIN*60000
     while p.rgDeaths.Length && p.rgDeaths[1]<cutoff
         p.rgDeaths.RemoveAt(1)
 }
@@ -346,20 +341,12 @@ RecoveryGuardDeathLoop(p) {
     last:=p.rgDeaths[p.rgDeaths.Length]
     if p.HasOwnProp("rgDeathChecked") && p.rgDeathChecked=last
         return
-    n:=RecoveryGuardDeathsWithin(p,RG_DEATH_WINDOW_MIN)
-    flee:=RG_FLEE_COUNT>0 && RecoveryGuardDeathsWithin(p,RG_FLEE_WINDOW_MIN)>=RG_FLEE_COUNT
-    if n<RG_DEATH_COUNT && !flee
+    n:=p.rgDeaths.Length
+    if n<RG_DEATH_COUNT
         return
     auto:=ReadGameAutoAttack(p.pid)
     if auto=-1
         return
-    if flee && auto=1 {
-        if RecoveryGuardFleeSkip(p)!=""
-            p.rgDeathChecked:=last
-        else if !RecoveryGuardBusy()
-            RecoveryGuardFlee(p,last)
-        return
-    }
     if auto=1 {
         p.rgDeathChecked:=last,p.rgAutoOffSeen:=0
         return
@@ -396,13 +383,6 @@ RecoveryGuardDeathLoop(p) {
     AddRecentEvent("🔧 " p.name " 一直死亡且 F6 沒開：" result)
 }
 
-RecoveryGuardDeathsWithin(p, mins) {
-    cutoff:=A_TickCount-mins*60000,n:=0
-    for t in p.rgDeaths
-        n+=t>=cutoff
-    return n
-}
-
 ; 採集中，或 RG_MINING_GRACE_MS 內採集過（自動採礦中的角色也算）
 RecoveryGuardMiningRecently(p) {
     global RG_MINING_GRACE_MS
@@ -411,58 +391,6 @@ RecoveryGuardMiningRecently(p) {
     try if MiningIsGathering(p.pid)
         return true
     return p.HasOwnProp("gatherTick") && p.gatherTick && A_TickCount-p.gatherTick<RG_MINING_GRACE_MS
-}
-
-; 不能回城的原因（"" = 可以）
-RecoveryGuardFleeSkip(p) {
-    if p.HasOwnProp("mnActive") && p.mnActive
-        return "自動採礦中"
-    fn:="DhActiveFor"
-    try if %fn%(p)
-        return "每日討伐進行中"
-    if DailyTownName(p.pid)!=""
-        return "已經在城裡"
-    return ""
-}
-
-; F6 開著還是一直死：關 F6 → 起點傳送卡回城 → 通知。快捷欄沒有起點卡就只關 F6 並通知。
-RecoveryGuardFlee(p, last) {
-    global RG_FLEE_WINDOW_MIN,foregroundOwner,activeRecoveryHwnd,activeRecoveryPid
-    p.rgDeathChecked:=last,p.rgAutoOffSeen:=0
-    n:=RecoveryGuardDeathsWithin(p,RG_FLEE_WINDOW_MIN)
-    where:=NotificationLocationText(p)
-    ctx:={name:p.name,hwnd:p.hwnd,pid:p.pid}
-    foregroundOwner:="guard"
-    activeRecoveryHwnd:=p.hwnd,activeRecoveryPid:=p.pid
-    done:=[]
-    try {
-        DailyEnsureOnScreen(ctx)
-        EnsureRecoveryFocus(p.hwnd,p.name)
-        Sleep 300
-        if ReadGameAutoAttack(p.pid)=1 {
-            SendOneKey("F6")
-            Sleep 800
-            done.Push(ReadGameAutoAttack(p.pid)=0 ? "關閉自動攻擊" : "按 F6 後自動攻擊仍開著")
-        }
-        info:=""
-        try info:=DailyQuickInfo(p.pid,"起點傳送卡")
-        if IsObject(info) && info.key!="" {
-            before:=ReadGameMapId(p.pid)
-            SendOneKey(info.key)
-            moved:=RecoveryGuardWaitMap(p.pid,before,20000)
-            done.Push("按起點傳送卡 " StrUpper(info.key) (moved ? "回城" : "（20 秒內地圖沒有改變）"))
-        } else
-            done.Push("快捷欄找不到起點傳送卡，沒有回城")
-    } catch as e {
-        done.Push("失敗：" e.Message)
-    }
-    DailyRestorePosition(ctx)
-    activeRecoveryHwnd:=0,activeRecoveryPid:=0
-    foregroundOwner:=""
-    text:=RecoveryGuardJoin(done)
-    EventLog(p.name,"DEATH_LOOP_FLEE",RG_FLEE_WINDOW_MIN " 分鐘內死亡 " n " 次（自動攻擊開著）｜" where "｜" text)
-    AddRecentEvent("🏃 " p.name " " RG_FLEE_WINDOW_MIN " 分鐘內死了 " n " 次：" text)
-    try SendDiscordMessage("⚠️ HIHIYONG 一直死亡，已回城`n角色：" p.name "`n地點：" where "`n" RG_FLEE_WINDOW_MIN " 分鐘內死了 " n " 次（自動攻擊開著，可能是 PK 時段或王在旁邊）。`n已處理：" text "`n角色會留在城裡，請有空時確認再回去打怪。")
 }
 
 RecoveryGuardJoin(arr) {
