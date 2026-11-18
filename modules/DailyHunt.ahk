@@ -26,6 +26,9 @@ global DH_MAPS := Map(
 
 ; 對話框第幾行（1～12）；不合理的值用 4
 global DH_STOP_NOTIFY := 5, DH_STOP_BACKOFF_MS := 300000
+; 同一張圖開打後 DH_CROWD_WINDOW_MS 內死 DH_CROWD_DEATHS 次（11/18 欸等在波斯宮、異形空降區固定點周圍 100 多隻，原地復活又被圍死 10 次）
+; → 這張圖今天改去怪比較少的一群（周圍最多 DH_CALM_MAX 隻、離原本的點 DH_CALM_AVOID 以上）
+global DH_CROWD_DEATHS := 3, DH_CROWD_WINDOW_MS := 180000, DH_CALM_MAX := 40, DH_CALM_AVOID := 400
 global DH_FINISH_GIVEUP_ROUNDS := 2, DH_FINISH_GIVEUP_MS := 3600000
 DhRowOf(v) => IsInteger(v) && Integer(v) >= 1 && Integer(v) <= 12 ? Integer(v) : 4
 ; NPC / 傳送卡名稱：去掉分隔符號、最長 20 字；空白用預設
@@ -230,7 +233,7 @@ DhSpotDo(rawValue) {
 ; 每個角色自己的進行狀態（放在角色物件上，和寵物監測一樣）
 DhSt(p) {
     if !p.HasOwnProp("dh")
-        p.dh := {next: 0, fails: 0, hunted: 0, refreshedAt: 0, skip: Map(), prog: Map(), stalls: 0, staleN: 0, lock: 0, keepPlace: false, lastDay: 0, text: "", done: false, testDone: Map(), seen: Map(), notified: Map()}
+        p.dh := {next: 0, fails: 0, hunted: 0, refreshedAt: 0, skip: Map(), prog: Map(), crowd: Map(), huntSince: 0, stalls: 0, staleN: 0, lock: 0, keepPlace: false, lastDay: 0, text: "", done: false, testDone: Map(), seen: Map(), notified: Map()}
     return p.dh
 }
 
@@ -593,7 +596,7 @@ DhPlan(p) {
     } else if IsObject(tasks)
         st.staleN := 0
     if IsObject(tasks) && tasks.today != st.lastDay {   ; 新的一天（00:00 換任務）：重新來過
-        st.lastDay := tasks.today, st.skip := Map(), st.prog := Map(), st.stalls := 0, st.hunted := 0, st.lock := 0, st.done := false
+        st.lastDay := tasks.today, st.skip := Map(), st.prog := Map(), st.crowd := Map(), st.stalls := 0, st.hunted := 0, st.lock := 0, st.done := false
         if st.HasOwnProp("stat")
             st.DeleteProp("stat")
     }
@@ -616,6 +619,8 @@ DhMonitor(p, g) {
         st.text := "已打滿，繼續打：" g.name "｜" g.done " / " g.target
         return
     }
+    if DhCrowdedNow(p, st, g)
+        return
     pr := st.prog.Get(g.map, 0)
     if !IsObject(pr) || pr.done != g.done {
         st.prog[g.map] := {done: g.done, since: A_TickCount}
@@ -635,6 +640,25 @@ DhMonitor(p, g) {
         return
     }
     st.text := "打怪中：" g.name "｜" g.done " / " g.target
+}
+
+; 開打後一直被圍死：記下這張圖「太擠」，下一輪重新開打（DhActStartHunt）時改去怪少的一群。每張圖每天只換一次。
+DhCrowdedNow(p, st, g) {
+    global DH_CROWD_DEATHS, DH_CROWD_WINDOW_MS
+    if st.crowd.Has(g.map) || !st.huntSince || !p.HasOwnProp("rgDeaths")
+        return false
+    n := 0
+    for t in p.rgDeaths
+        if t >= st.huntSince && A_TickCount - t <= DH_CROWD_WINDOW_MS
+            n += 1
+    if n < DH_CROWD_DEATHS
+        return false
+    st.crowd[g.map] := 1, st.hunted := 0
+    if st.prog.Has(g.map)
+        st.prog.Delete(g.map)
+    EventLog(p.name, "DH_CROWDED", g.name "｜開打後 " Round(DH_CROWD_WINDOW_MS / 60000) " 分鐘內死了 " n " 次｜今天這張圖改去怪比較少的地方")
+    DhNotify("💀 每日討伐｜" p.name "｜" g.name " 怪太多一直死（" n " 次），改去怪比較少的地方繼續打")
+    return true
 }
 
 ; 一個回合：和 CompanionRun 一樣的保護（旗標、切視窗、守門、收尾還原視窗）。
@@ -787,7 +811,9 @@ DhCameraZoomOut(p) {
         ApScrollMany(p, 512, 400, dhWheelOut, 50, 40)
         ApWait(() => (ApGuardAny(), false), 300)
     }
-    EventLog(p.name, "DH_CAMERA", "鏡頭拉遠｜距離 " Round(d0, 1) " → " Round(DhEyeDist(pid), 1) (flipped ? "（滾輪方向相反，已改）" : ""))
+    d2 := DhEyeDist(pid)
+    if flipped || Abs(d2 - d0) >= 0.5   ; 本來就拉到最遠（每趟都是 209.5 → 209.5）不用記
+        EventLog(p.name, "DH_CAMERA", "鏡頭拉遠｜距離 " Round(d0, 1) " → " Round(d2, 1) (flipped ? "（滾輪方向相反，已改）" : ""))
 }
 ; 左右環繞鏡頭找 NPC：每次壓著中鍵拖 260 像素（左右交替），最多 6 次；轉完還看不到回傳 0。
 ; 第一次轉完鏡頭方向沒變 = 這個遊戲視窗吃不到中鍵拖曳，丟出錯誤（外面會改用走路）。
@@ -1166,15 +1192,22 @@ DhBusPickGate(p) {
         EventLog(p.name, "DH_BUS_GATE", "讀不到入口清單，照舊直接按確定")
         return
     }
-    y := Round(gl.top) + 9
-    for hold in [200, 300, 450] {
-        ApClick(p, DH_BUS_LIST_X, y, hold)
-        ApWait(() => (ApGuardAny(), false), 500)
-        gl := ReadGameBusGateList(pid)
-        if !IsObject(gl) || gl.sel >= 0
-            return
-    }
-    EventLog(p.name, "DH_BUS_GATE", "點了入口三次，清單仍沒有選取，照舊按確定")
+    ; 11/10～11/18 每一趟（72 次）點完入口都讀不到「已選取」，但按確定都有到站：讀到的選取不可靠，不再連點三次（每趟多花 2.5 秒）。
+    ; 點一次就按確定；確定沒反應（地圖沒換）時，按確定那一段會先再點一次入口。
+    ApClick(p, DH_BUS_LIST_X, Round(gl.top) + 9, 300)
+    if ApWait(() => (ApGuardAny(), (g2 := ReadGameBusGateList(pid)) != 0 && g2.sel >= 0), 600)
+        return
+    DhLogOnce(p, "DH_BUS_GATE", "點了入口，讀不到已選取（之前每次都這樣，到站都正常）｜直接按確定；沒到站會再點一次入口")
+}
+; 同一個角色、同一個事件在這次執行中只寫一次日誌（每趟都一樣的情況不用每趟記）
+global dhLoggedOnce := Map()
+DhLogOnce(p, kind, text) {
+    global dhLoggedOnce
+    k := p.name "|" kind
+    if dhLoggedOnce.Has(k)
+        return
+    dhLoggedOnce[k] := 1
+    EventLog(p.name, kind, text)
 }
 ; 搭公車這一段（點 NPC、選地圖、點入口、確定）游標用平順移動，不是瞬間跳過去。
 DhActTravel(p, g) {
@@ -1254,6 +1287,8 @@ DhActTravelCore(p, g) {
             bs := ReadGameBusWindow(pid)
             if IsObject(bs) && bs.HasOwnProp("sel") && bs.sel != idx
                 DhBusSelect(p, g, idx, bus.maps.Length)   ; 選取跑掉了：重選
+            if hold != 220
+                DhBusPickGate(p)   ; 上一次確定沒反應：可能入口沒點到，再點一次
             ApClick(p, DH_BUS_OK_X, DH_BUS_OK_Y, hold)
         }
         if ApWait(() => (ApGuardAny(), DhMapMain(pid) = g.map), hold = 450 ? 30000 : 6000) {
@@ -1788,7 +1823,10 @@ DhActStartHunt(p, g, keepPlace := false) {
             throw Error("按 F6 想先關掉自動打怪，但它還是開著")
     }
     spot := DH_SPOTS.Get(g.map, 0)
-    if keepPlace && DhIsAway(MiningCharState(pid), spot, DH_AWAY_DIST)
+    st := DhSt(p)
+    if st.crowd.Has(g.map)
+        DhStartCalm(p, g, spot, mob)
+    else if keepPlace && DhIsAway(MiningCharState(pid), spot, DH_AWAY_DIST)
         DhStartInPlace(p, g, mob)
     else if IsObject(spot)
         DhStartAtSpot(p, g, spot, mob)
@@ -1797,6 +1835,7 @@ DhActStartHunt(p, g, keepPlace := false) {
     ApKey(p, "F6")
     if !ApWait(() => (ApGuardAny(), ReadGameAutoHunt(pid) = 1), 6000)
         throw Error("按了 F6 但自動打怪沒有開起來")
+    st.huntSince := A_TickCount
     EventLog(p.name, "DH_HUNT", "開始自動打怪：" g.name "｜" g.done " / " g.target)
     AddRecentEvent("🎯 " p.name "：開始打 " g.name)
 }
@@ -1845,6 +1884,60 @@ DhStartAtSpot(p, g, spot, mob) {
             DhMoveTo(p, best.x, best.z, DH_HUNT_STOP_NEAR)
         }
     }
+}
+
+; 這張圖太擠（一直被圍死）：避開原本的點（固定點；沒有固定點就是最密的中心），去周圍怪不超過 DH_CALM_MAX 隻、離人最近的一群。
+; 找不到這樣的一群就去整張圖最稀的一群；全都擠在原本的點旁邊就留在原地直接開自動打怪。
+DhStartCalm(p, g, spot, mob) {
+    global DH_CALM_MAX, DH_CALM_AVOID, DH_CLUSTER_R, DH_HUNT_STOP_NEAR
+    pid := p.pid
+    if !DhHasCrow(pid, mob) {
+        DhWakeMove(p, 1)
+        ApWait(() => (ApGuardAny(), DhHasCrow(pid, mob)), 6000)
+    }
+    cr := DhTargets(pid, mob)
+    me := MiningCharState(pid)
+    if !IsObject(me) || !IsObject(cr) || !cr.Length {
+        EventLog(p.name, "DH_CLUSTER", g.name "｜怪太多一直死，但讀不到怪物清單｜留在原地直接開自動打怪")
+        return
+    }
+    avoid := IsObject(spot) ? spot : DhBestCluster(cr, me, DH_CLUSTER_R)
+    best := DhCalmCluster(cr, me, avoid, 300, 4, DH_CALM_MAX, DH_CALM_AVOID)
+    if !IsObject(best) {
+        EventLog(p.name, "DH_CLUSTER", g.name "｜怪太多一直死，但這張圖找不到怪比較少的地方｜留在原地直接開自動打怪")
+        return
+    }
+    EventLog(p.name, "DH_CLUSTER", g.name "｜怪太多一直死，改去怪比較少的一群｜周圍 300 內 " best.count " 隻｜離原本的點 " (IsObject(avoid) ? Round(Sqrt((best.x - avoid.x) ** 2 + (best.z - avoid.z) ** 2)) : "?") "｜距離 " Round(best.dist))
+    if best.dist > DH_HUNT_STOP_NEAR
+        DhMoveTo(p, best.x, best.z, DH_HUNT_STOP_NEAR)
+}
+
+; 怪比較少的一群：離 avoid 超過 avoidR、周圍 radius 內 minN～maxN 隻的怪裡離人最近的那一隻；
+; 沒有的話放寬成「離 avoid 夠遠、周圍最少隻的」。回傳格式和 DhNearestCluster 一樣；沒有活的（或全都擠在 avoid 旁邊）回傳 0。
+DhCalmCluster(cr, me, avoid, radius := 300, minN := 4, maxN := 40, avoidR := 400) {
+    all := [], far := []
+    for c in cr
+        if c.hp > 0 {
+            all.Push(c)
+            if !IsObject(avoid) || (c.x - avoid.x) ** 2 + (c.z - avoid.z) ** 2 > avoidR ** 2
+                far.Push(c)
+        }
+    if !far.Length
+        return 0
+    r2 := radius ** 2, need := Min(minN, far.Length)
+    best := 0, bd := 1e18, thin := 0, tn := 1e18, td := 1e18
+    for c in far {
+        n := 0
+        for o in all
+            if (o.x - c.x) ** 2 + (o.z - c.z) ** 2 <= r2
+                n += 1
+        d := Sqrt((c.x - me.x) ** 2 + (c.z - me.z) ** 2)
+        if n >= need && n <= maxN && d < bd
+            best := {x: c.x, y: c.y, z: c.z, count: n, dist: d}, bd := d
+        if n < tn || (n = tn && d < td)
+            thin := {x: c.x, y: c.y, z: c.z, count: n, dist: d}, tn := n, td := d
+    }
+    return best ? best : thin
 }
 
 ; 沒有固定點：怪物清單要角色先動一下遊戲才會送過來，先走一小段再讀；還是空的就換方向再走（最多再 2 次）；

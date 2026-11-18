@@ -1858,6 +1858,7 @@ MnEnter(p) {
     card := MnFindIn(pid, "InvenOffset", MnIsCard)
     if !card {
         left := MnCountBoxes(pid)
+        MnSt(p).boxesLeft := left   ; 首頁角色卡顯示「禮盒用完」
         EventLog(p.name, "MN_BOXES", "傳送卡禮盒剩 " left " 個（背包 + 銀行）")
         if left <= 2 && left >= 1 && !MnSt(p).boxWarned {   ; 快用完了：提醒一次（用完就進不了圖、挖不了礦）
             MnSt(p).boxWarned := true

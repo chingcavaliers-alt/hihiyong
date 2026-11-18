@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.51",
+    "version":  "v1.3.90.52",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "0a0046d7f1f0bcf0ed91205151904d9dba196aaca44ff89a80b2ac82d5e6cd53"
+                      "sha256":  "4794d4aa6ef86bb3f167cdc43d70074677b8ab6874aaabc798f86a52de9ae364"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "6060607e07559e0fb870ca73bfe2d44ec357f912fb53ce2e6caf0f64f234e17d"
+                      "sha256":  "a078b179a0d8ad51643c69d9f14c1410f6e004c8ccf4602373c71bdb0abf768c"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -122,6 +122,10 @@
                       "sha256":  "68db8bcd0b22fa209af4f02cea645a417e01245cb3ca82718a63e4669238c641"
                   },
                   {
+                      "path":  "modules\\Activity.ahk",
+                      "sha256":  "0e0c1dccbc428ab61eb8865ae935022bb6f9bd015b16014533565ec39306bad8"
+                  },
+                  {
                       "path":  "modules\\AsyncLoading.ahk",
                       "sha256":  "5b91132bd4a69c21d36141b5cf7449fe243845c12363f08a02958eafa686bf96"
                   },
@@ -131,7 +135,7 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "e3bf4fb488b01e2271dcc7209872978c116560c7b0874d3976741e328e1eb59f"
+                      "sha256":  "d32cb084c27b5c3a96c17e12be8af0adaf245ac75d7e57f0af89fb4efa2c5d91"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -147,7 +151,7 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "24e1928bc2043d8166344e43a9bb32d9b2dba51d58fe75a86b7b0831f7437dc7"
+                      "sha256":  "9f433df5a115bf0b89e781b615d71a5a9c377d059fb73d7c7f62ef5c398d43a3"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -190,8 +194,16 @@
                       "sha256":  "99e6b09bffbb955d961ad97739673697882274cd4ee340a82cfd1663b7819829"
                   },
                   {
+                      "path":  "modules\\HourlySummary.ahk",
+                      "sha256":  "816f2b0f1e898f42b8bdf9a83cf95dabb12733a3860e0ed9feaa8336fa111c1f"
+                  },
+                  {
                       "path":  "modules\\IniEncoding.ahk",
                       "sha256":  "83c3328628e3ddee1b424bef81c5cfd9974d182b52af6c5c7a9e5d114b637eac"
+                  },
+                  {
+                      "path":  "modules\\InventoryCleaner.ahk",
+                      "sha256":  "5772271534b046447e01fc5ed926fc47bf20cccb65f3c268d4e844f192a7eacc"
                   },
                   {
                       "path":  "modules\\InventoryStats.ahk",
@@ -219,7 +231,7 @@
                   },
                   {
                       "path":  "modules\\MBox.ahk",
-                      "sha256":  "d783959378e1f2a02b7c6f5faa3cce98d57ba339aeacb38679103d4a0e9c81ff"
+                      "sha256":  "9466f6ec01decf166449f1d0181d6ef5d73efcd473ddd8f5dbc3280931889b31"
                   },
                   {
                       "path":  "modules\\Mining.ahk",
@@ -280,6 +292,10 @@
                   {
                       "path":  "modules\\Updater.ahk",
                       "sha256":  "bdf6d382b676d3c4a29089a0493858b5431e57a2ea18751224966e82e97fa1a9"
+                  },
+                  {
+                      "path":  "modules\\WebUI.ahk",
+                      "sha256":  "8c4311d7354961799ee65a9a8c362a1a0fb8784c6649d7c628162de4f8a3595f"
                   },
                   {
                       "path":  "offsets_db\\6AE9CFCB-2103000.ini",
@@ -406,6 +422,14 @@
                       "sha256":  "b5164c3b1078d387947ea8df2e3b65220cb14c885579abd38f0ce4250bad7802"
                   },
                   {
+                      "path":  "ui\\app.css",
+                      "sha256":  "f36a2a80e027b771d04510f573f6c82dac140c7a21c58906af06d481c4b3a0e6"
+                  },
+                  {
+                      "path":  "ui\\app.js",
+                      "sha256":  "2533ff64a5b32c74aaf7cdafd5f36696b45f1ead66cd4a448d74eecbae8089e7"
+                  },
+                  {
                       "path":  "ui\\guide\\dc_a_gear.png",
                       "sha256":  "84a49ea4be7165809658603e44f58899ddbb7c8c2e09eeba35cfe0a646446fd3"
                   },
@@ -511,7 +535,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "ee8bd675daff2e28781e85169de26ef0e5d7bcb2177a166ba9298b4e26e2e73e"
+                      "sha256":  "7e6877c9aacee10de82762e4d3e9ed43ac588de3409a522c10a20807faaa62d6"
                   },
                   {
                       "path":  "登入測試.bat",

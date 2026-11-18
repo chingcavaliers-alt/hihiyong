@@ -21,7 +21,7 @@ global MBOX_INTERVAL_SEC := Max(30, Integer(IniRead(INI, "MBox", "IntervalSec", 
 global MBOX_ITEM := IniRead(INI, "MBox", "ItemName", "命運箱子")
 ; 鍵盤滑鼠要停這麼多秒才切視窗（使用者正在打字時切走，打的字會跑進遊戲）
 global MBOX_IDLE_SEC := Max(0, Integer(IniRead(INI, "MBox", "IdleSec", "5")))
-global MBOX_RETRY_SEC := 30, MBOX_LOW_COUNT := 10, MBOX_CONFIRM_MS := 3000
+global MBOX_RETRY_SEC := 30, MBOX_LOW_COUNT := 10, MBOX_CONFIRM_MS := 3000, MBOX_LOG_EVERY := 10
 ; H-019
 global MBOX_HOLD_MS := 400, MBOX_BURST_MAX := 3, MBOX_WATCH_SEC := 10, MBOX_REFRESH_MARGIN := 8, MBOX_STUCK_WINDOW_SEC := 1800
 global MBOX_POST_MS := [600, 1500, 2800]
@@ -272,7 +272,7 @@ MBoxWatchTick() {
 }
 
 MBoxOpen(idx) {
-    global profiles, mboxBusy, foregroundOwner, abortRequested, MBOX_INTERVAL_SEC, MBOX_RETRY_SEC, MBOX_LOW_COUNT, MBOX_CONFIRM_MS
+    global profiles, mboxBusy, foregroundOwner, abortRequested, MBOX_INTERVAL_SEC, MBOX_RETRY_SEC, MBOX_LOW_COUNT, MBOX_CONFIRM_MS, MBOX_LOG_EVERY
     global MBOX_HOLD_MS, MBOX_BURST_MAX, MBOX_REFRESH_MARGIN, MBOX_BUFF_ID
     p := profiles[idx]
     mboxBusy := true, foregroundOwner := "mbox"
@@ -382,7 +382,10 @@ MBoxOpen(idx) {
         }
         p.mboxNextAt := A_TickCount + MBoxNextWaitSec(w.buff) * 1000, p.mboxFails := 0, p.mboxCount := w.last
         p.mboxStatus := "✓ " FormatTime(, "HH:mm:ss") " 開啟｜剩 " w.last " 個"
-        EventLog(p.name, "MBOX_OPEN", "開啟命運箱子｜剩 " after " 個｜用掉 " w.used " 個｜事後剩 " w.last " 個")
+        ; 每 3 分鐘開一個，一天 400 多行：這次執行第一個、每 MBOX_LOG_EVERY 個、或用掉的不是 1 個才記
+        p.mboxOpenN := (p.HasOwnProp("mboxOpenN") ? p.mboxOpenN : 0) + 1
+        if p.mboxOpenN = 1 || Mod(p.mboxOpenN, MBOX_LOG_EVERY) = 0 || w.used != 1
+            EventLog(p.name, "MBOX_OPEN", "開啟命運箱子｜剩 " after " 個｜用掉 " w.used " 個｜事後剩 " w.last " 個" (p.mboxOpenN > 1 ? "｜這次執行第 " p.mboxOpenN " 個" : ""))
         if w.last <= MBOX_LOW_COUNT && !(p.HasOwnProp("mboxLowNotified") && p.mboxLowNotified) {
             p.mboxLowNotified := 1
             AddRecentEvent("⚠ " p.name " 的命運箱子只剩 " w.last " 個")
