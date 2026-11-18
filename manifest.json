@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.48",
+    "version":  "v1.3.90.49",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "8d50852359189d445007305af61303a1202724f57a484a39f597dbefa872222f"
+                      "sha256":  "f217ab34b3e0c20eb16ffc45b107e7e3eb9b1b7cf7fad4dc9765ae0f74a5ecc4"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "2b24b13bf95fdddb6a77930c0d0c59b359ad1f7baf081b3a192b778a0ebc8ef1"
+                      "sha256":  "128accdbd79424c4f6103378514d5ae68a18c12c85b31f8adaf4d3238fda4c2f"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -338,6 +338,10 @@
                       "sha256":  "985a4c9d79af1c56afff0a23505fa6ef79ce0461cc1f13c0197c272264cf4dfd"
                   },
                   {
+                      "path":  "offsets_db\\6AFC5754-21D8000.ini",
+                      "sha256":  "1c3dcc449d94e02bff9b96c57413cf364684fab70b4e87c647330a39ef90386d"
+                  },
+                  {
                       "path":  "README_v1.3.13.0.txt",
                       "sha256":  "c73bda8e35485f805d96ae0ab390d7c1e9707a1e8f36499a509c9e5076a44893"
                   },
@@ -507,7 +511,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "f6afdde1190643366e74b38944d86f014e8654ca6ff7d19e6a5f5f8ce5e53c4d"
+                      "sha256":  "918fbed081e5cab420452bc7c6026f5ed4f2619bea80e42e3f51071b8389dc1d"
                   },
                   {
                       "path":  "登入測試.bat",
