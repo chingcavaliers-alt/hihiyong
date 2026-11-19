@@ -43,6 +43,16 @@ DhCleanName(v, def) {
 global DH_MAP_MODE := Map(254, "dense", 164, "dense", 221, "dense")
 DhModeOf(mapId) => DH_MAP_MODE.Get(mapId, "near")
 
+; 今天收尾過的日子（遊戲的第幾天），存在設定檔：程式重開後也知道今天已經收尾
+DhFinishedDay(p) {
+    v := DhIniGet("FinishedDay_" p.name, "0")
+    return IsInteger(v) ? Integer(v) : 0
+}
+DhSetFinishedDay(p, day) {
+    global INI
+    if IsInteger(day) && day > 0
+        try IniWrite day, INI, "DailyHunt", "FinishedDay_" p.name
+}
 DhIniGet(key, def := "") {
     global INI
     try return IniRead(INI, "DailyHunt", key, def)
@@ -238,6 +248,15 @@ DhSt(p) {
 }
 
 ; 勾選的角色裡遊戲視窗還在的（依角色列表順序）
+; 讀到的任務裡有沒有地圖目標（T 視窗停在「每日活動」等分頁時，每一列都沒有目標）
+DhHasHuntGoals(tasks) {
+    if !IsObject(tasks)
+        return false
+    for r in tasks.rows
+        if r.goals.Length
+            return true
+    return false
+}
 DhSelectedAlive() {
     global profiles, DH_CHARS
     out := []
@@ -329,6 +348,19 @@ DailyHuntPushWeb() {
     tasks := 0
     if p
         try tasks := ReadGameDailyTasks(p.pid)
+    ; T 視窗停在別的分頁（每日活動等，沒有地圖目標）時，改用其他勾選角色讀到的每日討伐（地圖與順序所有角色共用）
+    otherTab := IsObject(tasks) && !DhHasHuntGoals(tasks)
+    if otherTab
+        for q in DhSelectedAlive() {
+            if q = p
+                continue
+            t := 0
+            try t := ReadGameDailyTasks(q.pid)
+            if IsObject(t) && DhHasHuntGoals(t) {
+                p := q, tasks := t, otherTab := false
+                break
+            }
+        }
     rows := ""
     if IsObject(tasks) {
         for r in tasks.rows
@@ -345,7 +377,7 @@ DailyHuntPushWeb() {
     for g in DhPending(tasks, DH_MAPS_ON, p ? DhSt(p).skip : 0)
         if g.done < g.target
             pending += 1
-    status := DH_CHARS.Count = 0 ? "請勾選要跑的角色" : (!p ? "勾選的角色都沒有遊戲視窗" : (IsObject(tasks) ? "" : "讀不到任務：" (DH_RUNNING ? "啟動後程式會自己按 T 讀取" : "按「▶ 啟動」會自己按 T 讀取，或在「" p.name "」的遊戲裡按 T 打開一次")))
+    status := DH_CHARS.Count = 0 ? "請勾選要跑的角色" : (!p ? "勾選的角色都沒有遊戲視窗" : (IsObject(tasks) ? (otherTab ? "「" p.name "」的任務視窗停在別的分頁：請在遊戲裡按 T，點「每日討伐」分頁" : "") : "讀不到任務：" (DH_RUNNING ? "啟動後程式會自己按 T 讀取" : "按「▶ 啟動」會自己按 T 讀取，或在「" p.name "」的遊戲裡按 T 打開一次")))
     try WVCore.PostWebMessageAsJson('{"type":"dailyhunt","data":{"running":' (DH_RUNNING ? "true" : "false") ',"test":' (DH_TEST ? "true" : "false") ',"resume":' (DH_RESUME ? "true" : "false")
         . ',"using":"' JsonEscapeWeb(p ? p.name : "") '","chars":[' chars '],"states":[' states '],"status":"' JsonEscapeWeb(status) '","build":"' JsonEscapeWeb(DhBuildText()) '","spotMsg":"' JsonEscapeWeb(dhSpotMsg) '","npc":"' JsonEscapeWeb(DH_NPC_NAME) '","card":"' JsonEscapeWeb(DH_START_CARD) '","row":' DH_NPC_ROW ',"after":{"on":' (DH_AFTER_ON ? "true" : "false") ',"map":' DH_AFTER_MAP ',"name":"' JsonEscapeWeb(DH_AFTER_MAP && DH_MAPS.Has(DH_AFTER_MAP) ? DH_MAPS[DH_AFTER_MAP][1] : "") '","spot":"' JsonEscapeWeb(DH_AFTER_MAP ? DhAfterSpotText() : "") '","msg":"' JsonEscapeWeb(dhAfterMsg) '"},"pending":' pending ',"selected":[' sel '],' DhSchedJson() ',"tasks":[' rows ']}}')
 }
@@ -538,6 +570,8 @@ DailyHuntTick() {
         if A_TickCount < st.next
             continue
         d := DhPlan(p)
+        if st.done   ; 今天重開程式前已經收尾過（DhPlan 判斷）：不再回起點
+            continue
         if d.action = "done" {
             if st.text != "沒有可跑的地圖（沒勾選，或都被略過）" {   ; 只提示一次；不設「做完」旗標，之後勾了地圖馬上就會繼續
             st.text := "沒有可跑的地圖（沒勾選，或都被略過）"
@@ -604,6 +638,12 @@ DhPlan(p) {
         DhNoteProgress(p, tasks)
     d := DhDecide({test: DH_TEST, testDone: st.testDone, tasks: tasks, selected: DH_MAPS_ON, skip: st.skip, curMap: DhMapMain(pid), autoHunt: ReadGameAutoHunt(pid)
         , huntedMap: st.hunted, now: A_TickCount, refreshedAt: st.refreshedAt, lockMap: st.lock})
+    ; 今天已經收尾過（回起點 / 去掛機），程式重開後記憶體裡的「做完」不見了：不要再收尾一次（11/19 重開管理器把欸等從掛機點拉回起點）
+    if d.action = "finish" && !DH_TEST && IsObject(tasks) && DhFinishedDay(p) = tasks.today {
+        st.done := true, st.text := "✅ 今天的指定任務已完成（重開程式前已收尾，不再回起點）"
+        EventLog(p.name, "DH_ALREADY_DONE", "今天（第 " tasks.today " 天）已經收尾過，程式重開後不再回起點")
+        return {action: "done", goal: 0}
+    }
     if !DH_TEST && IsObject(d.goal) && d.goal.done < d.goal.target
         st.lock := d.goal.map   ; 記住現在在跑的圖
     if !DH_TEST && d.action != "done"
@@ -1166,6 +1206,7 @@ DhActFinish(p) {
             EventLog(p.name, "DH_AFTER_FAIL", after.name "｜" e.Message)
             DhNotify("⚠ 每日討伐｜" p.name "｜指定任務全部完成，但回「" after.name "」掛機失敗：" e.Message "（人物留在原地，請手動處理）")
         }
+        DhSetFinishedDay(p, st.lastDay)
         try DhStatFinish(p, A_TickCount - finT0)
         try DhSchedFinish(p)
         return
@@ -1176,6 +1217,7 @@ DhActFinish(p) {
     else
         DhReturnStart(p)
     st.done := true
+    DhSetFinishedDay(p, st.lastDay)
     st.text := "✅ 指定任務全部完成，已回起點"
     DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，已用起點傳送卡回到復活點")
     AddRecentEvent("🎯 " p.name "：指定任務全部完成，已回起點")

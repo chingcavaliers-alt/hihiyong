@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.54",
+    "version":  "v1.3.90.55",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "180a290d05504a8dbd1b77237b9ac12ac8fc8184cd1ede07233cd63a00642a33"
+                      "sha256":  "0cac22b52271daf067aa48ee40970ec2351a3e661d0ab61eaa6d775cb554ec45"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "e40255331e37240269464eca5de78f6a94a3a8fb6e80132475e58d05642cc8f3"
+                      "sha256":  "a46615d8c75002fe668c98a46c033440f7e0fd777fbb594c239ffa7a66ad3844"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -151,7 +151,7 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "9f433df5a115bf0b89e781b615d71a5a9c377d059fb73d7c7f62ef5c398d43a3"
+                      "sha256":  "f047789e33034ef7fd4112671de14393c3ba9e738b2f80ef25d7b8df747cd172"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -539,7 +539,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "64fe1f43d7aa7222dd9d254e72d3fce17a29fb6e147655c7d17029aec509bf79"
+                      "sha256":  "64aa8145754efdd4a8614f3d50281c9abc3266beff3349b4a236044b3646ab90"
                   },
                   {
                       "path":  "登入測試.bat",
