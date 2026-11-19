@@ -1147,9 +1147,8 @@ MnAim(p, x, y) {
         return mnTestInput.Aim(x, y)
     ApGuard(p)
     WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
-    dpi := A_ScreenDPI / 96
-    if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-        ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "），不能打王")
+    if (bad := ApClientSizeError(p, cw, ch)) != ""
+        ApStop(bad "，不能打王")
     if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
         return false
     DllCall("SetCursorPos", "Int", cx + Round(x * cw / AP_DESIGN_W), "Int", cy + Round(y * ch / AP_DESIGN_H))

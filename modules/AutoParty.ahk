@@ -805,6 +805,37 @@ ApGlide(px, py, settleMs := 60) {
     return true
 }
 
+; 遊戲畫面應該是 1024x768 的幾倍。Game.exe 的 manifest 宣告自己處理縮放（dpiAware），
+; 所以就算 Windows 顯示縮放 150%，遊戲畫面還是 1024x768（= 1）；
+; 只有遊戲被設成讓 Windows 放大（相容性的高 DPI 覆寫選「系統」）時才是 1024x768 × 縮放。
+; 用 Windows 回報的遊戲視窗 DPI 模式判斷，讀不到就當成被放大（舊行為）。
+ApGameScale(hwnd) {
+    dpi := A_ScreenDPI / 96
+    if dpi = 1
+        return 1
+    try {
+        ctx := DllCall("GetWindowDpiAwarenessContext", "Ptr", hwnd, "Ptr")
+        if ctx && DllCall("GetAwarenessFromDpiAwarenessContext", "Ptr", ctx, "Int") > 0
+            return 1
+    }
+    return dpi
+}
+
+; 遊戲畫面大小對不對（座標換算要等比例）；對回傳空字串，不對回傳給人看的原因
+ApClientSizeError(p, cw, ch, scale := "") {
+    global AP_DESIGN_W, AP_DESIGN_H
+    if scale = ""
+        scale := ApGameScale(p.hwnd)
+    if Abs(cw - AP_DESIGN_W * scale) <= 4 && Abs(ch - AP_DESIGN_H * scale) <= 4
+        return ""
+    pct := Round(A_ScreenDPI / 96 * 100)
+    if scale = 1
+        return p.name " 的遊戲畫面是 " cw "x" ch "，要調成 1024x768"
+        need := Round(AP_DESIGN_W * scale) "x" Round(AP_DESIGN_H * scale)
+    return p.name " 的遊戲畫面是 " cw "x" ch "：遊戲被 Windows 放大（顯示縮放 " pct "%），畫面要 " need
+        . " 才對得上；建議取消 Game.exe 相容性裡的「覆寫高 DPI 縮放行為」，Windows 顯示縮放改 100% 後登出再登入"
+}
+
 ; 在遊戲畫面（Client）座標 x,y 點一下（實測可用：先靠近再移上去，按住 90 毫秒）。
 ; holdMs：按住多久（預設 90 毫秒；遊戲畫面更新比這慢時會漏掉那一下，公車清單用 220 以上）
 ApClick(p, x, y, holdMs := 90) {
@@ -820,9 +851,8 @@ ApClick(p, x, y, holdMs := 90) {
             ; 遊戲畫面的座標是 1024x768 的；Windows 顯示縮放不是 100% 時畫面像素會等比例放大，要換算
             WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
             sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
-            dpi := A_ScreenDPI / 96   ; 遊戲畫面本身一定要是 1024x768（顯示縮放不是 100% 時等比例放大）；別的解析度座標會對不上，不點
-            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if (bad := ApClientSizeError(p, cw, ch)) != ""
+                ApStop(bad)
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要點的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
@@ -861,9 +891,8 @@ ApScroll(p, x, y, dir) {
                 ApStop("要捲動的座標不是數字")
             WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
             sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
-            dpi := A_ScreenDPI / 96
-            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if (bad := ApClientSizeError(p, cw, ch)) != ""
+                ApStop(bad)
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要捲動的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
@@ -899,9 +928,8 @@ ApScrollMany(p, x, y, dir, count, gapMs := 20) {
                 ApStop("要捲動的座標不是數字")
             WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
             sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
-            dpi := A_ScreenDPI / 96
-            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if (bad := ApClientSizeError(p, cw, ch)) != ""
+                ApStop(bad)
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要捲動的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
@@ -946,9 +974,8 @@ ApHover(p, x, y) {
                 ApStop("要移過去的座標不是數字")
             WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
             sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
-            dpi := A_ScreenDPI / 96
-            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if (bad := ApClientSizeError(p, cw, ch)) != ""
+                ApStop(bad)
             if x < 0 || x >= AP_DESIGN_W || y < 0 || y >= AP_DESIGN_H
                 ApStop("要移過去的座標超出遊戲畫面（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)
@@ -985,9 +1012,8 @@ ApOrbit(p, x, y, dxTotal, steps := 14, gapMs := 18, mode := "abs") {
                 ApStop("要旋轉的座標不是數字")
             WinGetClientPos(&cx, &cy, &cw, &ch, "ahk_id " p.hwnd)
             sx := cw / AP_DESIGN_W, sy := ch / AP_DESIGN_H
-            dpi := A_ScreenDPI / 96
-            if Abs(cw - AP_DESIGN_W * dpi) > 4 || Abs(ch - AP_DESIGN_H * dpi) > 4
-                ApStop(p.name " 的遊戲畫面不是 1024x768（" cw "x" ch "，顯示縮放 " Round(dpi * 100) "%）")
+            if (bad := ApClientSizeError(p, cw, ch)) != ""
+                ApStop(bad)
             if x < 60 || x >= AP_DESIGN_W - 60 || y < 60 || y >= AP_DESIGN_H - 60
                 ApStop("要旋轉的座標太靠邊（" x "," y "）")
             px := cx + Round(x * sx), py := cy + Round(y * sy)

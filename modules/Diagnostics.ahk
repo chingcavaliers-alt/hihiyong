@@ -65,7 +65,12 @@ DiagInfoText() {
         try {
             if p.pid && ProfileGameAlive(p) {
                 WinGetClientPos(, , &cw, &ch, "ahk_id " p.hwnd)
-                line .= "｜PID " p.pid "｜遊戲畫面 " cw "x" ch "｜遊戲資料 " (GameOffsetsReady(p.pid) ? "可讀" : "不可讀") "｜角色 " (GameCharacterLoaded(p.pid) ? "已載入" : "未載入")
+                sc := 0, fnm := "ApGameScale"   ; 遊戲自己處理縮放 = 1；被 Windows 放大 = 顯示縮放倍數
+                try {
+                    f := %fnm%
+                    sc := f(p.hwnd)
+                }
+                line .= "｜PID " p.pid "｜遊戲畫面 " cw "x" ch (sc ? "（應為 " Round(1024 * sc) "x" Round(768 * sc) (sc = 1 && A_ScreenDPI != 96 ? "，遊戲自己處理縮放" : "") "）" : "") "｜遊戲資料 " (GameOffsetsReady(p.pid) ? "可讀" : "不可讀") "｜角色 " (GameCharacterLoaded(p.pid) ? "已載入" : "未載入")
                 exe := ProcessGetPath(p.pid)
                 shown := RegExReplace(exe, "i)^([A-Z]:\\Users\\)[^\\]+", "$1<使用者>")   ; 不留 Windows 使用者名稱
                 line .= "｜" shown "｜" FileGetSize(exe) " 位元組｜" FormatTime(FileGetTime(exe), "yyyy-MM-dd HH:mm")

@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.55",
+    "version":  "v1.3.90.56",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "0cac22b52271daf067aa48ee40970ec2351a3e661d0ab61eaa6d775cb554ec45"
+                      "sha256":  "ff663ee41bc4f3ef8bc37a89c6473d20d0d733656aa3b2ae5a17e0f74f62d7ec"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "a46615d8c75002fe668c98a46c033440f7e0fd777fbb594c239ffa7a66ad3844"
+                      "sha256":  "677742b2399ad37822156f3d648d98d3253a88518fb4e4274711f594b64a3965"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -135,11 +135,11 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "a47da729e5cc32a1c7261c100631439a17c666ff932d0f6266339ae6cbb634ee"
+                      "sha256":  "9f9116025cb7d501d8fdbf837a65bef7ea1268b9f9fe6a035e9939bd5fc99b2e"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "cd42952cb4c326da6ae802a3004329d2fdb4603f6277e8de0640c6f0314a4e9a"
+                      "sha256":  "19ece51bd49621ffef33006beba859c3d33fb989bf49bf21eebb873a5e38d92d"
                   },
                   {
                       "path":  "modules\\BossTimer.ahk",
@@ -163,7 +163,7 @@
                   },
                   {
                       "path":  "modules\\DailyRoutine.ahk",
-                      "sha256":  "cefc069aa97c4da54d86ebc8a6289d81b709ccb37d7623933c7631e539610e8b"
+                      "sha256":  "73ce4f1c23647245c52b58fd4de81976c36596adcc7bcbd2bdc6a412f9bf9522"
                   },
                   {
                       "path":  "modules\\DeathStats.ahk",
@@ -175,7 +175,7 @@
                   },
                   {
                       "path":  "modules\\Diagnostics.ahk",
-                      "sha256":  "846848fbaf765de511a52cd0dc00865ddb07e3f596f197e6432d75d6d85ad64f"
+                      "sha256":  "eadd59d1002018854acdc0e427138a951308edf5da18777ed664858b707cbb8e"
                   },
                   {
                       "path":  "modules\\DropRates.ahk",
@@ -539,7 +539,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "64aa8145754efdd4a8614f3d50281c9abc3266beff3349b4a236044b3646ab90"
+                      "sha256":  "af29ae6b691629fb85cd7ddd89ca39c45986fdcc1e0ec08c8124f3e5b32d7371"
                   },
                   {
                       "path":  "登入測試.bat",

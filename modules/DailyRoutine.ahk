@@ -196,7 +196,15 @@ DailyRoutineBlocker(p) {
     WinGetClientPos(,,&cw,&ch,"ahk_id " p.hwnd)
     if cw!=DAILY_CLIENT_W || ch!=DAILY_CLIENT_H
         return "遊戲畫面大小為 " cw "x" ch "，目前只支援 " DAILY_CLIENT_W "x" DAILY_CLIENT_H "（Windows 顯示縮放 " Round(A_ScreenDPI/96*100) "%；請把遊戲視窗調成 " DAILY_CLIENT_W "x" DAILY_CLIENT_H "，縮放建議 100%）"
+    ; 顯示縮放不是 100%：遊戲畫面雖然是 1024x768，但遊戲會跟著把文字放大，視窗標題辨識圖對不上
+    if A_ScreenDPI!=96
+        return DailyDpiHint()
     return ""
+}
+
+; Windows 顯示縮放不是 100% 時給人看的說明（每日道具、自動採礦找道具視窗失敗時用）
+DailyDpiHint() {
+    return "這台電腦 Windows 顯示縮放是 " Round(A_ScreenDPI/96*100) "%，遊戲文字會跟著放大，程式認不出遊戲視窗：請把顯示縮放改成 100%，然後登出 Windows 再登入（只改設定不登出，遊戲和本程式還是用舊的縮放）"
 }
 
 ; 這個角色視窗現在的遊戲畫面大小（每日道具要 1024x768）：{w, h, min（視窗縮到最小）, ok}；沒有連接遊戲視窗 w = 0
@@ -1375,7 +1383,7 @@ DailyEnsureInventoryVisible(ctx, checkAbort:=true) {
             return
         }
     }
-    throw Error("道具視窗被蓋住，無法叫回最上層")
+    throw Error(A_ScreenDPI!=96 ? "找不到道具視窗｜" DailyDpiHint() : "道具視窗被蓋住，無法叫回最上層")
 }
 
 DailyClickChar(ctx, slot, button, post:=350) {
