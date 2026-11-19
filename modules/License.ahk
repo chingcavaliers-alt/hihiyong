@@ -123,6 +123,11 @@ Lic_CleanFeatures(s) {
     }
     return out
 }
+; 這台電腦有沒有有效的授權（自動採礦只看這個，不再看 features）
+Lic_Active() {
+    global licState
+    return IsObject(licState) && licState.state = "ok"
+}
 ; 這台電腦的授權有沒有這個功能（授權要是有效的；舊授權沒有 features 這行 = 沒有）
 Lic_HasFeature(name) {
     global licState, licInfoCache

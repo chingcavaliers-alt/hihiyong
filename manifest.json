@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.52",
+    "version":  "v1.3.90.53",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "4794d4aa6ef86bb3f167cdc43d70074677b8ab6874aaabc798f86a52de9ae364"
+                      "sha256":  "76e70ec3388029f509e33148bdf9bd7993d072fa4ce4c46c1bb16d158fc18cac"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -51,7 +51,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "a078b179a0d8ad51643c69d9f14c1410f6e004c8ccf4602373c71bdb0abf768c"
+                      "sha256":  "6a26cf8f80d025414f8f20aa8b6d81cd997dee3a35a2d1777f3b74362dc6f3c4"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -135,7 +135,7 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "d32cb084c27b5c3a96c17e12be8af0adaf245ac75d7e57f0af89fb4efa2c5d91"
+                      "sha256":  "a47da729e5cc32a1c7261c100631439a17c666ff932d0f6266339ae6cbb634ee"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -223,7 +223,7 @@
                   },
                   {
                       "path":  "modules\\License.ahk",
-                      "sha256":  "ecd407fb1754adcf5519edd2e412fb5be10bb36ee6e3a0c8ec6fc9cee802c4d9"
+                      "sha256":  "d7ad91beda7678b8a916909c5990eda1d6468c71e69c4eacfa0900272c5947aa"
                   },
                   {
                       "path":  "modules\\LoginUi.ahk",
@@ -367,7 +367,7 @@
                   },
                   {
                       "path":  "tools\\build_guide.py",
-                      "sha256":  "d142410033297b3a835e51b73387f19320d55d4fc59b353b2a1e73a2c076bf12"
+                      "sha256":  "e169a10f8cf585a0742f7f24271cd71b4237ceeeb84a93890f031b459a5d4423"
                   },
                   {
                       "path":  "tools\\derive_game_offsets.py",
@@ -427,7 +427,7 @@
                   },
                   {
                       "path":  "ui\\app.js",
-                      "sha256":  "2533ff64a5b32c74aaf7cdafd5f36696b45f1ead66cd4a448d74eecbae8089e7"
+                      "sha256":  "9305020ac3d95bb45dde4a46e7da5db44ad3fe4e5bd3f44fa53c48514965fac5"
                   },
                   {
                       "path":  "ui\\guide\\dc_a_gear.png",
@@ -535,7 +535,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "7e6877c9aacee10de82762e4d3e9ed43ac588de3409a522c10a20807faaa62d6"
+                      "sha256":  "69a7ceeba8d1f7c352c90787a6cb6e443743e214de294074aa5913034dd0dcdb"
                   },
                   {
                       "path":  "登入測試.bat",

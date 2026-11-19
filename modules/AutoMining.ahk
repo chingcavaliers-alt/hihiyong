@@ -681,12 +681,12 @@ MnSelectedAlive() {
 }
 
 ; ---------------------------------------------------------------- 排程
-; 這台電腦的授權有沒有「自動採礦」功能（授權檔 features=mining，有簽章）。沒有 License 模組（測試環境）視為有。
+; 自動採礦：只要這台電腦的授權有效就能用，不分授權種類、不看 features=mining（v1.3.90.53）。沒有 License 模組（測試環境）視為有。
 MnFeatureOK() {
-    ok := true, fnm := "Lic_HasFeature"
+    ok := true, fnm := "Lic_Active"
     try {
         f := %fnm%
-        ok := f("mining")
+        ok := f()
     }
     return ok
 }
@@ -698,8 +698,8 @@ MnTick() {
             p.mnActive := false
         if MN_RUNNING && !mnLicNoted {
             mnLicNoted := true
-            EventLog("GLOBAL", "MN_NO_LICENSE", "這台電腦的授權沒有「自動採礦」功能，自動採礦不會啟動（請向作者取得含自動採礦的授權檔）")
-            AddRecentEvent("🔒 這台電腦的授權沒有「自動採礦」功能")
+            EventLog("GLOBAL", "MN_NO_LICENSE", "這台電腦沒有有效的使用授權，自動採礦不會啟動")
+            AddRecentEvent("🔒 這台電腦沒有有效的使用授權，自動採礦不會啟動")
         }
         return
     }
@@ -1916,7 +1916,7 @@ AutoMiningSet(rawValue) {
     MN_RUNNING := Integer(parts[1]) ? 1 : 0
     if MN_RUNNING && !MnFeatureOK() {
         MN_RUNNING := 0
-        AddRecentEvent("🔒 這台電腦的授權沒有「自動採礦」功能，無法啟動")
+        AddRecentEvent("🔒 這台電腦沒有有效的使用授權，自動採礦無法啟動")
     }
     MN_CHARS := MnParseChars(parts[2])
     if parts.Length >= 3 && IsInteger(parts[3])

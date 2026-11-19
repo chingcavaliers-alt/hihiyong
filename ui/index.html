@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HIHIYONG 多帳號管理器</title>
-<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.52">
+<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.53">
 </head>
 <body><div class="app">
 <aside class="side"><div class="brand"><img class="logo" id="appLogo" alt="" src="../HiHiyong.ico" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='../HiHiyong_default.ico';}"><div>HIHIYONG<small>多帳號管理器</small></div></div>
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.52· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.53· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -394,7 +394,7 @@
 <li><b>遊戲畫面大小</b>：視窗模式 <b>1024×768</b>，Windows 顯示縮放建議 <b>100%</b>（不是 100% 時程式會自動換算，但請不要用其他解析度）。</li>
 <li><b>遊戲帳號</b>：想掛幾隻角色就準備幾組帳號密碼（密碼存在這台電腦、用 Windows 加密，不會上傳）。</li>
 <li><b>Discord</b>（想收通知才需要）：一個自己能管理的伺服器和文字頻道，下一章會教你建立 Webhook。</li>
-<li><b>授權</b>：第一次使用請到「設定 → 其他 → 使用授權」輸入授權碼。授權可以包含「功能」：<b>自動採礦</b>需要授權裡有這項（沒有的話採礦頁的啟動鈕會反灰並提示），其他功能不受影響。</li>
+<li><b>授權</b>：第一次使用請到「設定 → 其他 → 使用授權」輸入授權碼。所有功能（包含<b>自動採礦</b>）只要授權有效就能使用，不分授權種類。</li>
 </ul>
 <div class="gd-tip">教學裡每張圖都是這支程式的真實畫面，<b>紅框＋編號</b>就是這一步要看 / 要按的地方；編號對應圖下方的說明。</div>
 </div>
@@ -616,7 +616,7 @@
 <div class="gd-warn"><b>防呆</b>：到點 5 分鐘還抓不到遊戲視窗、或帳號不在監控中，這個時間點當天作廢，頁面跳出紅色提醒並通知 Discord，請重新設定時間或手動啟動；管理程式開得太晚（超過 60 分鐘）也不會補跑。開著「測試流程」時不會定時啟動。</div>
 </div>
 <div class="gd-step"><h3>⛏ 自動採礦（水晶礦場）</h3>
-<p>角色在水晶礦場時，依顏色挑礦、走過去、右鍵十字鎬採 60 秒再挑下一顆；礦採完等重生，被踢出（道具時間約 2 小時）會自動重新進圖，遇到王可自動打。<b>需要授權包含「自動採礦」功能</b>，背包要有十字鎬。</p>
+<p>角色在水晶礦場時，依顏色挑礦、走過去、右鍵十字鎬採 60 秒再挑下一顆；礦採完等重生，被踢出（道具時間約 2 小時）會自動重新進圖，遇到王可自動打。背包要有十字鎬。</p>
 <div class="gd-shot"><img src="guide/gd7_17.png" alt="⛏ 自動採礦（水晶礦場）" loading="lazy">
 <i class="gd-box" style="left:18.456%;top:16.600%;width:78.676%;height:5.583%"><b>1</b></i>
 <i class="gd-box" style="left:18.456%;top:32.383%;width:78.676%;height:9.317%"><b>2</b></i>
@@ -778,4 +778,4 @@
  <div class="actions"><button class="btn soft" onclick="send('shortcuticon');showToast('請選擇要當圖示的圖片')">🖼️ 更換桌面圖示…</button><button class="btn soft" onclick="send('shortcuticonreset')">↺ 還原預設圖示</button><button class="btn soft" onclick="send('shortcutcreate')">重新建立桌面捷徑</button></div></div></div>
 </section>
 </div></main></div>
-<script src="app.js?v=1.3.90.52"></script><div id="toast"></div></body></html>
+<script src="app.js?v=1.3.90.53"></script><div id="toast"></div></body></html>
