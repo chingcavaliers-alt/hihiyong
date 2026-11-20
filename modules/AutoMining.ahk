@@ -26,7 +26,7 @@ global MN_FINAL_STEPS := 14, MN_FINAL_IDLE_MS := 900, MN_FINAL_SEG_MS := 4000
 global MN_LOOT_WAIT_MS := 20000            ; 採完後最多等這麼久看水晶進背包（還沒進就先不算沒收穫）；0 = 不等（舊行為）
 global MN_MAP_STOP := 6                  ; 大地圖走到離站位這麼近就算到（離礦石最遠 MN_STAND_DIST + 這個 = 14，在 MN_USE_MAX 內、直接採）
 global MN_NEAR_OK := 24                   ; （舊值，實際用每個角色學到的 st.useMax）
-global MN_GATHER_CONFIRM_MS := 7000       ; 右鍵十字鎬之後最多等這麼久，角色要進入「採集」動作
+global MN_GATHER_CONFIRM_MS := 4000       ; 右鍵十字鎬之後最多等這麼久，角色要進入「採集」動作（原本 7 秒；11/15～11/20 共 3300 多次，99.6% 在 2 秒內開始，晚開始的重試前會再確認、不重按）
 global MN_SKIP_MS := 600000               ; 走不到 / 採不了的礦石先略過 10 分鐘
 global MN_BUSY_CONFIRM_MS := 4000         ; 第 2 次右鍵十字鎬（離礦石的距離採起來過）只等這麼久：11/15～11/20 共 3300 多次，99.6% 在 2 秒內就開始採集
 global MN_BUSY_SKIP_MS := 180000          ; 可能有人在採的礦（採起來過的距離按兩次都沒反應 / 採幾秒就被打斷）：先略過 3 分鐘，馬上換下一顆
@@ -1052,11 +1052,19 @@ MnMine(p, ore) {
     for k, sd in stands {
         if k > 1 || dist > um {
             try {
-                MnWalkAround(p, ore, sd, deadline, um)
+                ; 按過十字鎬沒反應、要站近一點再試：只試原本這一側和旁邊一側（11/20 18:03 克勞德 紅能原石#1797 有人在採，
+                ; 從 18.6 想站到 3，四個方向都走不進去，白耗 15 秒以上）
+                MnWalkAround(p, ore, sd, deadline, um, k > 1 ? [0, 90] : 0)
             } catch as e {
                 if e.Extra = "stop"
                     throw e
                 MnHardNote(ore, "fail"), MnPosNote(p.name, ore, false, A_TickCount - t0)
+                if k > 1 {   ; 按了沒反應、又站不近：多半是有人在採（人擋在旁邊）→ 略過 3 分鐘，馬上換下一顆
+                    st.skip[ore.glob] := A_TickCount + MN_BUSY_SKIP_MS
+                    EventLog(p.name, "MN_SKIP", ore.name "#" ore.glob " 按了十字鎬沒反應、又站不近（" e.Message "），可能有人在採｜略過 " Round(MN_BUSY_SKIP_MS / 60000) " 分鐘，換下一顆")
+                    st.text := "這顆可能有人在採，換下一顆"
+                    return
+                }
                 st.skip[ore.glob] := A_TickCount + MN_SKIP_MS
                 ; 走不到這顆：看看角色現在周圍有沒有別顆採得到的（離得近就不必精準、直接採）
                 alt := MnNearbyOre(p, ore, um - 1)
@@ -1073,6 +1081,12 @@ MnMine(p, ore) {
         if !IsObject(cur)
             throw Error("讀不到人物位置")
         d := Sqrt((ore.x - cur.x) ** 2 + (ore.z - cur.z) ** 2)
+        if d > um && k > 1 {   ; 重試時走完還是站不近：同上，不再繞，換下一顆
+            st.skip[ore.glob] := A_TickCount + MN_BUSY_SKIP_MS
+            EventLog(p.name, "MN_SKIP", ore.name "#" ore.glob " 按了十字鎬沒反應、又站不近（還差 " Round(d, 1) "），可能有人在採｜略過 " Round(MN_BUSY_SKIP_MS / 60000) " 分鐘，換下一顆")
+            st.text := "這顆可能有人在採，換下一顆"
+            return
+        }
         if d > um {
             EventLog(p.name, "MN_FAR", "走完離礦石還有 " Round(d, 1) "（上限 " Round(um, 1) "），先再靠近一次、不按十字鎬")
             try {
@@ -1743,9 +1757,9 @@ MnFinalApproach(p, gx, gz) {
         throw Error("最後一段走不到（還差 " Round(left) "）")
 }
 ; 走到礦石旁邊：這一側走不到（路被擋住）就依序繞到另外三側（+90 / -90 / 180 度）再試，全部都不行才丟錯誤
-MnWalkAround(p, ore, standDist, deadline := 0, useMax := 0) {
+MnWalkAround(p, ore, standDist, deadline := 0, useMax := 0, angles := 0) {
     last := 0
-    for ang in [0, 90, -90, 180] {
+    for ang in (IsObject(angles) ? angles : [0, 90, -90, 180]) {
         if deadline && A_TickCount > deadline
             throw Error("走了太久還沒到（超過 " Round(MN_WALK_MAX_MS / 1000) " 秒），這顆不好走", , "mapfar")
         try {
