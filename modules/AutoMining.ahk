@@ -28,6 +28,8 @@ global MN_MAP_STOP := 6                  ; 大地圖走到離站位這麼近就�
 global MN_NEAR_OK := 24                   ; （舊值，實際用每個角色學到的 st.useMax）
 global MN_GATHER_CONFIRM_MS := 7000       ; 右鍵十字鎬之後最多等這麼久，角色要進入「採集」動作
 global MN_SKIP_MS := 600000               ; 走不到 / 採不了的礦石先略過 10 分鐘
+global MN_BUSY_CONFIRM_MS := 4000         ; 第 2 次右鍵十字鎬（離礦石的距離採起來過）只等這麼久：11/15～11/20 共 3300 多次，99.6% 在 2 秒內就開始採集
+global MN_BUSY_SKIP_MS := 180000          ; 可能有人在採的礦（採起來過的距離按兩次都沒反應 / 採幾秒就被打斷）：先略過 3 分鐘，馬上換下一顆
 global MN_RESPAWN_CHECK_MS := 30000       ; 礦都採完了，每隔多久再看一次（遊戲每 30 分鐘重生一次）
 global MN_START_IDLE_MS := 2000
 global MN_RUNNING := 0
@@ -899,10 +901,19 @@ MnPlan(p) {
             }
             if A_TickCount - st.notSince < 1200
                 return {action: "wait", text: "確認採集是否結束…", wait: 400}
-            EventLog(p.name, "MN_GATHER_EARLY", "採集只持續 " Round((A_TickCount - st.gatherStart) / 1000) " 秒就結束了（被打斷？）")
+            ; 11/20 克勞德：紅能原石#889 連續 3 次採 6～7 秒就被打斷（別人也在採），每次都回去同一顆、還算成「採完一顆」
+            secs := Round((A_TickCount - st.gatherStart) / 1000)
+            glob := st.HasOwnProp("gatherGlob") ? st.gatherGlob : ""
+            if glob != ""
+                st.skip[glob] := A_TickCount + MN_BUSY_SKIP_MS
+            EventLog(p.name, "MN_GATHER_EARLY", "採集只持續 " secs " 秒就結束了（被打斷，可能有人在採）｜" (glob != "" ? "這顆先略過 " Round(MN_BUSY_SKIP_MS / 60000) " 分鐘，換下一顆" : "換下一顆") "｜不算採完")
+            st.notSince := 0, st.gathering := false, st.gatherStart := 0, st.gatherGlob := ""
+            st.lootBase := 0, st.lootAt := 0   ; 沒採完不會有收穫：不結算（免得算成「沒有收穫」觸發警告）
+            st.progressAt := A_TickCount
+            return {action: "wait", text: "採集被打斷，換下一顆", wait: 300}
         }
         st.notSince := 0
-        st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.lootAt := A_TickCount + 3000, st.lootDone := A_TickCount
+        st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.gatherGlob := "", st.lootAt := A_TickCount + 3000, st.lootDone := A_TickCount
         EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆")
     }
     if MnBossTimerDue(p, st, false)   ; 按了「現在讀王重生時間」：不在採集中的空檔去讀
@@ -918,8 +929,15 @@ MnPlan(p) {
         if IsObject(boss) && A_TickCount < st.bossSkip && st.HasOwnProp("bossSkillWant") && st.bossSkillWant != "" {
             me := 0
             try me := MiningCharState(pid)
-            if IsObject(me) && me.runSkill = st.bossSkillWant {
-                EventLog(p.name, "MN_BOSS_SKILL_OK", "右鍵技能已改成 " st.bossSkillWant "，去打王")
+            ; 要的技能照「現在的設定」重算（只讀記憶體、不按鍵）：11/20 克勞德在頁面改成用技能欄第 8 格，舊的 36-14 一直對不上，白等 10 分鐘
+            want := st.bossSkillWant
+            try {
+                plan := MnBossSkillPlan(p)
+                if plan.code != ""
+                    want := plan.code
+            }
+            if IsObject(me) && me.runSkill = want {
+                EventLog(p.name, "MN_BOSS_SKILL_OK", "右鍵技能已經是要的 " want "，去打王")
                 st.bossSkip := 0
             }
         }
@@ -1076,7 +1094,7 @@ MnMine(p, ore) {
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
                 st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
-                st.text := "採集中（約 60 秒）"
+                st.text := "採集中（約 60 秒）", st.gatherGlob := ore.glob
                 MnHardNote(ore, A_TickCount - t0 > MN_SLOW_MS ? "slow" : "ok"), MnPosNote(p.name, ore, true)
                 EventLog(p.name, "MN_GATHER_START", ore.name "#" ore.glob "｜晚幾秒才開始，不重複右鍵")
                 return
@@ -1087,13 +1105,16 @@ MnMine(p, ore) {
         how := MnUsePickaxe(p)
         EventLog(p.name, "MN_USE_TIME", "右鍵十字鎬花了 " Round((A_TickCount - tUse) / 1000, 1) " 秒（" (how = "fast" ? "快速" : "一般") "路徑）")
         start := A_TickCount
-        while A_TickCount - start < MN_GATHER_CONFIRM_MS {
+        ; 第 2 次起、離礦石的距離採起來過：多半是有人在採（11/20 克勞德 綠能原石#1646 站 8.4 按 3 次、白等約 27 秒）
+        busyTry := k > 1 && st.okMax > 0 && d <= st.okMax
+        confirmMs := busyTry ? MN_BUSY_CONFIRM_MS : MN_GATHER_CONFIRM_MS
+        while A_TickCount - start < confirmMs {
             ApGuardAny()
             cur := MiningCharState(pid)
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
                 st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
-                st.text := "採集中（約 60 秒）"
+                st.text := "採集中（約 60 秒）", st.gatherGlob := ore.glob
                 if d > st.okMax {   ; 採得起來的最遠距離（距離上限不會低於它）
                     st.okMax := d
                     if d > st.useMax
@@ -1124,6 +1145,12 @@ MnMine(p, ore) {
         if d > 12 && d > st.okMax {   ; 離得遠採不起來：把距離上限往下調（但不低於採起來過的距離）
             st.useMax := Max(10, st.okMax, d - 3), um := st.useMax
             EventLog(p.name, "MN_USEMAX_LEARN", "離 " Round(d, 1) " 單位採不起來，距離上限調成 " Round(um, 1))
+        }
+        if busyTry {   ; 距離沒問題卻按兩次都沒進入採集：不再站更近（站近也一樣），換下一顆
+            st.skip[ore.glob] := A_TickCount + MN_BUSY_SKIP_MS
+            EventLog(p.name, "MN_SKIP", ore.name "#" ore.glob " 離 " Round(d, 1) " 單位（採起來過的距離）按了 " k " 次十字鎬都沒進入採集，可能有人在採｜略過 " Round(MN_BUSY_SKIP_MS / 60000) " 分鐘，換下一顆")
+            st.text := "這顆可能有人在採，換下一顆"
+            return
         }
     }
     MnHardNote(ore, "fail"), MnPosNote(p.name, ore, false, A_TickCount - t0)
