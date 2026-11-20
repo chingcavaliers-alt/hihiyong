@@ -526,6 +526,32 @@ ApRealUi(pid) {
     return ui
 }
 
+; 遊戲裡現在跳出來的確認視窗文字（一般確認視窗 + 組隊確認視窗，接在一起；沒有 / 讀不到回傳 ""）。
+; 只讀記憶體：遊戲視窗被別的視窗蓋住、螢幕鎖定或關掉也讀得到（斷線偵測用，v1.3.90.57）。
+ApModalTextNow(pid) {
+    m := ApModule(pid)
+    if !m || !GameOffset("InnerInterfaceRva")
+        return ""
+    h := m.h, inner := m.addr + GameOffset("InnerInterfaceRva")
+    vf := GameReadNum(h, inner, "Ptr")
+    if vf = "" || !ApVftableOk(vf - m.addr)
+        return ""
+    out := ""
+    for pair in [["InnerModalWindowOffset", "ModalTextOffset", "ModalWindowVftableRvas"], ["InnerPartyModalOffset", "PartyModalTextOffset", ""]] {
+        if !GameOffset(pair[1]) || !GameOffset(pair[2])
+            continue
+        md := ApPtr(h, inner + GameOffset(pair[1]))
+        if !md || !ApVisible(h, md) || (pair[3] != "" && !ApVftableIn(h, md, m.addr, pair[3]))
+            continue
+        tb := ApPtr(h, md + GameOffset(pair[2]))
+        t := tb ? ApReadTextBox(h, tb, 6) : 0
+        if IsObject(t)
+            for part in t.parts
+                out .= part.text
+    }
+    return out
+}
+
 ; ---------------------------------------------------------------- 隊伍視窗 / 一般確認視窗（隊長交還用，先只讀）
 ; 介面：{open: 隊伍視窗開著, masterId, slots: [{i, vis, name, master, auth: {x,y,vis}|0, quit: {x,y,vis}|0}], modal: {open, type, text, ok, yes, cancel, no}}；讀不到回傳 0。
 ; auth = 「委任隊長」按鈕；quit = 「退出」按鈕（會退隊 / 踢人：只讀位置用來避開，程式絕不點）。座標是遊戲畫面（Client）內的像素。

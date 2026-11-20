@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.56",
+    "version":  "v1.3.90.57",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "ff663ee41bc4f3ef8bc37a89c6473d20d0d733656aa3b2ae5a17e0f74f62d7ec"
+                      "sha256":  "c20a9f7799045bfd678cd9a282c627cb495fe4fc6d790fb7a27e932cc790af23"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -28,6 +28,10 @@
                   {
                       "path":  "DailyTemplates\\revive_button.bmp",
                       "sha256":  "960dcafb56e704708c7031f6a443ddad25b1d805c010ebc227e086f6e7a09dfc"
+                  },
+                  {
+                      "path":  "DailyTemplates\\revive_town_button.bmp",
+                      "sha256":  "f7c43b0fd305aef5f36096dae0a4ac0fc3934b0c6ee38f150f3986c1b6bce2da"
                   },
                   {
                       "path":  "DisconnectTemplates\\DisconnectConfirm.bmp",
@@ -51,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "677742b2399ad37822156f3d648d98d3253a88518fb4e4274711f594b64a3965"
+                      "sha256":  "b31a5b48b4b94ccb0e88d425651e174fdaade41d486d022f4c85f072ca8e13ea"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -139,7 +143,7 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "19ece51bd49621ffef33006beba859c3d33fb989bf49bf21eebb873a5e38d92d"
+                      "sha256":  "2a4b86e1b428b2679bfcc7a3649a548e6e76860a14ef685754f475ec46fa91d1"
                   },
                   {
                       "path":  "modules\\BossTimer.ahk",
@@ -279,7 +283,7 @@
                   },
                   {
                       "path":  "modules\\ReviveAssist.ahk",
-                      "sha256":  "c7dd736ea62d4d0d4470b54703a9e10ef3ca4007c86750c23e131cd85c45d3dc"
+                      "sha256":  "285fa943ed05f0f3c40a0f1c6e60d7dd455de6a8fcd138a7be39fb1c748ea514"
                   },
                   {
                       "path":  "modules\\Signals.ahk",
@@ -291,7 +295,7 @@
                   },
                   {
                       "path":  "modules\\Updater.ahk",
-                      "sha256":  "bdf6d382b676d3c4a29089a0493858b5431e57a2ea18751224966e82e97fa1a9"
+                      "sha256":  "f18e5d3a70611f0c36a79e27f2be9df45c7a2ac4be47a2778565b54f79f97ee6"
                   },
                   {
                       "path":  "modules\\WebUI.ahk",
@@ -539,7 +543,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "af29ae6b691629fb85cd7ddd89ca39c45986fdcc1e0ec08c8124f3e5b32d7371"
+                      "sha256":  "3c6a3f47b978c285b18fbd019e2195cdd72f307dbf4a817106185cbba959dd07"
                   },
                   {
                       "path":  "登入測試.bat",

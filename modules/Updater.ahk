@@ -1,5 +1,7 @@
 ; ============================================================================
-; H-016 從 GitHub 更新：其他電腦啟動後 / 每 6 小時檢查有沒有新版，有就跳提醒，使用者按了才更新。
+; H-016 從 GitHub 更新：其他電腦啟動後 / 每 1 小時檢查有沒有新版，有就跳提醒，使用者按了才更新。
+; v1.3.90.57：有新版時另外跳出提醒視窗（不搶焦點）：立即更新 / 稍後提醒（6 小時後再跳）/ 這一版不要再提醒。
+;   [Update] Popup=0 可關掉視窗（畫面上方的「有新版」照舊）。
 ; 來源：公開倉庫（INI [Update] Repo，預設 chingcavaliers-alt/hihiyong）的 version.json 與版本標籤的 zip。
 ; 更新只換程式檔；帳號密碼、Discord、統計、日誌、遊戲偏移設定、內建執行環境都不動。
 ; 安全：下載後先驗證發佈者的數位簽章（每個檔案的 SHA256）、版本號、主程式語法，只換內容不同的檔案（先備份到
@@ -8,7 +10,10 @@
 ; ============================================================================
 
 global UPDATE_REPO := IniRead(INI, "Update", "Repo", "chingcavaliers-alt/hihiyong")
-global UPDATE_CHECK_MS := 6 * 3600000
+global UPDATE_CHECK_MS := 1 * 3600000
+global UPDATE_POPUP := Integer(IniRead(INI, "Update", "Popup", "1"))
+global UPDATE_SNOOZE_MS := 6 * 3600000
+global updatePopup := 0, updatePopupSnoozeUntil := 0, updateApplyWaitStart := 0
 global UPDATE_MAIN := "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk"
 ; 不覆蓋、不刪除的（每台電腦自己的資料）
 global UPDATE_KEEP_DIRS := ["Logs", "Stats", "WebView2UserData", "NetworkWatch", "ServerDisconnectEvidence", "runtime", "backup"]
@@ -88,7 +93,7 @@ UpdateCheck(manual := false) {
 }
 
 UpdateCheckPoll() {
-    global updateReq, updateReqStart, updateInfo, updateStatus, updateManual, APP_VERSION
+    global updateReq, updateReqStart, updateInfo, updateStatus, updateManual, APP_VERSION, updatePopupSnoozeUntil
     done := false
     try done := updateReq.WaitForResponse(0)
     if !done && A_TickCount - updateReqStart < 20000
@@ -105,14 +110,92 @@ UpdateCheckPoll() {
         updateInfo := info
         updateStatus := ""
         if isNew {
+            updatePopupSnoozeUntil := 0   ; 又出了更新的版本：「稍後提醒」不再擋
             EventLog("GLOBAL", "UPDATE_AVAILABLE", "有新版 " info.version "（目前 " APP_VERSION "）")
             AddRecentEvent("🆕 有新版 " info.version "：按畫面上方的「有新版」查看並更新")
         }
+        UpdatePopupMaybe()
     } else {
         updateInfo := 0
         updateStatus := updateManual ? "✓ 已是最新版（" APP_VERSION "）" : ""
     }
     UpdatePushWeb()
+}
+
+; 要不要跳新版提醒視窗：有新版、沒關掉提醒、這一版沒按過「不要再提醒」、不在「稍後提醒」的時間內
+UpdatePopupDue(info, skipVersion, snoozeUntil, now) {
+    global UPDATE_POPUP
+    return UPDATE_POPUP && IsObject(info) && info.version != skipVersion && (!snoozeUntil || now >= snoozeUntil)
+}
+
+UpdatePopupMaybe() {
+    global updateInfo, updatePopup, updatePopupSnoozeUntil, updateRunning, INI
+    if IsObject(updatePopup) || updateRunning
+        return false
+    if !UpdatePopupDue(updateInfo, IniRead(INI, "Update", "SkipVersion", ""), updatePopupSnoozeUntil, A_TickCount)
+        return false
+    UpdatePopupShow(updateInfo)
+    return true
+}
+
+; 新版提醒視窗（和每日道具提醒一樣不搶焦點，自動登入 / 遊戲操作中不會被打斷）
+UpdatePopupShow(info) {
+    global updatePopup, APP_VERSION
+    lines := ""
+    for n in info.notes
+        lines .= "・" n "`n"
+    g := Gui("+AlwaysOnTop +ToolWindow +E0x08000000", "HIHIYONG 有新版")
+    g.SetFont("s10", "Microsoft JhengHei")
+    g.AddText("w460", "有新版 " info.version (info.date != "" ? "（" info.date "）" : "") "，目前是 " APP_VERSION "。`n`n更新內容：`n"
+        . (lines != "" ? lines : "（沒有說明）`n")
+        . "`n更新只換程式檔，帳號、設定、統計都不會動；裝好後等目前的工作做完會自動重新啟動。")
+    g.AddButton("w130 Default", "立即更新").OnEvent("Click", (*) => UpdatePopupClose("now"))
+    g.AddButton("x+10 w130", "稍後提醒").OnEvent("Click", (*) => UpdatePopupClose("later"))
+    g.AddButton("x+10 w170", "這一版不要再提醒").OnEvent("Click", (*) => UpdatePopupClose("skip"))
+    g.OnEvent("Close", (*) => UpdatePopupClose("later"))
+    updatePopup := g
+    EventLog("GLOBAL", "UPDATE_POPUP", "跳出新版提醒視窗｜" info.version "（目前 " APP_VERSION "）")
+    SoundBeep 660, 150
+    g.Show("NoActivate")
+}
+
+UpdatePopupClose(mode) {
+    global updatePopup, updatePopupSnoozeUntil, updateInfo, INI, UPDATE_SNOOZE_MS
+    try updatePopup.Destroy()
+    updatePopup := 0
+    if !IsObject(updateInfo)
+        return
+    if mode = "skip" {
+        try IniWrite updateInfo.version, INI, "Update", "SkipVersion"
+        EventLog("GLOBAL", "UPDATE_POPUP", "這一版不要再提醒｜" updateInfo.version)
+    } else if mode = "later" {
+        updatePopupSnoozeUntil := A_TickCount + UPDATE_SNOOZE_MS
+    } else {
+        EventLog("GLOBAL", "UPDATE_POPUP", "按了立即更新｜" updateInfo.version)
+        UpdateApplyWhenFree()
+    }
+}
+
+; 「立即更新」時程式正在重新登入 / 換每日道具等：等那件事做完再自動更新（最多等 30 分鐘）
+UpdateApplyWhenFree() {
+    global updateApplyWaitStart, updateStatus
+    why := UpdateBlocker()
+    if why = "" {
+        updateApplyWaitStart := 0
+        return UpdateApply()
+    }
+    if !updateApplyWaitStart {
+        updateApplyWaitStart := A_TickCount
+        updateStatus := "目前" why "，做完後自動更新"
+        AddRecentEvent("🆕 目前" why "，做完後自動更新")
+        UpdatePushWeb()
+    } else if A_TickCount - updateApplyWaitStart > 30 * 60000 {
+        updateApplyWaitStart := 0
+        updateStatus := "等了 30 分鐘還是" why "，請稍後再按更新"
+        AddRecentEvent("⚠ " updateStatus)
+        return UpdatePushWeb()
+    }
+    SetTimer UpdateApplyWhenFree, -5000
 }
 
 ; 目前不能更新的原因（空字串 = 可以）。

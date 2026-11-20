@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.56"
+global APP_VERSION := "v1.3.90.57"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -2337,15 +2337,19 @@ EvaluateMultiWindowFakeOnline() {
     required:=Max(1,SoftMinVotesEdit.Value+0)
     ; 共同確認成立後的 3 分鐘內，慢幾秒才滿 60 秒的視窗不用再湊滿門檻（其他視窗已離開監控，永遠湊不到）：同一次卡住，一起處理
     fellowWindow:=softMultiConfirmTick && A_TickCount-softMultiConfirmTick<180000
-    candidates:=[]
+    candidates:=[], voters:=0, strong:=0
     for i,p in profiles {
         if !p.enabled || !p.softDetect || p.state!="監控中" || p.hpEventOpen || !ProfileGameAlive(p) || !p.memHpReadOk
             continue
         if p.HasOwnProp("memHpGraceUntil") && A_TickCount<p.memHpGraceUntil
             continue
+        voters+=1   ; 活著、在監控中、能投票的角色（死亡中的不算：死掉本來就不會動）
         staticMs:=A_TickCount-p.memHpLastChangeTick
         if staticMs<60000
             continue
+        ; 「門檻降低」時要的較強證據：自動攻擊開著，而且血量 / 金幣 / 經驗 / 背包 3 分鐘都沒變
+        if staticMs>=180000 && p.HasOwnProp("autoAtk") && p.autoAtk=1
+            strong+=1
         if required=1 {
             ; 單一角色就成立時沒有別的視窗交叉，改用伺服器時間當第二個證據：
             ; 伺服器時間還在更新 → 只是閒置不是斷線，不算；讀不到伺服器時間 → 要靜止更久（3 分鐘）才算。
@@ -2359,9 +2363,15 @@ EvaluateMultiWindowFakeOnline() {
     }
     count:=candidates.Length
     need:=fellowWindow ? 1 : required
+    ; v1.3.90.57：能投票的角色不到門檻（其他角色死亡中）時，永遠湊不滿：
+    ; 11/20 03:37 四個視窗假在線，欸等、欸等欸躺著不算票，小柯基、克勞德卡在 2 / 3 四個半小時。
+    ; 改成：活著的全部（至少 2 個）都停住，而且每個都自動攻擊開著、3 分鐘沒變化，就算成立。
+    reduced:=!fellowWindow && required>2 && voters<required && voters>=2 && count=voters && strong=count
+    if reduced
+        need:=count
     for idx in candidates {
         p:=profiles[idx]
-        p.memSoftState := count>=need ? "已確認假在線" : "等待其他角色確認（" count " / " required "）"
+        p.memSoftState := count>=need ? "已確認假在線" : "等待其他角色確認（" count " / " required (voters<required ? "，活著 " voters " 個，都停 3 分鐘就成立" : "") "）"
     }
     if count<need
         return
@@ -2370,7 +2380,7 @@ EvaluateMultiWindowFakeOnline() {
     names:=""
     for idx in candidates
         names.=(names="" ? "" : "、") profiles[idx].name
-    EventLog("GLOBAL","SOFT_MULTI_CONFIRMED","多視窗共同判定成立｜60秒無血量變化=" count "｜門檻=" required (fellowWindow ? "（同一次卡住稍後才滿 60 秒的視窗）" : "") "｜" names)
+    EventLog("GLOBAL","SOFT_MULTI_CONFIRMED","多視窗共同判定成立｜60秒無血量變化=" count "｜門檻=" required (fellowWindow ? "（同一次卡住稍後才滿 60 秒的視窗）" : "") (reduced ? "（其他角色死亡中，活著的 " count " 個都自動攻擊開著、3 分鐘沒變化）" : "") "｜" names)
     for idx in candidates {
         p:=profiles[idx]
         if p.memSoftAlerted
@@ -2407,7 +2417,15 @@ ServerDisconnectMonitorTick() {
                 serverDisconnectHandled.Delete(key)
             continue
         }
-        hit:=DetectServerDisconnectDialog(p.hwnd)
+        hit:=DetectServerDisconnectDialog(p.hwnd), src:="畫面"
+        ; v1.3.90.57：畫面看不到（視窗被蓋住、螢幕鎖定 / 關掉）時改讀記憶體裡的確認視窗文字。
+        ; 11/20 03:38 欸等畫面上已經是「網路連線中斷」，但視窗疊在一起，到 08:03 才被看到。
+        if !hit {
+            mt:=""
+            try mt:=ApModalTextNow(p.pid)
+            if InStr(mt,"連線中斷")
+                hit:=true, src:="記憶體｜" SubStr(mt,1,30)
+        }
         if !hit {
             if serverDisconnectSeen.Has(key)
                 serverDisconnectSeen.Delete(key)
@@ -2419,7 +2437,7 @@ ServerDisconnectMonitorTick() {
             continue
         if !serverDisconnectSeen.Has(key) {
             serverDisconnectSeen[key]:=A_TickCount
-            EventLog(p.name,"SERVER_DISCONNECT_CANDIDATE","偵測到遊戲內『網路連線中斷』提示，等待第二次確認")
+            EventLog(p.name,"SERVER_DISCONNECT_CANDIDATE","偵測到遊戲內『網路連線中斷』提示（" src "），等待第二次確認")
             continue
         }
         if A_TickCount-serverDisconnectSeen[key] < serverDisconnectConfirmMs
@@ -2427,7 +2445,7 @@ ServerDisconnectMonitorTick() {
 
         serverDisconnectHandled[key]:=true
         serverDisconnectLast:=FormatTime(,"yyyy-MM-dd HH:mm:ss") "｜" p.name
-        EventLog(p.name,"SERVER_DISCONNECT_CONFIRMED","遊戲視窗/PID仍存在，但斷線提示連續確認；直接進入 Recovery")
+        EventLog(p.name,"SERVER_DISCONNECT_CONFIRMED","遊戲視窗/PID仍存在，但斷線提示連續確認（" src "）；直接進入 Recovery")
         AddRecentEvent("🔌 " p.name "｜伺服器連線中斷 → Recovery")
         CaptureServerDisconnectEvidence(p)
         try RecoveryWebhook(p,"伺服器連線中斷 / 自動 Recovery","偵測到遊戲內『網路連線中斷』提示")
