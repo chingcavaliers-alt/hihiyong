@@ -65,6 +65,7 @@ WebNavigationCompleted(sender,args) {
     PushWebState()
     ; UI 先出現，再啟動背景監控，降低啟動時與 WebView 初始化搶資源。
     SetTimer MonitorTick, 2000
+    SetTimer CommittedRecheckTick, 60000   ; 登入後流程異常的角色：每分鐘用記憶體再確認一次
     SetTimer HPAndSoftMonitorTick, 1000
     SetTimer MemoryHPMonitorTick, MEMORY_HP_SAMPLE_MS
     SetTimer NetGuardTick, 5000   ; H-031：整體斷網守門（不開任何外部程式）

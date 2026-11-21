@@ -84,4 +84,27 @@ SignalsWriteCsv(p,serverTime) {
         . "," serverTime "," SignalServerStaticSec(p) "," hpStatic "," money "," itemCount
         . "," CsvField(p.HasOwnProp("memSoftState") ? p.memSoftState : "") "`r`n"
     try FileAppend line,path,"UTF-8"
+    SignalsGoldCheck(p,money)
+}
+
+; 金幣一次少很多（11/21 欸等兩次：19:11～19:24 共少 318 億、02:00 一次少 100 億）：記下來並通知，
+; 不是你自己買東西 / 交易 / 存銀行的話要馬上檢查帳號。同一個角色 10 分鐘內只通知一次（日誌每次都記）。
+SignalsGoldCheck(p,money) {
+    static SIG_GOLD_DROP_MIN:=1000000000, SIG_GOLD_NOTIFY_GAP_MS:=600000   ; 一次少 10 億以上
+    if !IsInteger(money) || money<=0   ; 讀不到 / 0（讀取中）不算
+        return
+    prev:=p.HasOwnProp("sigGoldPrev") ? p.sigGoldPrev : 0
+    samePid:=p.HasOwnProp("sigGoldPid") && p.sigGoldPid=p.pid
+    p.sigGoldPrev:=money, p.sigGoldPid:=p.pid
+    if !prev || !samePid || prev-money<SIG_GOLD_DROP_MIN
+        return
+    drop:=prev-money
+    msg:="金幣少了 " Round(drop/100000000,2) " 億（" Round(prev/100000000,2) " 億 → " Round(money/100000000,2) " 億）"
+    EventLog(p.name,"GOLD_DROP",msg)
+    if p.HasOwnProp("sigGoldNotifiedAt") && A_TickCount-p.sigGoldNotifiedAt<SIG_GOLD_NOTIFY_GAP_MS
+        return
+    p.sigGoldNotifiedAt:=A_TickCount
+    AddRecentEvent("💰 " p.name " " msg)
+    sendNm:="SendDiscordMessage"   ; 用名字呼叫：單元測試的假環境不一定有這個函式
+    try %sendNm%("⚠️ HIHIYONG 金幣大量減少`n角色：" p.name "`n" msg "`n如果不是你自己買東西、交易或存銀行，請盡快檢查帳號。")
 }

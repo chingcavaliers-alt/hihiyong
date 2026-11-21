@@ -20,7 +20,7 @@ global CW_PET := CwIniFlag("Pet", 1)
 global CW_MERC := CwIniFlag("Merc", 1)
 global CW_DOLL := CwIniFlag("Doll", 1)
 global CW_CHECK_MS := 5000, CW_CONFIRM_MS := 10000, CW_COOLDOWN_MS := 120000, CW_VERIFY_MS := 8000
-global CW_BACKOFF_MAX_MS := 1800000, CW_NOCARD_MS := 1800000
+global CW_BACKOFF_MAX_MS := 600000, CW_NOCARD_MS := 1800000   ; 失敗後最多等 10 分鐘再試（換完每日道具後雇傭兵會有一段時間叫不出來，能叫了要早點叫回來）
 global cwBusy := false
 
 ; kind："pet" / "merc" / "doll"
@@ -244,7 +244,14 @@ CompanionRun(p, kind) {
             if s.fails >= 3 && !s.notified {
                 s.notified := true
                 AddRecentEvent("⚠ " p.name "：" label "叫不出來（連續 " s.fails " 次）")
-                try SendDiscordMessage("⚠️ HIHIYONG " label "叫不出來`n角色：" p.name "`n已按 " StrUpper(info.key) " 連續 " s.fails " 次，" label "仍不在外面。可能是卡片沒有了、沒有冷卻完或遊戲畫面有別的視窗擋住，請有空時確認。")
+                ; 附上當下畫面（視窗剛切到前景）：事後才看得出是真的沒出來、還是判斷錯
+                msg := "⚠️ HIHIYONG " label "叫不出來`n角色：" p.name "`n已按 " StrUpper(info.key) " 連續 " s.fails " 次，" label "仍不在外面。可能是卡片沒有了、沒有冷卻完或遊戲畫面有別的視窗擋住，請有空時確認。"
+                shotNm := "ReportEventShot"
+                try {
+                    shotF := %shotNm%
+                    shotF(p, msg)
+                } catch
+                    try SendDiscordMessage(msg)
             }
         }
     } catch as e {

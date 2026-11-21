@@ -540,16 +540,24 @@ DailyHuntTick() {
     global DH_RUNNING, DH_CHARS, DH_MAPS_ON, dhBusy, apBusy, cwBusy
     if !DH_RUNNING
         return
-    if dhBusy || apBusy || cwBusy
+    if dhBusy || apBusy || cwBusy {
+        for p in DhSelectedAlive()
+            if !DhSt(p).done
+                DhWaitNote(p, "別的功能正在操作遊戲視窗（" (dhBusy ? "每日討伐" : cwBusy ? "寵物 / 雇傭兵監測" : "自動組隊 / 採礦 / 變慢過圖") "）")
         return
+    }
     why := ApBlockerRaw()
     if why != "" {
-        for p in DhSelectedAlive()
+        for p in DhSelectedAlive() {
             DhSt(p).text := "等待中：" why
+            if !DhSt(p).done
+                DhWaitNote(p, why)
+        }
         return
     }
     if DH_CHARS.Count = 0
         return
+    DhWaitNoteMissing()
     ; 每個勾選的角色各看一次：只讀資料就能判斷的（打怪中 / 做完了）當場處理，需要動手的做第一個
     todo := 0
     for p in DhSelectedAlive() {
@@ -559,6 +567,7 @@ DailyHuntTick() {
         if !ApReady(p) {
             dead := p.HasOwnProp("hpEventOpen") && p.hpEventOpen
             st.text := dead ? "💀 死亡中，用歸魂珠原地復活後自動繼續" : "還沒進遊戲世界（或死亡中）"
+            DhWaitNote(p, DhNotReadyWhy(p))
             if dead   ; 跑圖期間死亡：馬上用歸魂珠原地復活（不等 60 秒；鍵鼠閒置 3 秒就動手），復活後從頭判斷、重新開地圖走過去
                 try ReviveStuckCheck(p, 0, 3)
             continue
@@ -573,12 +582,15 @@ DailyHuntTick() {
         if st.done   ; 今天重開程式前已經收尾過（DhPlan 判斷）：不再回起點
             continue
         if d.action = "done" {
+            DhWaitClear(p)
             if st.text != "沒有可跑的地圖（沒勾選，或都被略過）" {   ; 只提示一次；不設「做完」旗標，之後勾了地圖馬上就會繼續
             st.text := "沒有可跑的地圖（沒勾選，或都被略過）"
             AddRecentEvent("🎯 " p.name "：沒有可跑的地圖（沒勾選，或都被略過）")
         }
-        } else if d.action = "monitor"
+        } else if d.action = "monitor" {
+            DhWaitClear(p)
             DhMonitor(p, d.goal)
+        }
         else if !todo
             todo := {p: p, d: d}
     }
@@ -586,6 +598,7 @@ DailyHuntTick() {
         busy := ApBlocker(DH_START_IDLE_MS)   ; 含「等你停止操作鍵盤滑鼠」：每日討伐只等 2 秒（不跟自動組隊共用 5 秒）
         if busy != "" {
             DhSt(todo.p).text := "等待中：" busy
+            DhWaitNote(todo.p, busy)
             return
         }
         fpWhy := "", fpNm := "FpBlocked"   ; 功能優先順序：排在前面的功能忙著就先等
@@ -595,10 +608,64 @@ DailyHuntTick() {
         }
         if fpWhy != "" {
             DhSt(todo.p).text := "等待中：" fpWhy
+            DhWaitNote(todo.p, fpWhy)
             return
         }
         DhRun(todo.p, todo.d)
     }
+}
+
+; 每日討伐一直在等、沒有動作（例如定時啟動後被擋住）：同一段等待超過 5 分鐘寫一筆 DH_WAIT（之後每 10 分鐘最多一筆），
+; 超過 15 分鐘發一次通知；原因只顯示在頁面上的話，事後從日誌看不出卡在哪裡。真的動手（或進入打怪監看）就重新計算。
+global DH_WAIT_LOG_MS := 300000, DH_WAIT_REPEAT_MS := 600000, DH_WAIT_NOTIFY_MS := 900000
+DhWaitNote(p, why) {
+    global DH_WAIT_LOG_MS, DH_WAIT_REPEAT_MS, DH_WAIT_NOTIFY_MS
+    st := DhSt(p), now := A_TickCount
+    if !st.HasOwnProp("waitSince") || !st.waitSince
+        st.waitSince := now, st.waitLogged := 0, st.waitNotified := false
+    mins := Round((now - st.waitSince) / 60000)
+    if now - st.waitSince >= DH_WAIT_LOG_MS && (!st.waitLogged || now - st.waitLogged >= DH_WAIT_REPEAT_MS) {
+        st.waitLogged := now
+        EventLog(p.name, "DH_WAIT", "每日討伐已經等了 " mins " 分鐘沒有動作｜原因：" why)
+    }
+    ; 你在用電腦造成的等待不通知（那是你自己知道的）
+    if !st.waitNotified && now - st.waitSince >= DH_WAIT_NOTIFY_MS && !InStr(why, "等你停止操作") {
+        st.waitNotified := true
+        DhNotify("⚠️ 每日討伐｜" p.name "｜已經 " mins " 分鐘沒有開始動作｜原因：" why)
+    }
+}
+DhWaitClear(p) {
+    DhSt(p).waitSince := 0
+}
+; 勾選的角色找不到遊戲視窗（沒綁定、綁定失效）：DhSelectedAlive 不會列出它，也要記下來
+DhWaitNoteMissing() {
+    global profiles, DH_CHARS
+    for p in profiles {
+        if (p.HasOwnProp("enabled") && !p.enabled) || !DH_CHARS.Has(p.name) || (p.HasOwnProp("dh") && p.dh.done)
+            continue
+        alive := false
+        try alive := ProfileGameAlive(p)
+        if !(alive && p.pid)
+            DhWaitNote(p, "找不到這個角色的遊戲視窗（沒有綁定或綁定失效）｜帳號狀態：" (p.HasOwnProp("state") ? p.state : "?"))
+    }
+}
+; ApReady 不通過時，是哪一項不行
+DhNotReadyWhy(p) {
+    if p.HasOwnProp("hpEventOpen") && p.hpEventOpen
+        return "死亡中"
+    if p.HasOwnProp("enabled") && !p.enabled
+        return "帳號沒有勾選"
+    if p.HasOwnProp("state") && p.state != "監控中"
+        return "帳號狀態是「" p.state "」，不是監控中"
+    ; 用名字呼叫：單元測試的假環境不一定有這些函式
+    ok := false, fnReady := "GameOffsetsReady", fnLoaded := "GameCharacterLoaded", fnMap := "ReadGameMapId"
+    try ok := %fnReady%(p.pid)
+    if !ok
+        return "遊戲資料位置還沒準備好（可能剛更新遊戲）"
+    loaded := false, map := ""
+    try loaded := %fnLoaded%(p.pid)
+    try map := %fnMap%(p.pid)
+    return "讀不到角色在遊戲世界裡（角色資料" (loaded ? "有" : "沒有") "讀到、地圖" (map = "" ? "讀不到" : "=" map) "）"
 }
 
 ; 現在是「第幾天」（從 1970-01-01 起算，本機日期；遊戲的每日任務也是這種算法，00:00 換日）
@@ -713,8 +780,10 @@ DhRun(p, d) {
             minimized.Push(p)
         if !ApActivate(p) {
             st.next := A_TickCount + 30000, st.text := "切不到遊戲視窗，稍後再試"
+            DhWaitNote(p, "切不到遊戲視窗（WinActivate 之後 2 秒內沒有變成前景）")
             return
         }
+        DhWaitClear(p)
         if d.action = "refresh" {
             st.text := "讀取任務進度（開 T）"
             DhActRefresh(p)
@@ -1186,7 +1255,7 @@ DhActTestWalk(p, g) {
 ; 全部做完：關自動打怪、用起點傳送卡回起點（復活點）、通報 Discord；這個角色之後不再動作（隔天 00:00 任務換了才重來）。
 ; 有設定「完成後去掛機」：不停在起點，改搭公車到那張圖、走到記下的座標開自動打怪（失敗就留在原地並通知，不重試，避免一直來回）。
 DhActFinish(p) {
-    global DH_NPC_NAME
+    global DH_NPC_NAME, DH_AFTER_ON
     st := DhSt(p)
     finT0 := A_TickCount
     after := DhAfterGoal()
@@ -1220,6 +1289,10 @@ DhActFinish(p) {
     DhSetFinishedDay(p, st.lastDay)
     st.text := "✅ 指定任務全部完成，已回起點"
     DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，已用起點傳送卡回到復活點")
+    if DH_AFTER_ON {   ; 開了「完成後去掛機」但沒有記錄位置（或那張圖不在公車清單）：只在按開關時提醒過一次，這裡再講清楚
+        EventLog(p.name, "DH_AFTER_NOSPOT", "有開「全部完成後去掛機」，但還沒記錄掛機位置（或那張圖不在公車清單裡）｜已照舊回起點，人物沒有在打怪")
+        DhNotify("⚠ 每日討伐｜" p.name "｜有開「全部完成後去掛機」，但還沒記錄掛機位置，所以留在起點、沒有在打怪；請把角色帶回怪區，並在「每日討伐」頁面按「記錄現在位置」")
+    }
     AddRecentEvent("🎯 " p.name "：指定任務全部完成，已回起點")
     try DhStatFinish(p, A_TickCount - finT0)   ; 每張圖花的時間 + 總時長
     try DhSchedFinish(p)                       ; 定時啟動的：跑完自動停止

@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.59"
+global APP_VERSION := "v1.3.90.60"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -1287,7 +1287,9 @@ RestoreAllProfileWindows(reason:="手動") {
     }
     layoutStatus:=reason "：還原中"
     for idx,p in profiles {
-        if !p.hasPos || !ProfileGameAlive(p) {
+        ; 沒勾選的帳號不搬（11/21 14:03 沒在跑的「豆奶」留著舊綁定，被拿去搬了別人的視窗）；
+        ; 同一個視窗也綁在排在前面的勾選帳號上時，以勾選的那個為準
+        if !p.hasPos || !p.enabled || !ProfileGameAlive(p) || LayoutHwndOwnedByOther(idx,p.hwnd) {
             layoutSkipped+=1
             continue
         }
@@ -1298,6 +1300,15 @@ RestoreAllProfileWindows(reason:="手動") {
     }
     layoutStatus:=reason "完成｜成功 " layoutRestored "｜略過/等待 " layoutSkipped
     AddRecentEvent("視窗配置：" layoutStatus)
+}
+
+; 這個視窗是不是也綁在別的（勾選的）帳號上
+LayoutHwndOwnedByOther(idx,hwnd) {
+    global profiles
+    for j,q in profiles
+        if j!=idx && q.enabled && q.hwnd=hwnd
+            return true
+    return false
 }
 
 SaveAllCurrentWindowPositions(*) {
@@ -1554,6 +1565,7 @@ EmergencyStopAll() {
     for p in profiles {
         if p.state="監控中" || p.state="排隊恢復" || p.state="恢復中" || p.state="恢復失敗" || p.state="載入中"
             p.state:="人工操作"
+        p.memSoftState:="已停止"   ; 停止後假在線判斷不再更新：不要卡在停止前的「Recovery 保護」等狀態
     }
     EventLog("GLOBAL","EMERGENCY_STOP","F10 手動終止｜停止監控 / Recovery / 自動鍵鼠；保留 game.exe 與綁定")
     AddRecentEvent("F10 緊急停止｜等待人工操作")
@@ -1561,14 +1573,53 @@ EmergencyStopAll() {
     RefreshProfileLV()
 }
 
+; 登入後流程異常（「需要人工確認」，保留了 game.exe）的角色：之後每分鐘用遊戲記憶體再確認一次位置，不按任何鍵。
+; 11/21 遊戲更新：克勞德登入時新版的資料位置還沒算好，讀不到地圖、畫面辨識判成在復活點，就一直停在這個狀態沒有監控。
+; 角色其實在怪物地圖 → 自動回到監控中；確定在城裡 → 只通知一次，請人工帶回怪區。
+CommittedRecheckTick() {
+    global profiles,running,processingQueue,activeRecoveryHwnd,fastLoginCritical
+    if !running || processingQueue || activeRecoveryHwnd || fastLoginCritical
+        return
+    for i,p in profiles {
+        if !p.enabled || p.state!="需要人工確認" || !ProfileGameAlive(p)
+            continue
+        ready:=false
+        try ready:=GameOffsetsReady(p.pid) && GameInWorld(p.pid)
+        if !ready
+            continue
+        hp:=0, mx:=0
+        if !ReadGameHP(p.pid,&hp,&mx) || hp<=0
+            continue
+        town:="", field:=""
+        try town:=RecoveryTownName(p.hwnd)
+        if town=""
+            try field:=RecoveryLeftTown(p.hwnd)
+        if field!="" {
+            p.state:="監控中", p.failures:=0, p.locType:="怪物區", p.locConf:=100, p.committedTownNoted:=0
+            StartMemoryHPSession(p,p.pid,"COMMITTED_RECHECK")
+            EventLog(p.name,"COMMITTED_RECHECK_OK","登入後流程異常的角色重新確認：在怪物地圖（" field "）｜自動回到監控中")
+            AddRecentEvent(p.name " 重新確認在怪物地圖，回到監控中")
+            try SendDiscordMessage("✅ HIHIYONG " p.name " 重新確認在怪物地圖（" field "），已自動回到監控中")
+            try RecoveryGuardArm(p)
+            RefreshProfileLV()
+        } else if town!="" && !(p.HasOwnProp("committedTownNoted") && p.committedTownNoted) {
+            p.committedTownNoted:=1
+            EventLog(p.name,"COMMITTED_RECHECK_TOWN","登入後流程異常的角色重新確認：還在 " town "｜不自動按鍵，請人工帶回怪區後重新監控")
+            try SendDiscordMessage("⚠️ HIHIYONG " p.name " 登入後停在 " town "，目前沒有在監控；請帶回怪區後重新開始監控")
+        }
+    }
+}
+
 StopMonitoring(*) {
     global running,abortRequested,recoveryQueue,queued,processingQueue,profiles,Status
     MonitorPersist(false)
     running:=false, abortRequested:=true, recoveryQueue:=[], queued:=Map()
     ResetSoftDisconnectRuntime()
-    for p in profiles
+    for p in profiles {
         if p.enabled
             p.state:="已停止"
+        p.memSoftState:="已停止"
+    }
     RefreshProfileLV()
     Status.Text:="狀態：已停止全部監控 / 恢復"
 }
@@ -1924,7 +1975,7 @@ DetectMemoryHPOffsetForSession(p,pid,reason:="LOGIN_MONITOR") {
     ; Rebind to the last dynamically validated module-relative offset only.
     p.memHpOffset:=MEMORY_HP_RUNTIME_OFFSET
     if GameOffsetsReady(pid) {
-        EventLog(p.name,"HP_SOURCE_PDB","使用 Game.pdb 位置讀取 HP（Build " GameBuildOf(pid) "）｜" reason)
+        EventLog(p.name,"HP_SOURCE_PDB","使用這個版本的資料位置讀取 HP（Build " GameBuildOf(pid) "｜" GameOffsetsSourceText() "）｜" reason)
         return true
     }
     if GameOffsetsResolving() {
@@ -2152,7 +2203,7 @@ MemoryHPMonitorTick() {
                 if p.memHpPlausibleStreak>=MEMORY_HP_ALIVE_CONFIRM_SAMPLES {
                     p.memHpArmed:=1
                     p.memHpMin:=hp,p.memHpMax:=hp
-                    EventLog(p.name,"HP_ARMED","offset 0x" Format("{:X}",p.memHpOffset) " 讀到合理 HP=" hp "｜啟用死亡判定")
+                    EventLog(p.name,"HP_ARMED",(GameOffsetsReady(p.pid) ? "角色資料 +" Format("0x{:X}",GameOffset("HpNowOffset")) : "offset 0x" Format("{:X}",p.memHpOffset)) " 讀到合理 HP=" hp "｜啟用死亡判定")
                 }
             } else {
                 p.memHpPlausibleStreak:=0

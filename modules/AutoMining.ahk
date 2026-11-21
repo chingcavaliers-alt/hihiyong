@@ -888,13 +888,17 @@ MnPlan(p) {
         return {action: "wait", text: "讀不到人物位置", wait: 3000}
     if me.action = GLAT_GATHERING {
         st.notSince := 0
-        if !st.gathering
+        if !st.gathering {
+            ; 不是這次按十字鎬開始的（重開管理程式時角色已經在採）：不知道真正開始的時間，結束時不能用秒數判斷「被打斷」
+            st.gatherJoined := !st.gatherStart
             st.gathering := true, st.gatherStart := st.gatherStart ? st.gatherStart : A_TickCount
+        }
         left := Max(0, 60 - Round((A_TickCount - st.gatherStart) / 1000))
         return {action: "wait", text: "採集中（約剩 " left " 秒）", wait: 2000}
     }
     if st.gathering {   ; 剛採完？採集要 60 秒；不到 50 秒動作就不是採集，可能只是一瞬間（視窗焦點被搶、讀取雜訊）：隔 1.2 秒以上再確認一次才算結束
-        if A_TickCount - st.gatherStart < 50000 {
+        joined := st.HasOwnProp("gatherJoined") && st.gatherJoined
+        if A_TickCount - st.gatherStart < 50000 && !joined {
             if !st.notSince {
                 st.notSince := A_TickCount
                 return {action: "wait", text: "確認採集是否結束…", wait: 1300}
@@ -912,9 +916,9 @@ MnPlan(p) {
             st.progressAt := A_TickCount
             return {action: "wait", text: "採集被打斷，換下一顆", wait: 300}
         }
-        st.notSince := 0
+        st.notSince := 0, st.gatherJoined := false
         st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.gatherGlob := "", st.lootAt := A_TickCount + 3000, st.lootDone := A_TickCount
-        EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆")
+        EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆" (joined ? "（重開程式時已經在採，接著採完）" : ""))
     }
     if MnBossTimerDue(p, st, false)   ; 按了「現在讀王重生時間」：不在採集中的空檔去讀
         return {action: "bosstimer"}
@@ -1107,7 +1111,7 @@ MnMine(p, ore) {
             cur := MiningCharState(pid)
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
-                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
+                st.gathering := true, st.gatherJoined := false, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
                 st.text := "採集中（約 60 秒）", st.gatherGlob := ore.glob
                 MnHardNote(ore, A_TickCount - t0 > MN_SLOW_MS ? "slow" : "ok"), MnPosNote(p.name, ore, true)
                 EventLog(p.name, "MN_GATHER_START", ore.name "#" ore.glob "｜晚幾秒才開始，不重複右鍵")
@@ -1127,7 +1131,7 @@ MnMine(p, ore) {
             cur := MiningCharState(pid)
             if IsObject(cur) && cur.action = GLAT_GATHERING {
                 MnLootSettle(p, st, true)
-                st.gathering := true, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
+                st.gathering := true, st.gatherJoined := false, st.gatherStart := A_TickCount, st.lootBase := MnInvSnap(pid), st.lootAt := 0, st.progressAt := A_TickCount
                 st.text := "採集中（約 60 秒）", st.gatherGlob := ore.glob
                 if d > st.okMax {   ; 採得起來的最遠距離（距離上限不會低於它）
                     st.okMax := d

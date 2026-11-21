@@ -71,6 +71,9 @@ DailyItemsTick() {
             continue
         if DailyItemsOf(p)=""
             continue
+        ; 正在換這個角色的每日道具：中途讀到的到期時間（舊道具、還沒套上的新道具）不算數，換完再讀
+        if dailyRunning=p.name
+            continue
         expiry:=DailyItemsExpiry(p.pid,p)
         if expiry=""
             continue
@@ -88,7 +91,11 @@ DailyItemsTick() {
             p.dailyExpiry:=expiry
             if !failed {
                 p.dailyAcked:=0,p.dailySnoozeUntil:=0,p.dailyFailExpiry:=""
-                EventLog(p.name,"DAILY_EXPIRY",expiry ? "每日道具到期 " GameTimeText(expiry,"MM-dd HH:mm") "｜預定 " GameTimeText(expiry+DAILY_DELAY_MIN*60,"HH:mm") " 更換" : "未穿戴每日道具")
+                ; 換完之後會清掉 dailyExpiry 重讀一次：同一個到期時間已經記過就不再記
+                if !p.HasOwnProp("dailyExpiryLogged") || p.dailyExpiryLogged!=expiry {
+                    p.dailyExpiryLogged:=expiry
+                    EventLog(p.name,"DAILY_EXPIRY",expiry ? "每日道具到期 " GameTimeText(expiry,"MM-dd HH:mm") "｜預定 " GameTimeText(expiry+DAILY_DELAY_MIN*60,"HH:mm") " 更換" : "未穿戴每日道具")
+                }
             }
         }
         if p.dailyAcked || now<p.dailySnoozeUntil || p.state!="監控中" || dailyRunning=p.name

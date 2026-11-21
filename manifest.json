@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.59",
+    "version":  "v1.3.90.60",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "69c1de6a8f41a15b28f4aa9f9ba86502dcdbeba1d059161f8c60a37d0209e070"
+                      "sha256":  "a9e4970e30ca04bd88493e23ef10b7706ec8d9c285e8523934101a5d98750536"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "dde85a86c2cea6338263d0e4c6dd5f29803eca40b1093883a9e3f4cdf014ae69"
+                      "sha256":  "be458e3f92ab5e35034b59c05e5cde7cc2d59b3411c053eb1526780d8aadd03f"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -139,11 +139,11 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "4f978a83ef582d54b239f56b89ac01ce679ab6bfde96962679e743e5b593c106"
+                      "sha256":  "1a0674069da7c791a9293f8597680d5fdc2931363db8cbb38f5d23dc226d0d1c"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "2a4b86e1b428b2679bfcc7a3649a548e6e76860a14ef685754f475ec46fa91d1"
+                      "sha256":  "34ac83b0fe0bfd18c375dad2e0577aa4c937fd95100f101a3c34be99786cecd0"
                   },
                   {
                       "path":  "modules\\BossTimer.ahk",
@@ -151,11 +151,11 @@
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
-                      "sha256":  "540b44c07a8d476efaec485a06b329098a058b151494313b0480863e9837d7ab"
+                      "sha256":  "5551f07fc7d7ad274373b70da303bcc18ccf5cf8e2ef39cb5ade7ca8743afb63"
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "f047789e33034ef7fd4112671de14393c3ba9e738b2f80ef25d7b8df747cd172"
+                      "sha256":  "4f63f3e643c63604bb0694ff560a382a3c7496a0f754f7840aa241dde21adf1e"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -163,7 +163,7 @@
                   },
                   {
                       "path":  "modules\\DailyItems.ahk",
-                      "sha256":  "2bb22908e5baf6ba62b92badbf6886775639109ceffef7f32a63db729c4960bc"
+                      "sha256":  "1f4513ebcef5ce904e28f2517f68319c0e86f8d985eceb7d6e9fdcac9c0b617e"
                   },
                   {
                       "path":  "modules\\DailyRoutine.ahk",
@@ -195,7 +195,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "99e6b09bffbb955d961ad97739673697882274cd4ee340a82cfd1663b7819829"
+                      "sha256":  "d0af1df3e4cfcff9b58cd331ecb10d4ea6f0c9458c702043fc3f6e6f443579f3"
                   },
                   {
                       "path":  "modules\\HourlySummary.ahk",
@@ -287,7 +287,7 @@
                   },
                   {
                       "path":  "modules\\Signals.ahk",
-                      "sha256":  "d6ff8535316a9fe4475eabfd1ba2c146aec2015a51a0d138f62d5bd5de2bf74f"
+                      "sha256":  "c8746b874e3e19774208ec8143a803ec304f9b518d51ff0cb3e21765d3ee5842"
                   },
                   {
                       "path":  "modules\\SkillCombo.ahk",
@@ -299,7 +299,7 @@
                   },
                   {
                       "path":  "modules\\WebUI.ahk",
-                      "sha256":  "8c4311d7354961799ee65a9a8c362a1a0fb8784c6649d7c628162de4f8a3595f"
+                      "sha256":  "b70f8b5c5caa0b8464fa3a57e9b365e40e3079f0ce315df65f810ac7d0c9ccfd"
                   },
                   {
                       "path":  "offsets_db\\6AE9CFCB-2103000.ini",
@@ -543,7 +543,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "005bbbb3b35e780973670e10608ba2fb80ce1509376790109a4a29347eb21bc4"
+                      "sha256":  "3fad77d05f5b7c526ca8002e90c2d9a328f567b860c3149495358bde8a7a3278"
                   },
                   {
                       "path":  "登入測試.bat",

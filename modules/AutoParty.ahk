@@ -1159,8 +1159,17 @@ ApPlan(leader) {
         }
         res.total += 1
         if !ApReady(mp) || !ApReadable(mp.pid) {
-            res.notes.Push({key: "notready|" name, text: name " 還沒登入完成，等它好了再邀", soft: true})
-            res.rows[name] := {st: "mute", text: "還沒登入完成，好了之後自動邀請"}
+            ; 死亡中 / 帳號沒勾選也會讓 ApReady 不通過：講清楚是哪一種，不要都說成「還沒登入完成」
+            if mp.HasOwnProp("hpEventOpen") && mp.hpEventOpen {
+                res.notes.Push({key: "dead|" name, text: name " 死亡中，復活後再邀", soft: true})
+                res.rows[name] := {st: "mute", text: "死亡中，復活後自動邀請"}
+            } else if !mp.enabled {
+                res.notes.Push({key: "disabled|" name, text: name " 這個帳號沒有勾選（不在執行），先不邀", soft: true})
+                res.rows[name] := {st: "mute", text: "帳號沒有勾選，不邀"}
+            } else {
+                res.notes.Push({key: "notready|" name, text: name " 還沒登入完成，等它好了再邀", soft: true})
+                res.rows[name] := {st: "mute", text: "還沒登入完成，好了之後自動邀請"}
+            }
             continue
         }
         mparty := ApParty(mp.pid)

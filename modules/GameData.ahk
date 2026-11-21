@@ -132,6 +132,16 @@ GameOffset(key) {
     return gameOffsets.Has(key) ? Integer(gameOffsets[key]) : 0
 }
 
+; 目前用的資料位置是怎麼來的（寫日誌用）
+GameOffsetsSourceText() {
+    global gameOffsets
+    if gameOffsets.Get("DerivedFrom","")!=""
+        return "由 " gameOffsets["DerivedFrom"] " 推算"
+    if gameOffsets.Has("Provisional")
+        return "離線比對暫用"
+    return "Game.pdb / 已知位置資料"
+}
+
 GameBuildOf(pid) {
     global gameBuildByPid
     if (build:=gameBuildByPid.Get(pid,""))!=""
