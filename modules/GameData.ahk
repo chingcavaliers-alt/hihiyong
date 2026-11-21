@@ -1214,7 +1214,10 @@ GameQuickKeysShipped(build) {
         if s!=""
             v:=Integer(s)
     }
-    gameQuickKeysShippedCache[build]:=v
+    ; 讀不到不記住：遊戲更新後位置檔是之後才推算出來 / 從 GitHub 下載的，記住「沒有」會讓快捷鍵一直改用備用鍵直到重開程式
+    ; （11/21 另一台電腦 18:46 和 22:45 推算後，寵物 / 魔法娃娃一直按成 6 / 7）
+    if v>=0
+        gameQuickKeysShippedCache[build]:=v
     return v
 }
 ; 只看掃描碼：1～255、不重複，而且不是 6 個連號（差 0x20 的錯位置是數字鍵那張表 4..9 = 5,6,7,8,9,10；差 8 位元組會讀到開頭的 2,3 / 3,3）

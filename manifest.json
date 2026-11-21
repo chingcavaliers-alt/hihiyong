@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.61",
+    "version":  "v1.3.90.62",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "aae124ed7d06f11b0a95811284cd679cfaa676509f101c9a51084d32407ac781"
+                      "sha256":  "1b8b56ea3b0832688147968b5ceba9d1303ae790877ee4bdd787a71d047c5471"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "f5598689ac2b57476cb438831c492d0a6575ae42ffcd5feeb6ab0be5ad42a415"
+                      "sha256":  "11e6ff5d036407c5f129a6ba72fe44f8c13f60703bcd6becfb7d008bad0292c9"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -195,7 +195,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "d0af1df3e4cfcff9b58cd331ecb10d4ea6f0c9458c702043fc3f6e6f443579f3"
+                      "sha256":  "2cba57cfd861f444d90f50bb5c76ac4a7dd60add199111e606bb88c81204e39f"
                   },
                   {
                       "path":  "modules\\HourlySummary.ahk",
@@ -372,6 +372,10 @@
                   {
                       "path":  "offsets_db\\6B01366C-21D9000.ini",
                       "sha256":  "12e33341eb1c4d063d36724acdd35025dc42b9266c6a8aa9fe8df50a439c574e"
+                  },
+                  {
+                      "path":  "offsets_db\\6B019B54-21D9000.ini",
+                      "sha256":  "876062777e0567e3428888067a4a2821b070b6cc3fbcf536e5b276c12dd42282"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -551,7 +555,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "88b368ffae7e748cbb245bb9eb9b3d905efc594e4e70581032b3d2974135ec85"
+                      "sha256":  "221ae3b0f4bceaffb6ca53d8a8b00ef72aa92f1027756442b8813f14bf268c40"
                   },
                   {
                       "path":  "登入測試.bat",

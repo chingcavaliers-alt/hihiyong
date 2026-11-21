@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.61"
+global APP_VERSION := "v1.3.90.62"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -3957,6 +3957,12 @@ HandleRecoveryException(idx, e) {
     ; HUD/HP 已證明進入遊戲後，即使後續位置/按鍵判斷失敗，也保留 game.exe，
     ; 不再把「已登入」倒推成「登入失敗」並完整重啟。
     committedFailure := activeRecoveryCommitted
+    ; 登入前段（等伺服器畫面）也會先標成「已確認」保護 game.exe；但遊戲已經自己關掉（例如遊戲更新）時沒有東西要保留，
+    ; 照一般失敗 5 秒後重開，不能停在「需要人工確認」（11/21 22:16 我說了算等伺服器畫面時遊戲關掉，之後都沒再登入）
+    if committedFailure && activeRecoveryPid && !ProcessExist(activeRecoveryPid) {
+        committedFailure := false
+        EventLog(p.name, "RECOVERY_GAME_GONE", "遊戲已經關掉（可能是遊戲更新），沒有遊戲可以保留｜照一般失敗流程 5 秒後重新開遊戲")
+    }
     CleanupFailedRecoveryWindow()
 
     if committedFailure {
