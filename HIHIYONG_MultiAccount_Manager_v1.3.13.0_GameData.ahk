@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.60"
+global APP_VERSION := "v1.3.90.61"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -681,6 +681,7 @@ LoadProfiles() {
             softDetect: Integer(IniRead(PROFILE_INI,sec,"SoftDetect","1")),
             softAutoRecover: Integer(IniRead(PROFILE_INI,sec,"SoftAutoRecover","0")),
             recoveryFirst: Integer(IniRead(PROFILE_INI,sec,"RecoveryFirst","0")),
+            startOrder: Integer(IniRead(PROFILE_INI,sec,"StartOrder","0")),
             deathAlarm: Integer(IniRead(PROFILE_INI,sec,"DeathAlarm","1")),
             dailyItems: DailyNormalizeItems(IniRead(PROFILE_INI,sec,"DailyItems",DAILY_ALL_ITEMS)),
             dailyMode: IniRead(PROFILE_INI,sec,"DailyMode","town"),
@@ -729,6 +730,7 @@ SaveProfiles() {
         IniWrite p.softDetect, PROFILE_INI, sec, "SoftDetect"
         IniWrite (p.HasOwnProp("softAutoRecover") ? p.softAutoRecover : 0), PROFILE_INI, sec, "SoftAutoRecover"
         IniWrite (p.HasOwnProp("recoveryFirst") ? p.recoveryFirst : 0), PROFILE_INI, sec, "RecoveryFirst"
+        IniWrite ProfileStartOrder(p), PROFILE_INI, sec, "StartOrder"
         IniWrite (p.HasOwnProp("deathAlarm") ? p.deathAlarm : 1), PROFILE_INI, sec, "DeathAlarm"
         IniWrite DailyItemsOf(p), PROFILE_INI, sec, "DailyItems"
         IniWrite DailyModeOf(p), PROFILE_INI, sec, "DailyMode"
@@ -1403,9 +1405,10 @@ BatchStartChecked(*) {
     emergencyStop := false
     running := true
 
-    ; 依 Profile 順序處理。已存在且仍有效的綁定視窗直接納入監控；
+    ; 依首頁的啟動順序處理（沒排過就是帳號清單順序）。已存在且仍有效的綁定視窗直接納入監控；
     ; 沒有有效視窗的帳號則排入 Recovery Queue，自動開 Launcher 登入。
-    for i,p in profiles {
+    for i in ProfileStartList() {
+        p:=profiles[i]
         if !p.launchEnabled
             continue
         if ProfileGameAlive(p) {

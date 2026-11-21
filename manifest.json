@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.60",
+    "version":  "v1.3.90.61",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "a9e4970e30ca04bd88493e23ef10b7706ec8d9c285e8523934101a5d98750536"
+                      "sha256":  "aae124ed7d06f11b0a95811284cd679cfaa676509f101c9a51084d32407ac781"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "be458e3f92ab5e35034b59c05e5cde7cc2d59b3411c053eb1526780d8aadd03f"
+                      "sha256":  "f5598689ac2b57476cb438831c492d0a6575ae42ffcd5feeb6ab0be5ad42a415"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -267,7 +267,7 @@
                   },
                   {
                       "path":  "modules\\RecoveryQueue.ahk",
-                      "sha256":  "485f5df1df21f472c66c91836eca91cfede05fee463c59408b49198275b2a186"
+                      "sha256":  "c28058ab3aea6b9e482e9cd88d5a226ae7fe74d0814be7240634d27ac7176c99"
                   },
                   {
                       "path":  "modules\\RecoveryStats.ahk",
@@ -299,7 +299,7 @@
                   },
                   {
                       "path":  "modules\\WebUI.ahk",
-                      "sha256":  "b70f8b5c5caa0b8464fa3a57e9b365e40e3079f0ce315df65f810ac7d0c9ccfd"
+                      "sha256":  "4c3a8f9ecbccf9e2bacfd0307896e3e5bba3de97324e8b1163f99d1d45b1f4ba"
                   },
                   {
                       "path":  "offsets_db\\6AE9CFCB-2103000.ini",
@@ -364,6 +364,14 @@
                   {
                       "path":  "offsets_db\\6AFEC604-2F39000.ini",
                       "sha256":  "3235ff41064b9f50dc1c2729984dc2dda935a6f43d2b85e3fdd4fc9eada78cc6"
+                  },
+                  {
+                      "path":  "offsets_db\\6B013031-21D8000.ini",
+                      "sha256":  "e93298090c511f6c6359a91fd55384ea60b002b4c47e37885350c019630aaadb"
+                  },
+                  {
+                      "path":  "offsets_db\\6B01366C-21D9000.ini",
+                      "sha256":  "12e33341eb1c4d063d36724acdd35025dc42b9266c6a8aa9fe8df50a439c574e"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -435,7 +443,7 @@
                   },
                   {
                       "path":  "ui\\app.js",
-                      "sha256":  "9305020ac3d95bb45dde4a46e7da5db44ad3fe4e5bd3f44fa53c48514965fac5"
+                      "sha256":  "41225ec8eccadcc343dd0ec013ba0cd26391591de35a6affdf0982a7d260517e"
                   },
                   {
                       "path":  "ui\\guide\\dc_a_gear.png",
@@ -543,7 +551,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "3fad77d05f5b7c526ca8002e90c2d9a328f567b860c3149495358bde8a7a3278"
+                      "sha256":  "88b368ffae7e748cbb245bb9eb9b3d905efc594e4e70581032b3d2974135ec85"
                   },
                   {
                       "path":  "登入測試.bat",

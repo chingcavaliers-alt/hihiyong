@@ -127,6 +127,8 @@ WebRunAction(action,value:=0,rawValue:="") {
         BatchStartChecked()
     } else if action="launchcheck" {
         WebSetLaunchCheck(rawValue)
+    } else if action="startorder" {
+        WebMoveStartOrder(rawValue)
     } else if action="monitorcheck" {
         WebSetMonitorCheck(rawValue)
     } else if action="emergencystop" {
@@ -654,6 +656,20 @@ WebSetLaunchCheck(rawValue) {
     AddRecentEvent(profiles[idx].name " → 啟動 / 重啟勾選 " (on ? "ON" : "OFF"))
 }
 
+; 首頁 ▲▼ 排啟動順序：value = index~-1（往前）/ index~1（往後）
+WebMoveStartOrder(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<2 || !IsInteger(parts[1]) || !IsInteger(parts[2])
+        return
+    idx:=Integer(parts[1]), dir:=Integer(parts[2])>0 ? 1 : -1
+    if idx<1 || idx>profiles.Length || !ProfileMoveStartOrder(idx,dir)
+        return
+    SaveProfiles()
+    PushWebState()
+    AddRecentEvent("啟動順序：" profiles[idx].name " → 第 " profiles[idx].startOrder " 個")
+}
+
 WebSetMonitorCheck(rawValue) {
     global profiles,running
     parts:=StrSplit(rawValue,"~")
@@ -1017,6 +1033,9 @@ PushWebState(*) {
             abnormal+=1
     }
 
+    startPos:=Map()   ; 首頁啟動順序：第幾個
+    for k,v in ProfileStartList()
+        startPos[v]:=k
     accounts:="["
     for i,p in profiles {
         if i>1
@@ -1024,6 +1043,7 @@ PushWebState(*) {
         hp:=MemoryHPDisplayStatus(p)
         accounts.="{"
             . '"index":' i
+            . ',"startPos":' startPos.Get(i,i)
             . ',"name":"' JsonEscapeWeb(p.name) '"'
             . ',"account":"' JsonEscapeWeb(p.account) '"'
             . ',"state":"' JsonEscapeWeb(p.state) '"'
