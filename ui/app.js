@@ -581,8 +581,8 @@ function mxCmds(x){
  const mode=x.reviveMode||'auto',back=x.reviveReturn===false?'stay':(x.reviveF6===false?'back':'back_f6');
  const opt=(v,t,cur)=>`<option value="${v}" ${v===cur?'selected':''}>${t}</option>`;
  const hint=(x.reviveHint||'').split('｜')[0];
- return `<div class="mx-cmds"><label title="死亡超過 60 秒還沒復活時">💀 死亡後<select onchange="mxRevive(${x.index},'mode',this.value)">`
-  +opt('auto','有歸魂珠用歸魂珠，沒有就回城',mode)+opt('bead','只用歸魂珠',mode)+opt('off','不自動復活，只通知',mode)
+ return `<div class="mx-cmds"><label title="死亡超過 30 秒還沒復活時">💀 死亡後<select onchange="mxRevive(${x.index},'mode',this.value)">`
+  +opt('auto','有歸魂珠用歸魂珠，沒有就復活回城',mode)+opt('bead','只用歸魂珠',mode)+opt('off','不自動復活，只通知',mode)
   +`</select></label><label title="沒有歸魂珠回城復活後（每日道具到期時改由每日道具更換送回去）">🏙 回城後<select ${mode==='auto'?'':'disabled'} onchange="mxRevive(${x.index},'back',this.value)">`
   +opt('back_f6','前點卡回怪區＋開 F6',back)+opt('back','前點卡回怪區（不開 F6）',back)+opt('stay','留在城裡',back)
   +`</select></label>${hint?`<small class="mx-hint">${esc(hint)}</small>`:''}</div>`;
@@ -819,6 +819,14 @@ let cardCollapsed={};
 try{cardCollapsed=JSON.parse(localStorage.getItem('hhCardCollapsed')||'{}')||{};}catch(e){cardCollapsed={};}
 function applyCardState(){Object.keys(cardCollapsed).forEach(id=>{const c=document.getElementById(id);if(c)c.classList.toggle('collapsed',!!cardCollapsed[id]);});}
 function toggleCard(id){const c=document.getElementById(id);if(!c)return;const on=!c.classList.contains('collapsed');c.classList.toggle('collapsed',on);cardCollapsed[id]=on?1:0;try{localStorage.setItem('hhCardCollapsed',JSON.stringify(cardCollapsed));}catch(e){}}
+// 每一區都能收合：有標題（.section-title）但還沒有收合鈕的卡片自動加上。沒有 id 的用「所在頁面 + 標題文字」當 id，
+// 收合狀態和原本的收合鈕一樣記在這台電腦（hhCardCollapsed）。標題被重畫掉按鈕時，每 3 秒補回來。
+function addCardToggles(){const used=new Set();document.querySelectorAll('.card').forEach(c=>{const t=[...c.children].find(x=>x.classList&&x.classList.contains('section-title'));if(!t)return;
+ if(!c.id){const pg=c.closest('.subpage,.page,.dev-part');let id='cc_'+(pg&&pg.id?pg.id+'_':'')+(t.textContent||'').replace(/\s+/g,'').replace(/[^\w一-鿿]/g,'').slice(0,24);let n=id,k=2;while(used.has(n)||document.getElementById(n))n=id+'_'+(k++);c.id=n;}
+ used.add(c.id);if(t.querySelector('.card-toggle'))return;
+ const b=document.createElement('button');b.type='button';b.className='card-toggle';b.title='收合 / 展開這一區';b.addEventListener('click',e=>{e.stopPropagation();toggleCard(c.id);});t.appendChild(b);
+ if(cardCollapsed[c.id])c.classList.add('collapsed');});}
+addCardToggles();setInterval(addCardToggles,3000);
 applyCardState();// H-021 擊殺列表可展開 / 收合：每個角色一個總標題、每張地圖一列（點開才看怪物明細）。
 // 展開狀態記在瀏覽器（每 10 秒重畫也不會被收回去）。預設：總標題展開、地圖收合。
 let killState={};

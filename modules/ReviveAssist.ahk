@@ -20,7 +20,7 @@
 ; ============================================================================
 
 global REVIVE_AUTOCLICK := Integer(IniRead(INI,"Revive","AutoClick","1"))
-global REVIVE_STUCK_SEC := Integer(IniRead(INI,"Revive","StuckSeconds","60"))
+global REVIVE_STUCK_SEC := Integer(IniRead(INI,"Revive","StuckSeconds","30"))   ; v1.3.90.64：60 → 30 秒
 global REVIVE_IDLE_SEC := Integer(IniRead(INI,"Revive","IdleSeconds","20"))
 global REVIVE_RETRY_SEC := Integer(IniRead(INI,"Revive","RetrySeconds","20"))
 global REVIVE_MAX_ATTEMPTS := Integer(IniRead(INI,"Revive","MaxAttempts","3"))
@@ -38,7 +38,7 @@ ReviveModeOf(p) {
     m:=p.HasOwnProp("reviveMode") ? p.reviveMode : ""
     return (m="auto" || m="bead" || m="off") ? m : (REVIVE_TOWN_NO_BEAD ? "auto" : "bead")
 }
-ReviveModeText(p) => ReviveModeOf(p)="off" ? "不自動復活，只通知" : ReviveModeOf(p)="bead" ? "只用歸魂珠" : "有歸魂珠用歸魂珠，沒有就回城"
+ReviveModeText(p) => ReviveModeOf(p)="off" ? "不自動復活，只通知" : ReviveModeOf(p)="bead" ? "只用歸魂珠" : "有歸魂珠用歸魂珠，沒有就復活回城"
 ReviveReturnOf(p) {
     global REVIVE_TOWN_RETURN
     v:=p.HasOwnProp("reviveReturn") ? p.reviveReturn : ""
@@ -47,7 +47,7 @@ ReviveReturnOf(p) {
 ReviveF6Of(p) => (p.HasOwnProp("reviveF6") && p.reviveF6!="" ? (p.reviveF6 ? 1 : 0) : 1)
 
 ; 由 Memory HP 監控在死亡事件進行中呼叫（每次取樣一次）。
-; stuckSec / idleSec：預設用設定值（死亡超過 60 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上用歸魂珠原地復活，不等 60 秒。
+; stuckSec / idleSec：預設用設定值（死亡超過 30 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上用歸魂珠原地復活，不等 60 秒。
 ReviveStuckCheck(p, stuckSec := -1, idleSec := -1) {
     global REVIVE_AUTOCLICK,REVIVE_STUCK_SEC,REVIVE_IDLE_SEC,REVIVE_RETRY_SEC,REVIVE_MAX_ATTEMPTS
     global foregroundOwner,processingQueue,fastLoginCritical,asyncLoadingEntries,abortRequested,dailyRunning,recorder
