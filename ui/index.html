@@ -10,7 +10,7 @@
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.62· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.63· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -28,12 +28,12 @@
 </div>
 <div class="card feat-card">
  <div class="section-title"><span class="ni"><span class="emo">🧩</span></span>全域功能（總開關）</div>
- <div class="hint">綠色 = 開著，灰色 = 關閉。點一下標籤會跳到設定。每個角色各自要不要用，請看下方「今晚行程」。</div>
+ <div class="hint">綠色 = 開著，灰色 = 關閉。點一下標籤會跳到設定。每個角色各自要不要用，請看下方「每隻角色啟動指令」。</div>
  <div class="feat-list" id="featList"><span class="muted">讀取中…</span></div>
 </div>
 <div class="card feat-card" id="matrixCard">
- <div class="section-title"><span class="ni"><span class="emo">📅</span></span>今晚行程：每個角色在做什麼</div>
- <div class="hint">每個角色一行，綠色 = 有開，灰色 = 沒開。<b>點一下標籤就能直接開 / 關</b>（組隊設定較複雜，點了會前往設定）。</div>
+ <div class="section-title"><span class="ni"><span class="emo">📅</span></span>每隻角色啟動指令</div>
+ <div class="hint">每個角色一行，綠色 = 有開，灰色 = 沒開。<b>點一下標籤就能直接開 / 關</b>（組隊設定較複雜，點了會前往設定）。下拉選單設定這個角色<b>死亡後</b>怎麼復活、<b>回城復活後</b>要不要用前點卡回怪區（和「設定 → 帳號」是同一個設定）。</div>
  <div class="matrix" id="matrixList"><span class="muted">讀取中…</span></div>
 </div>
 <div class="card table-card">
@@ -180,6 +180,7 @@
 <div class="subpage" id="priority">
 <div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">⚖️</span></span>功能優先順序</div>
  <div class="hint">多個自動功能要用同一個角色 / 前景視窗時，<b>排越前面越優先</b>：前面的功能忙著（進行中或排隊中），後面的就等它做完，不會互相打斷。已經在做的動作不會被中途打斷（採一顆礦 60 秒、打王最多 10 分鐘會做完那一段）。預設「每日更換道具」最優先：自動採礦的角色要換每日道具時，採完手上這一顆就讓出，換完（原地換，不離開礦場）再繼續。如果把「自動採礦」排在「每日更換道具」前面，每日道具要等角色離開礦場（被踢出或跑完趟數）才會換。</div>
+ <div class="hint" style="margin-top:8px">按住任一列拖到想要的位置放開，就會儲存新的順序。</div>
  <div id="fpList" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
  <button class="btn" style="margin-top:10px" onclick="fpReset()">還原預設順序</button>
 </div>
@@ -628,13 +629,13 @@
 <ul>
 <li><b>外面的常用設定</b>：不在礦場時自動進圖、進礦場趟數（0 = 一直循環）、王重生時去打王、重開程式後自動接續採礦。</li>
 <li><b>「進階設定」摺疊</b>：背包一直開著、不好走的礦、打王技能欄、右鍵技能代碼（一般不用動）。</li>
-<li><b>要挖的礦石顏色</b>：由上到下是優先順序，用 ▲▼ 調整；預設會優先挑旁邊的礦，不會為了顏色跑遠路。</li>
+<li><b>要挖的礦石顏色</b>：由上到下是優先順序，按住一列拖到想要的位置放開就能調整；預設會優先挑旁邊的礦，不會為了顏色跑遠路。</li>
 <li><b>假在線保護</b>：採集動作超過 5 分鐘還沒結束（正常約 60 秒），程式會判定假在線並走自動重新登入，之後接續採礦；可在設定檔 [AutoMining] GatherHangMin 調整分鐘數。</li>
 </ul>
 <div class="gd-tip">被踢出後回到學院廣場不能召喚寵物，程式會在重新進礦場後再叫出來。採集時請不要操作鍵盤滑鼠。</div>
 </div>
 <div class="gd-step"><h3>⚖️ 功能優先順序</h3>
-<p>多個功能想同時用視窗時，依這個順序誰先誰後（排在前面的先做，後面的等它做完）。用 ▲▼ 調整；例如要讓採礦比每日討伐優先，就把採礦排在上面。</p>
+<p>多個功能想同時用視窗時，依這個順序誰先誰後（排在前面的先做，後面的等它做完）。按住一列拖到想要的位置放開就能調整；例如要讓採礦比每日討伐優先，就把採礦排在上面。</p>
 <div class="gd-shot"><img src="guide/gd7_18.png" alt="⚖️ 功能優先順序" loading="lazy">
 <i class="gd-box" style="left:18.456%;top:26.071%;width:78.676%;height:1.143%"><b>1</b></i>
 </div>
@@ -696,7 +697,7 @@
 <div class="actions" style="margin-top:14px"><button class="btn soft" onclick="send('accountAdd')">＋ 新增帳號</button><button class="btn blue" onclick="saveAcct()">儲存帳號</button><button class="btn danger" onclick="if(confirm('確定刪除目前選取的帳號？遊戲本身不會被關閉。'))send('accountDelete')">刪除帳號</button></div>
 <div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"><div class="account-sub warn" id="acctLoginNote"></div></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"><div class="account-sub warn" id="acctPassNote"></div></div></div>
 <div class="gd-warn" id="acctWarn" style="display:none;margin-top:12px"></div><div class="gd-warn" id="acctFailNote" style="display:none;margin-top:12px"></div>
-<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
+<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="formgrid" style="margin-top:12px"><div class="field"><label>死亡後自動復活（死亡超過 60 秒）</label><select id="acctReviveMode"><option value="auto">有歸魂珠用歸魂珠，沒有就回城復活</option><option value="bead">只用歸魂珠（沒有就通知）</option><option value="off">不自動復活，只通知</option></select></div><label title="沒有歸魂珠回城復活後，等你沒在操作電腦時按前點卡回到死亡的地圖。每日道具到期時改由每日道具更換送回去；30 分鐘內第 3 次回城就不送。"><input id="acctReviveReturn" type="checkbox"> 回城復活後用前點卡回怪區</label><label><input id="acctReviveF6" type="checkbox"> 回怪區後開啟自動攻擊（F6）</label></div><div class="hint" id="acctReviveHint" style="margin-top:6px"></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔗</span></span>遊戲視窗綁定</div><div class="hint">把帳號和開著的遊戲視窗配對。一般按「自動連接」即可（會依遊戲中的角色名稱配對）；配錯時再手動選擇。</div><div class="formgrid" style="margin-top:16px"><div class="field"><label>目前帳號</label><select id="profileSelectMirror" disabled><option>請在上方選擇帳號</option></select></div><div class="field"><label>遊戲視窗</label><select id="gameSelect" onchange="send('gameSelect',{value:Number(this.value)})"></select></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="send('autoBind')">自動連接遊戲視窗</button><button class="btn soft" onclick="send('refreshGames')">重新整理清單</button><button class="btn soft" onclick="send('bindSelected')">連接選定視窗</button><button class="btn danger" onclick="send('unbindSelected')">解除連接</button><button class="btn soft" onclick="send('showWindow')">顯示遊戲視窗</button><button class="btn soft" onclick="send('recordPosition')">記錄視窗位置</button></div></div></div>
 <div class="subpage" id="monitor">
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">👻</span></span>假在線判定</div>

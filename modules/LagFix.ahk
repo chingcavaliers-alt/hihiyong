@@ -18,6 +18,8 @@
 ;   6. 回去後補做：過圖前自動攻擊（F6）是開的才補開（連續 3 秒都是關才按）、過圖前在外面的寵物 / 雇傭兵等 10 秒還沒回來才叫出來；
 ;   7. 過圖後再量 3 次視窗回應，寫「過圖前 → 過圖後」。連續 2 次沒有改善 → 這個視窗暫停 6 小時並通知。
 ; 中途被停止鍵 / 其他功能 / 你開始操作打斷：角色若已在城裡，列入「待救援」等空檔再按前點卡，不會把角色留在城裡。
+; 沒有歸魂珠回城復活（ReviveAssist）也用同一套救援送回死亡的野外地圖（LagFixReviveReturn，why = "revive"）：
+;   不量過圖前後回應、不影響自動過圖的排程；回不去也不停用自動過圖。
 ; 沿用組隊的切換視窗 / 守門 / 收尾機制（ApActivate、ApKey、ApGuardAny、ApCleanup），和組隊、寵物雇傭兵監測共用 apBusy。
 ; ============================================================================
 
@@ -174,6 +176,21 @@ LagFixRequest(p, reason, cb, timeoutMs := 600000) {
     EventLog(p.name, "LAGFIX_REQUEST", "其他功能請求過圖：" reason)
     return true
 }
+
+; 沒有歸魂珠回城復活後：列入待救援，交給救援流程按前點卡回到死亡的野外地圖（回去後補開 F6；寵物 / 雇傭兵有開監測才叫出來）。
+; 不需要「變慢自動過圖」開著（待救援即使功能關掉也會處理）。回傳是否接受。
+LagFixReviveReturn(p, mapB, autoOn := 1) {
+    st := LfState(p)
+    if mapB = "" || IsObject(st.rescue)
+        return false
+    st.rescue := {mapB: mapB, sId: "", rId: "", since: LfNow(), rounds: 0, tries: 0, notified: false, nextTry: LfNow() + 3000, pressTick: 0
+        , pet: 1, merc: 1, auto: autoOn ? 1 : -1, startAt: LfNow(), left: true, srvPress: 0, type: "", manual: false, why: "revive"}
+    LfSavePending(p, st.rescue)
+    st.text := "回城復活｜等空檔用前點卡回 " mapB
+    EventLog(p.name, "REVIVE_RETURN_WAIT", "沒有歸魂珠回城復活｜列入待救援，等空檔用前點卡回 " mapB)
+    return true
+}
+LfIsRevive(rs) => IsObject(rs) && rs.HasOwnProp("why") && rs.why = "revive"
 
 ; 管理程式重開後：設定檔裡還有「待救援」的角色，確認角色的位置再決定要不要恢復救援。
 LfRestorePending(p, st) {
@@ -581,17 +598,21 @@ LagFixReturnFail(p, st, why) {
     rs := st.rescue
     rs.rounds += 1
     rs.nextTry := LfNow() + LF_RESCUE_RETRY_MS
-    st.text := "⚠ 過圖後回不去：" why "｜第 " rs.rounds " 輪"
+    revive := LfIsRevive(rs)
+    st.text := "⚠ " (revive ? "回城復活後" : "過圖後") "回不去：" why "｜第 " rs.rounds " 輪"
     EventLog(p.name, "LAGFIX_RETURN_FAIL", why "｜第 " rs.rounds "/" LF_RESCUE_MAX_ROUNDS " 輪｜目前地圖 " ReadGameMapId(p.pid))
     giveUp := rs.rounds >= LF_RESCUE_MAX_ROUNDS
     if !rs.notified || giveUp {
         rs.notified := true
-        msg := "⚠️ HIHIYONG 自動過圖後角色沒有回到怪物區`n角色：" p.name "`n狀況：" why "`n目前地圖：" NotificationLocationText(p)
-            . (giveUp ? "`n已試 " LF_RESCUE_MAX_ROUNDS " 輪，放棄；這個視窗的自動過圖停用 24 小時，請人工把角色送回去。" : "`n程式會每 2 分鐘再試一輪（最多 " LF_RESCUE_MAX_ROUNDS " 輪）。")
-        AddRecentEvent("⚠ " p.name " 自動過圖後沒回到怪物區：" why)
+        msg := "⚠️ HIHIYONG " (revive ? "回城復活" : "自動過圖") "後角色沒有回到怪物區`n角色：" p.name "`n狀況：" why "`n目前地圖：" NotificationLocationText(p)
+            . (giveUp ? "`n已試 " LF_RESCUE_MAX_ROUNDS " 輪，放棄；" (revive ? "" : "這個視窗的自動過圖停用 24 小時，") "請人工把角色送回去。" : "`n程式會每 2 分鐘再試一輪（最多 " LF_RESCUE_MAX_ROUNDS " 輪）。")
+        AddRecentEvent("⚠ " p.name " " (revive ? "回城復活" : "自動過圖") "後沒回到怪物區：" why)
         try ReportEventShot(p, msg "（附上當下畫面）")
     }
-    if giveUp {
+    if giveUp && revive {
+        LfClearRescue(p, st)
+        EventLog(p.name, "LAGFIX_GIVEUP", "回城復活後待救援 " LF_RESCUE_MAX_ROUNDS " 輪都失敗，放棄（不影響自動過圖）")
+    } else if giveUp {
         LfClearRescue(p, st)
         st.pauseUntil := LfNow() + LF_PAUSE_FAIL_MS
         st.next := st.pauseUntil
@@ -603,6 +624,18 @@ LagFixDone(p, st, note) {
     global LF_WINDOW_GAP_MS
     rs := st.rescue
     LfClearRescue(p, st, true)     ; 先清掉：已經回到原地，後面補做被打斷也不再重按傳送卡
+    if LfIsRevive(rs) {
+        extra := ""
+        if note = ""
+            try extra := LagFixPostActions(p, rs)
+        secs := Round((LfNow() - rs.startAt) / 1000)
+        st.text := "✓ " FormatTime(, "HH:mm:ss") " 回城復活後已回怪區（" secs " 秒）" (note != "" ? "｜" note : "")
+        EventLog(p.name, "REVIVE_RETURN_OK", "回城復活後已用前點卡回到 " rs.mapB "｜" secs " 秒｜前點卡 " rs.tries " 次" (extra != "" ? "｜補做：" extra : "") (note != "" ? "｜" note : ""))
+        AddRecentEvent("♥ " p.name " 回城復活後已回怪區" (extra != "" ? "｜" extra : "") (note != "" ? "｜" note : ""))
+        if note != ""
+            try SendDiscordMessage("⚠️ HIHIYONG 回城復活後送回怪區，但位置不同`n角色：" p.name "`n" note)
+        return
+    }
     st.runs += 1
     st.next := LfNow() + LF_WINDOW_GAP_MS
     if rs.manual

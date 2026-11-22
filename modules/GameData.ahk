@@ -1326,8 +1326,17 @@ ReadGameMagicDollOut(pid) {
 ; 每日任務（T 視窗）：回傳 {today, rows:[{name, claimed, goals:[{map, name, target, done}]}]}；讀不到回傳 0。
 ; 資料是遊戲收到伺服器回應後放在固定位置的 DailyTasks::Response，這個遊戲視窗打開過 T 才有；
 ; 還沒有資料（今日欄位 0 / 沒有任務），或任務是前一天的（row.day 不等於 today），也回傳 0（呼叫端要先開 T 再讀）。
+; 11/22：本機推算的版本（6B013031 起）一路沒有 DailyStateRva，T 開著也讀不到。沒有時改用 GaeaInstanceRva-0x30B0
+; （6AEDB170 起每個版本都是這個距離，11/22 6B019B54 實機核對過）；位置不對時下面的日期 / 列數檢查會擋掉，回傳 0。
+DailyStateRvaOf() {
+    v:=GameOffset("DailyStateRva")
+    if v
+        return v
+    g:=GameOffset("GaeaInstanceRva")
+    return g>0x30B0 ? g-0x30B0 : 0
+}
 ReadGameDailyTasks(pid) {
-    if !GameOffsetsReady(pid) || !GameOffset("DailyStateRva")
+    if !GameOffsetsReady(pid) || !DailyStateRvaOf()
         return 0
     hProc:=GameProcHandle(pid)
     base:=hProc ? GetGameModuleBase(pid,hProc) : 0
@@ -1336,7 +1345,7 @@ ReadGameDailyTasks(pid) {
     rowBytes:=GameOffset("DailyRowBytes"),rowMax:=GameOffset("DailyRowCount"),objBytes:=GameOffset("DailyObjectiveBytes")
     if !rowBytes || !rowMax || !objBytes || rowMax>8
         return 0
-    state:=base+GameOffset("DailyStateRva")
+    state:=base+DailyStateRvaOf()
     head:=GameReadBuf(hProc,state,GameOffset("DailyRowsOffset"))
     if !head
         return 0

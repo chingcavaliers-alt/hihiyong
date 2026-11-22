@@ -8,6 +8,12 @@
 ;   （DailyTemplates\revive_town_button.bmp；[Revive] TownWhenNoBead=0 可關掉，改回只通知），
 ;   每日道具已到期就接著排入更換（城裡換、換完 W 前點卡回怪區，念珠也一起換上）。
 ;   每日討伐跑圖途中的死亡不回城（照舊只用歸魂珠）。
+;   每日道具沒到期（v1.3.90.63）：列入「待救援」，等空檔用前點卡回到死亡的野外地圖，回去後補開 F6、叫出寵物 / 雇傭兵
+;   （沿用 LagFix 的救援流程；[Revive] ReturnAfterTown=0 可關掉）。死在城裡 / 副本、自動採礦中、或 30 分鐘內已回城復活
+;   3 次（怪太強，回去還是會死）→ 不送回去，只通知。
+; - 每個角色各自設定（v1.3.90.63，角色設定 ReviveMode / ReviveReturn / ReviveF6，空白 = 用 [Revive] 的共用設定）：
+;   ReviveMode auto = 有歸魂珠用歸魂珠、沒有就回城；bead = 只用歸魂珠（沒有就通知）；off = 不自動復活，只通知。
+;   ReviveReturn = 回城復活後用前點卡回怪區；ReviveF6 = 回怪區後開啟自動攻擊。
 ; - 用 DailyTemplates\revive_button.bmp（「使用歸魂珠」按鈕）找位置並點擊中心；沒有辨識圖時，若 INI 有設定
 ;   [Revive] ClickX / ClickY（遊戲畫面座標）就點那裡；兩者都沒有則只截圖、通知，不亂點。
 ; - 點擊後以記憶體 HP > 0 確認復活；沒成功每 RetrySeconds 秒再試，最多 MaxAttempts 次。
@@ -24,6 +30,21 @@ global REVIVE_TEMPLATE := "revive_button"
 global REVIVE_CONFIRM_MS := 8000
 global REVIVE_TOWN_NO_BEAD := Integer(IniRead(INI,"Revive","TownWhenNoBead","1"))
 global REVIVE_TOWN_TEMPLATE := "revive_town_button"
+global REVIVE_TOWN_RETURN := Integer(IniRead(INI,"Revive","ReturnAfterTown","1"))
+global REVIVE_TOWN_LOOP_COUNT := 3, REVIVE_TOWN_LOOP_MS := 1800000
+
+ReviveModeOf(p) {
+    global REVIVE_TOWN_NO_BEAD
+    m:=p.HasOwnProp("reviveMode") ? p.reviveMode : ""
+    return (m="auto" || m="bead" || m="off") ? m : (REVIVE_TOWN_NO_BEAD ? "auto" : "bead")
+}
+ReviveModeText(p) => ReviveModeOf(p)="off" ? "不自動復活，只通知" : ReviveModeOf(p)="bead" ? "只用歸魂珠" : "有歸魂珠用歸魂珠，沒有就回城"
+ReviveReturnOf(p) {
+    global REVIVE_TOWN_RETURN
+    v:=p.HasOwnProp("reviveReturn") ? p.reviveReturn : ""
+    return v="" ? (REVIVE_TOWN_RETURN ? 1 : 0) : (v ? 1 : 0)
+}
+ReviveF6Of(p) => (p.HasOwnProp("reviveF6") && p.reviveF6!="" ? (p.reviveF6 ? 1 : 0) : 1)
 
 ; 由 Memory HP 監控在死亡事件進行中呼叫（每次取樣一次）。
 ; stuckSec / idleSec：預設用設定值（死亡超過 60 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上用歸魂珠原地復活，不等 60 秒。
@@ -40,6 +61,13 @@ ReviveStuckCheck(p, stuckSec := -1, idleSec := -1) {
         p.reviveAttempts:=0,p.reviveLastTick:=0
     if stuckSec<0
         stuckSec:=REVIVE_STUCK_SEC
+    if ReviveModeOf(p)="off" {   ; 這個角色設定不自動復活：到時間記一次就好（死亡通報照舊）
+        if p.reviveAttempts<REVIVE_MAX_ATTEMPTS && A_TickCount-p.hpEventTick>=stuckSec*1000 {
+            p.reviveAttempts:=REVIVE_MAX_ATTEMPTS
+            EventLog(p.name,"REVIVE_SKIP","死亡事件 #" p.hpEventNo "｜這個角色設定「不自動復活，只通知」，不點復活鍵")
+        }
+        return
+    }
     if idleSec<0
         idleSec:=REVIVE_IDLE_SEC
     if A_TickCount-p.hpEventTick<stuckSec*1000 || p.reviveAttempts>=REVIVE_MAX_ATTEMPTS
@@ -62,8 +90,9 @@ ReviveAttempt(p, allowTown := false) {
     activeRecoveryHwnd:=p.hwnd,activeRecoveryPid:=p.pid
     secs:=Round((A_TickCount-p.hpEventTick)/1000)
     result:=""
+    allowTown:=allowTown && ReviveModeOf(p)="auto"
     try {
-        if !ReviveHasSoulBead(p.pid) && allowTown && REVIVE_TOWN_NO_BEAD {
+        if !ReviveHasSoulBead(p.pid) && allowTown {
             ReviveTown(p, ctx, secs)
             DailyRestorePosition(ctx)
             activeRecoveryHwnd:=0,activeRecoveryPid:=0,foregroundOwner:=""
@@ -118,6 +147,8 @@ ReviveAttempt(p, allowTown := false) {
 ; 沒有歸魂珠：點「復活」回城；復活後每日道具已到期就排入更換（換上念珠，換完 W 前點卡回怪區）
 ReviveTown(p, ctx, secs) {
     global REVIVE_MAX_ATTEMPTS,REPORT_ERROR_SHOTS,profiles
+    mapB:=""
+    try mapB:=LfFieldMap(p.pid)   ; 死亡當下的野外地圖：回城復活後用前點卡回這裡
     DailyEnsureOnScreen(ctx)
     EnsureRecoveryFocus(p.hwnd,p.name)
     Sleep 300
@@ -138,16 +169,73 @@ ReviveTown(p, ctx, secs) {
         if q=p
             idx:=i
     queued:=idx && ReviveDailyDue(p)
-    EventLog(p.name,"REVIVE_TOWN_OK","死亡 " secs " 秒後沒有歸魂珠，已點「復活」回城｜" how (queued ? "｜每日道具已到期，排入更換" : "｜每日道具沒有到期，不更換"))
-    AddRecentEvent("♥ " p.name " 沒有歸魂珠，已回城復活" (queued ? "，接著更換每日道具" : ""))
+    back:=queued ? {ok:false,text:""} : ReviveTownReturn(p, mapB)
+    EventLog(p.name,"REVIVE_TOWN_OK","死亡 " secs " 秒後沒有歸魂珠，已點「復活」回城｜" how (queued ? "｜每日道具已到期，排入更換" : "｜每日道具沒有到期，不更換｜" back.text))
+    AddRecentEvent("♥ " p.name " 沒有歸魂珠，已回城復活" (queued ? "，接著更換每日道具" : back.ok ? "，接著用前點卡回怪區" : ""))
     if p.deathNotify {
         msg:="✅ HIHIYONG 卡復活已自動處理`n角色：" p.name "`n死亡 " secs " 秒後背包沒有歸魂珠，已點「復活」回城"
-            . (queued ? "`n每日道具已到期：接著自動更換（含念珠），換完用前點卡回怪區" : "`n每日道具沒有到期，角色留在城裡，請人工帶回怪區")
+            . (queued ? "`n每日道具已到期：接著自動更換（含念珠），換完用前點卡回怪區"
+            : back.ok ? "`n每日道具沒有到期：" back.text "，回去後補開自動攻擊（F6）"
+            : "`n每日道具沒有到期，角色留在城裡（" back.text "），請人工帶回怪區")
         try (shot!="" && REPORT_ERROR_SHOTS) ? SendDiscordImage(msg "`n（附上死亡當時畫面）",shot) : SendDiscordMessage(msg)
     }
     if queued
         DailyRunEnqueue([idx],"沒有歸魂珠，回城復活後更換")
     return true
+}
+
+; 每日道具沒到期：要不要用前點卡送回死亡的野外地圖。回傳 {ok, text}。
+ReviveTownReturn(p, mapB) {
+    global REVIVE_TOWN_RETURN,REVIVE_TOWN_LOOP_COUNT,REVIVE_TOWN_LOOP_MS
+    if !p.HasOwnProp("reviveTownTimes")
+        p.reviveTownTimes:=[]
+    times:=p.reviveTownTimes
+    times.Push(A_TickCount)
+    while times.Length && A_TickCount-times[1]>REVIVE_TOWN_LOOP_MS
+        times.RemoveAt(1)
+    if !ReviveReturnOf(p)
+        return {ok:false,text:"這個角色設定回城復活後不回怪區"}
+    if p.HasOwnProp("mnActive") && p.mnActive
+        return {ok:false,text:"自動採礦中，交給自動採礦處理"}
+    if mapB=""
+        return {ok:false,text:"死亡地點不是野外地圖（或讀不到），不用前點卡"}
+    if times.Length>=REVIVE_TOWN_LOOP_COUNT
+        return {ok:false,text:Round(REVIVE_TOWN_LOOP_MS/60000) " 分鐘內已回城復活 " times.Length " 次，回去可能還會死，先不送回去"}
+    if !LagFixReviveReturn(p, mapB, ReviveF6Of(p))
+        return {ok:false,text:"已經有一筆待救援在處理"}
+    return {ok:true,text:"等空檔用前點卡回 " mapB}
+}
+
+; 角色設定畫面的說明：目前從遊戲讀到的前點卡按鍵 / 有沒有歸魂珠（30 秒讀一次）
+ReviveQuickHint(p) {
+    if p.HasOwnProp("reviveHintAt") && A_TickCount-p.reviveHintAt<30000
+        return p.reviveHint
+    t:=""
+    try {
+        if !p.pid || !GameOffsetsReady(p.pid) || !GameInWorld(p.pid)
+            t:="遊戲沒開或還沒進遊戲，讀不到快捷欄"
+        else {
+            info:=DailyQuickInfo(p.pid,"前點傳送卡")
+            card:=info="" ? "讀不到道具快捷欄" : IsObject(info) && info.key!="" ? "前點卡目前在 " StrUpper(info.key) : "道具快捷欄沒有前點卡（回城後沒辦法自動回去）"
+            t:=card "｜" ReviveBeadText(p.pid)
+        }
+    } catch
+        t:="讀不到快捷欄"
+    p.reviveHint:=t, p.reviveHintAt:=A_TickCount
+    return t
+}
+ReviveBeadText(pid) {
+    slots:=ReadGameInventorySlots(pid,"InvenOffset")
+    equip:=ReadGameEquipment(pid)
+    if !IsObject(slots) || !IsObject(equip)
+        return "讀不到有沒有歸魂珠"
+    for s in slots
+        if InStr(GameItemName(s.key,pid),"歸魂")
+            return "背包有歸魂珠（會原地復活）"
+    for e in equip
+        if e && InStr(GameItemName(e.key,pid),"歸魂")
+            return "身上有歸魂道具（會原地復活）"
+    return "沒有歸魂珠（死亡會回城復活）"
 }
 
 ; 每日道具要不要換：這個角色有設定要換、已到期（或身上沒有）、今天還沒換過

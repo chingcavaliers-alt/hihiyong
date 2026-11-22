@@ -555,7 +555,12 @@ def compose(ref, deltas, vdelta, build):
             raise Derive(f"無法推算 {k}")
         else:
             out[k] = v
-    if "DailyStateRva" in unhandled:
+    if "DailyStateRva" not in out and "GaeaInstanceRva" in out:
+        # 2026-11-22：推不出來時以前直接拿掉，下一版用這版當參考也沒有，6B013031 起一路都讀不到每日任務。
+        # 6AEDB170 起每個版本都是 GaeaInstanceRva-0x30B0（11/22 6B019B54 實機核對），先用這個距離；讀取端會檢查日期 / 列數。
+        out["DailyStateRva"] = f"0x{int(out['GaeaInstanceRva'], 16) - 0x30B0:X}"
+        out["DailyNote"] = "DailyStateRva 用 GaeaInstanceRva-0x30B0（推算當下沒辦法用資料確認）"
+    elif "DailyStateRva" in unhandled:
         out["DailyError"] = "新版推算時無法確認每日任務狀態位置"
     out = {"Build": build, **out}
     return out

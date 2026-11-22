@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.62",
+    "version":  "v1.3.90.63",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "1b8b56ea3b0832688147968b5ceba9d1303ae790877ee4bdd787a71d047c5471"
+                      "sha256":  "82b07febfd2a400fbe634da5883d571c9d2529745cdeb99ff961d6f9420e5e5c"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "11e6ff5d036407c5f129a6ba72fe44f8c13f60703bcd6becfb7d008bad0292c9"
+                      "sha256":  "06e6d7cf5abc393c850dddf373d6cade9592ea1f80901568f90460da914655c6"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -195,7 +195,7 @@
                   },
                   {
                       "path":  "modules\\GameData.ahk",
-                      "sha256":  "2cba57cfd861f444d90f50bb5c76ac4a7dd60add199111e606bb88c81204e39f"
+                      "sha256":  "453f973e9b3cb7935f0695ffcdc84db77a0d7086aa3accea100d3dbe7a287b13"
                   },
                   {
                       "path":  "modules\\HourlySummary.ahk",
@@ -219,7 +219,7 @@
                   },
                   {
                       "path":  "modules\\LagFix.ahk",
-                      "sha256":  "009b1a7720aa6ff15d0368a7881350292e2106e47edf2162ce1c5c2db5c9f314"
+                      "sha256":  "708ee019491187cd08c2d7854470feff989824428c3e639d1ea2110101d30ffc"
                   },
                   {
                       "path":  "modules\\LagProbe.ahk",
@@ -283,7 +283,7 @@
                   },
                   {
                       "path":  "modules\\ReviveAssist.ahk",
-                      "sha256":  "285fa943ed05f0f3c40a0f1c6e60d7dd455de6a8fcd138a7be39fb1c748ea514"
+                      "sha256":  "fc519c564fa9a02b4256bcfa41f7e16f50eafccd162cc0bc8e1562b60aad7bb1"
                   },
                   {
                       "path":  "modules\\Signals.ahk",
@@ -299,7 +299,7 @@
                   },
                   {
                       "path":  "modules\\WebUI.ahk",
-                      "sha256":  "4c3a8f9ecbccf9e2bacfd0307896e3e5bba3de97324e8b1163f99d1d45b1f4ba"
+                      "sha256":  "e290d44e5f9e485143d858332f2ba62194efd7594f8d285eebfe6f20002a347f"
                   },
                   {
                       "path":  "offsets_db\\6AE9CFCB-2103000.ini",
@@ -371,11 +371,11 @@
                   },
                   {
                       "path":  "offsets_db\\6B01366C-21D9000.ini",
-                      "sha256":  "12e33341eb1c4d063d36724acdd35025dc42b9266c6a8aa9fe8df50a439c574e"
+                      "sha256":  "ae6a5c33fb95e9d1fca3b8cf5be7d3d38807a17d8e2474dd353c7dbebc37a1a5"
                   },
                   {
                       "path":  "offsets_db\\6B019B54-21D9000.ini",
-                      "sha256":  "876062777e0567e3428888067a4a2821b070b6cc3fbcf536e5b276c12dd42282"
+                      "sha256":  "337ecc76d08abd6c8443bb404d43aadf0b4820249d395920709d80f2a5e10546"
                   },
                   {
                       "path":  "README_v1.3.13.0.txt",
@@ -391,7 +391,7 @@
                   },
                   {
                       "path":  "tools\\derive_game_offsets.py",
-                      "sha256":  "eb9e9ff2b190157cdfb44b5bfbf3f36477e2401c5fa5707859ae9c22f67ea877"
+                      "sha256":  "40423265b667bba13d21538754155113e4610b69b18900fa0ba64fb6fcfc2636"
                   },
                   {
                       "path":  "tools\\droprates\\droprates.py",
@@ -443,11 +443,11 @@
                   },
                   {
                       "path":  "ui\\app.css",
-                      "sha256":  "f36a2a80e027b771d04510f573f6c82dac140c7a21c58906af06d481c4b3a0e6"
+                      "sha256":  "25e3f316c28ec4c87271d28b424d2a92d8dacdcb578f2662feeb0cd688f321c6"
                   },
                   {
                       "path":  "ui\\app.js",
-                      "sha256":  "41225ec8eccadcc343dd0ec013ba0cd26391591de35a6affdf0982a7d260517e"
+                      "sha256":  "b0b8b85dc33e83f45ffcadb88adf3c95c7ffcc50154c3bb9b4309c3b56fd3dba"
                   },
                   {
                       "path":  "ui\\guide\\dc_a_gear.png",
@@ -555,7 +555,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "221ae3b0f4bceaffb6ca53d8a8b00ef72aa92f1027756442b8813f14bf268c40"
+                      "sha256":  "de233bf99d95669c60244776694ba4cad7f2fbb9cc3b8acce0ef5aad8494d236"
                   },
                   {
                       "path":  "登入測試.bat",

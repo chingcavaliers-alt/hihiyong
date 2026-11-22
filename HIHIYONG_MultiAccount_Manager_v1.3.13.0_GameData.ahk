@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.62"
+global APP_VERSION := "v1.3.90.63"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -683,6 +683,9 @@ LoadProfiles() {
             recoveryFirst: Integer(IniRead(PROFILE_INI,sec,"RecoveryFirst","0")),
             startOrder: Integer(IniRead(PROFILE_INI,sec,"StartOrder","0")),
             deathAlarm: Integer(IniRead(PROFILE_INI,sec,"DeathAlarm","1")),
+            reviveMode: IniRead(PROFILE_INI,sec,"ReviveMode",""),
+            reviveReturn: IniRead(PROFILE_INI,sec,"ReviveReturn",""),
+            reviveF6: IniRead(PROFILE_INI,sec,"ReviveF6",""),
             dailyItems: DailyNormalizeItems(IniRead(PROFILE_INI,sec,"DailyItems",DAILY_ALL_ITEMS)),
             dailyMode: IniRead(PROFILE_INI,sec,"DailyMode","town"),
             dailyWeapon: IniRead(PROFILE_INI,sec,"DailyWeapon",""),
@@ -732,6 +735,9 @@ SaveProfiles() {
         IniWrite (p.HasOwnProp("recoveryFirst") ? p.recoveryFirst : 0), PROFILE_INI, sec, "RecoveryFirst"
         IniWrite ProfileStartOrder(p), PROFILE_INI, sec, "StartOrder"
         IniWrite (p.HasOwnProp("deathAlarm") ? p.deathAlarm : 1), PROFILE_INI, sec, "DeathAlarm"
+        IniWrite (p.HasOwnProp("reviveMode") ? p.reviveMode : ""), PROFILE_INI, sec, "ReviveMode"
+        IniWrite (p.HasOwnProp("reviveReturn") ? p.reviveReturn : ""), PROFILE_INI, sec, "ReviveReturn"
+        IniWrite (p.HasOwnProp("reviveF6") ? p.reviveF6 : ""), PROFILE_INI, sec, "ReviveF6"
         IniWrite DailyItemsOf(p), PROFILE_INI, sec, "DailyItems"
         IniWrite DailyModeOf(p), PROFILE_INI, sec, "DailyMode"
         IniWrite DailyWeaponOf(p), PROFILE_INI, sec, "DailyWeapon"

@@ -129,6 +129,8 @@ WebRunAction(action,value:=0,rawValue:="") {
         WebSetLaunchCheck(rawValue)
     } else if action="startorder" {
         WebMoveStartOrder(rawValue)
+    } else if action="startorderset" {
+        WebSetStartOrderList(WebUrlDecode(rawValue))
     } else if action="monitorcheck" {
         WebSetMonitorCheck(rawValue)
     } else if action="emergencystop" {
@@ -442,6 +444,8 @@ WebRunAction(action,value:=0,rawValue:="") {
         WebSetRecoveryFirst(rawValue)
     } else if action="deathalarm" {
         WebSetDeathAlarm(rawValue)
+    } else if action="revivecfg" {
+        WebSetReviveConfig(rawValue)
     } else if action="alarmglobal" {
         WebSetAlarmGlobal(rawValue)
     } else if action="alarmtest" {
@@ -670,6 +674,29 @@ WebMoveStartOrder(rawValue) {
     AddRecentEvent("啟動順序：" profiles[idx].name " → 第 " profiles[idx].startOrder " 個")
 }
 
+; 首頁拖拉排好的整份啟動順序（「帳號編號,帳號編號,…」，必須剛好是每個帳號各一次）
+WebSetStartOrderList(rawValue) {
+    global profiles
+    list:=[], seen:=Map()
+    for v in StrSplit(rawValue,",") {
+        v:=Trim(v)
+        if !IsInteger(v)
+            return
+        idx:=Integer(v)
+        if idx<1 || idx>profiles.Length || seen.Has(idx)
+            return
+        seen[idx]:=true, list.Push(idx)
+    }
+    if list.Length!=profiles.Length
+        return
+    names:=""
+    for k,idx in list
+        profiles[idx].startOrder:=k, names.=(k>1 ? "、" : "") profiles[idx].name
+    SaveProfiles()
+    PushWebState()
+    AddRecentEvent("啟動順序：" names)
+}
+
 WebSetMonitorCheck(rawValue) {
     global profiles,running
     parts:=StrSplit(rawValue,"~")
@@ -896,6 +923,25 @@ WebSetDeathAlarm(rawValue) {
     AddRecentEvent(profiles[idx].name " → 死亡警報音 " (on ? "ON" : "OFF"))
 }
 
+; 死亡後復活方式（每個角色）：「編號~auto/bead/off~回怪區 0/1~開 F6 0/1」
+WebSetReviveConfig(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<4 || !IsInteger(parts[1]) || !IsInteger(parts[3]) || !IsInteger(parts[4])
+        return
+    idx:=Integer(parts[1])
+    if idx<1 || idx>profiles.Length
+        return
+    if parts[2]!="auto" && parts[2]!="bead" && parts[2]!="off"
+        return
+    p:=profiles[idx]
+    p.reviveMode:=parts[2], p.reviveReturn:=Integer(parts[3]) ? 1 : 0, p.reviveF6:=Integer(parts[4]) ? 1 : 0
+    SaveProfiles()
+    txt:="死亡後：" ReviveModeText(p) (ReviveModeOf(p)="auto" ? "｜回城後" (p.reviveReturn ? "用前點卡回怪區" (p.reviveF6 ? "並開 F6" : "（不開 F6）") : "留在城裡") : "")
+    AddRecentEvent(p.name " → " txt)
+    EventLog(p.name,"REVIVE_CFG",txt)
+}
+
 ; H-020：死亡警報音 — 總開關與響的秒數（「0/1~秒數」）；總開關關掉時所有角色都不響
 WebSetAlarmGlobal(rawValue) {
     global DeathAlarmEnableCB,DeathAlarmSecondsEdit,INI
@@ -1063,6 +1109,10 @@ PushWebState(*) {
             . ',"softAutoRecover":' ((p.HasOwnProp("softAutoRecover") && p.softAutoRecover) ? "true":"false")
             . ',"recoveryFirst":' (ProfileRecoveryFirst(p) ? "true":"false")
           . ',"deathAlarm":' ((p.HasOwnProp("deathAlarm") ? p.deathAlarm : 1) ? "true":"false")
+            . ',"reviveMode":"' ReviveModeOf(p) '"'
+            . ',"reviveReturn":' (ReviveReturnOf(p) ? "true":"false")
+            . ',"reviveF6":' (ReviveF6Of(p) ? "true":"false")
+            . ',"reviveHint":"' JsonEscapeWeb(ReviveQuickHint(p)) '"'
             . ',"memHp":' (p.memHp+0)
             . ',"memHpMin":' (p.memHpMin+0)
             . ',"memHpMax":' (p.memHpMax+0)
