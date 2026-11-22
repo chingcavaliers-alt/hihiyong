@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.64",
+    "version":  "v1.3.90.65",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "b1b14df1dd1fc9ee68b0d4fba85fd433a3997b4a0e314edd23797e03ba27efff"
+                      "sha256":  "301b96ebb4ffe48cfbadad9e42262eeed099f3461534736cae4b6c07f39fd280"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "8801921ed8ea57b45a7088a4921dc254255648e3e89dce55eac37fe4fae75300"
+                      "sha256":  "a1ebc4adc90b1b620ac21f870847fa1b54ef181962f49eb21d9ef8967251176d"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -139,7 +139,7 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "1a0674069da7c791a9293f8597680d5fdc2931363db8cbb38f5d23dc226d0d1c"
+                      "sha256":  "3a486ac39c0c8c0c782d003a98def7b3eb27c1b508090a3c9fb7c1c302bcf661"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -447,7 +447,7 @@
                   },
                   {
                       "path":  "ui\\app.js",
-                      "sha256":  "aa8a59500d227f8bdf508d0d845ec13c153b86923c5c4ae40652c4be09da475d"
+                      "sha256":  "b9dfa6c28d7c393ec3d6b510e7c05da9d79d6d0ea0d4fe284c2b17d7ec750ed0"
                   },
                   {
                       "path":  "ui\\guide\\dc_a_gear.png",
@@ -555,7 +555,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "d7854f8712e18610e8a19db3f74bb907d53b193d18759658edc4e0dd98d4dae8"
+                      "sha256":  "6e0698a9157962837d53ad66186bff4e67d2eda001baf4e34d67d8ab29eb7b73"
                   },
                   {
                       "path":  "登入測試.bat",

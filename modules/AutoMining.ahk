@@ -29,6 +29,7 @@ global MN_NEAR_OK := 24                   ; （舊值，實際用每個角色學
 global MN_GATHER_CONFIRM_MS := 4000       ; 右鍵十字鎬之後最多等這麼久，角色要進入「採集」動作（原本 7 秒；11/15～11/20 共 3300 多次，99.6% 在 2 秒內開始，晚開始的重試前會再確認、不重按）
 global MN_SKIP_MS := 600000               ; 走不到 / 採不了的礦石先略過 10 分鐘
 global MN_BUSY_CONFIRM_MS := 4000         ; 第 2 次右鍵十字鎬（離礦石的距離採起來過）只等這麼久：11/15～11/20 共 3300 多次，99.6% 在 2 秒內就開始採集
+global MN_REGATHER_MAX_MS := 70000       ; 沒按十字鎬卻讀到「採集中」（不是剛啟動接手）：最多等這麼久，超過就當成讀錯、換下一顆
 global MN_BUSY_SKIP_MS := 180000          ; 可能有人在採的礦（採起來過的距離按兩次都沒反應 / 採幾秒就被打斷）：先略過 3 分鐘，馬上換下一顆
 global MN_RESPAWN_CHECK_MS := 30000       ; 礦都採完了，每隔多久再看一次（遊戲每 30 分鐘重生一次）
 global MN_START_IDLE_MS := 2000
@@ -665,7 +666,7 @@ MnIsBox(name) => InStr(name, "水晶礦場傳送卡") && InStr(name, "禮盒")
 ; ---------------------------------------------------------------- 狀態
 MnSt(p) {
     if !p.HasOwnProp("mn")
-        p.mn := {next: 0, fails: 0, skip: Map(), text: "", gathering: false, gathers: 0, gatherStart: 0, entered: 0, invAnchor: 0, bossSkip: 0, progressAt: A_TickCount, stallAlerted: false, noLootN: 0, noLootAlerted: false, firstTrack: true, respawnSince: 0, bossKills: 0, stand: MN_STAND_DIST, lootBase: 0, lootAt: 0, notSince: 0, useMax: MN_USE_MAX, okMax: 0, fastOff: false, fastFails: 0, inMine: false, inSince: 0, visits: MN_RESUMED ? MnRunVisitsLoad(p.name) : 0, lastStay: 0, enterAlert: false, boxWarned: false, loopDone: false}
+        p.mn := {next: 0, fails: 0, skip: Map(), text: "", gathering: false, gathers: 0, gatherStart: 0, entered: 0, invAnchor: 0, bossSkip: 0, progressAt: A_TickCount, stallAlerted: false, noLootN: 0, noLootAlerted: false, firstTrack: true, respawnSince: 0, bossKills: 0, stand: MN_STAND_DIST, lootBase: 0, lootAt: 0, notSince: 0, useMax: MN_USE_MAX, okMax: 0, fastOff: false, fastFails: 0, inMine: false, inSince: 0, visits: MN_RESUMED ? MnRunVisitsLoad(p.name) : 0, lastStay: 0, enterAlert: false, boxWarned: false, loopDone: false, joinOk: true, earlyAt: 0, earlyStart: 0, earlyGlob: "", earlyLoot: 0, regatherAt: 0, regatherIgnore: false}
     return p.mn
 }
 MnSelectedAlive() {
@@ -886,12 +887,38 @@ MnPlan(p) {
     me := MiningCharState(pid)
     if !IsObject(me)
         return {action: "wait", text: "讀不到人物位置", wait: 3000}
-    if me.action = GLAT_GATHERING {
+    joinOk := st.HasOwnProp("joinOk") && st.joinOk   ; 剛啟動後第一次讀到人物狀態：讀到在採 = 重開前就在採
+    st.joinOk := false
+    if me.action != GLAT_GATHERING
+        st.regatherIgnore := false
+    if me.action = GLAT_GATHERING && !(st.HasOwnProp("regatherIgnore") && st.regatherIgnore) {
         st.notSince := 0
         if !st.gathering {
-            ; 不是這次按十字鎬開始的（重開管理程式時角色已經在採）：不知道真正開始的時間，結束時不能用秒數判斷「被打斷」
-            st.gatherJoined := !st.gatherStart
-            st.gathering := true, st.gatherStart := st.gatherStart ? st.gatherStart : A_TickCount
+            if st.HasOwnProp("earlyAt") && st.earlyAt && A_TickCount - st.earlyAt < 5000 {
+                ; 11/22 18:24：判定採 39 秒「被打斷」後又讀到在採，其實一直採到 108 秒 → 同一顆繼續採（恢復開始時間、取消略過）
+                st.gathering := true, st.gatherJoined := false, st.gatherStart := st.earlyStart, st.gatherGlob := st.earlyGlob, st.lootBase := st.earlyLoot
+                if st.earlyGlob != "" && st.skip.Has(st.earlyGlob)
+                    st.skip.Delete(st.earlyGlob)
+                EventLog(p.name, "MN_GATHER_RESUME", "剛才判定被打斷，其實還在採｜當成同一顆繼續採（已採 " Round((A_TickCount - st.gatherStart) / 1000) " 秒）")
+            } else if joinOk && !st.gatherStart {
+                ; 不是這次按十字鎬開始的（重開管理程式時角色已經在採）：不知道真正開始的時間，結束時不能用秒數判斷「被打斷」
+                st.gatherJoined := true, st.gathering := true, st.gatherStart := A_TickCount
+            } else if !st.gatherStart {
+                ; 11/22 18～20 點：沒重開程式、也沒按十字鎬，卻讀到在採（一小時 6～7 次，以前都當成「重開前就在採」最長原地等 2 分鐘）
+                ; → 記下來、當作在採等它結束，最多等 MN_REGATHER_MAX_MS
+                ago := st.HasOwnProp("lootDone") && st.lootDone ? Round((A_TickCount - st.lootDone) / 1000) " 秒" : "（還沒採完過）"
+                EventLog(p.name, "MN_REGATHER", "沒有按十字鎬卻讀到採集中｜人物 (" Round(me.x) "," Round(me.y) ")｜離上一顆採完 " ago "｜最多等 " Round(MN_REGATHER_MAX_MS / 1000) " 秒")
+                st.gatherJoined := true, st.gathering := true, st.gatherStart := A_TickCount, st.regatherAt := A_TickCount
+            } else
+                st.gathering := true
+            st.earlyAt := 0
+        }
+        if st.HasOwnProp("regatherAt") && st.regatherAt && A_TickCount - st.regatherAt > MN_REGATHER_MAX_MS {
+            EventLog(p.name, "MN_REGATHER_GIVEUP", "等了 " Round(MN_REGATHER_MAX_MS / 1000) " 秒還是讀到採集中，當成讀錯｜不算一顆，換下一顆")
+            st.gathering := false, st.gatherJoined := false, st.gatherStart := 0, st.gatherGlob := "", st.regatherAt := 0, st.regatherIgnore := true
+            st.lootBase := 0, st.lootAt := 0
+            st.progressAt := A_TickCount
+            return {action: "wait", text: "讀到的採集中不像真的，換下一顆", wait: 300}
         }
         left := Max(0, 60 - Round((A_TickCount - st.gatherStart) / 1000))
         return {action: "wait", text: "採集中（約剩 " left " 秒）", wait: 2000}
@@ -911,14 +938,16 @@ MnPlan(p) {
             if glob != ""
                 st.skip[glob] := A_TickCount + MN_BUSY_SKIP_MS
             EventLog(p.name, "MN_GATHER_EARLY", "採集只持續 " secs " 秒就結束了（被打斷，可能有人在採）｜" (glob != "" ? "這顆先略過 " Round(MN_BUSY_SKIP_MS / 60000) " 分鐘，換下一顆" : "換下一顆") "｜不算採完")
+            st.earlyAt := A_TickCount, st.earlyStart := st.gatherStart, st.earlyGlob := glob, st.earlyLoot := st.lootBase   ; 5 秒內又讀到在採 → 同一顆繼續
             st.notSince := 0, st.gathering := false, st.gatherStart := 0, st.gatherGlob := ""
             st.lootBase := 0, st.lootAt := 0   ; 沒採完不會有收穫：不結算（免得算成「沒有收穫」觸發警告）
             st.progressAt := A_TickCount
             return {action: "wait", text: "採集被打斷，換下一顆", wait: 300}
         }
-        st.notSince := 0, st.gatherJoined := false
+        regather := st.HasOwnProp("regatherAt") && st.regatherAt
+        st.notSince := 0, st.gatherJoined := false, st.regatherAt := 0, st.earlyAt := 0
         st.gathering := false, st.gathers += 1, st.gatherStart := 0, st.gatherGlob := "", st.lootAt := A_TickCount + 3000, st.lootDone := A_TickCount
-        EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆" (joined ? "（重開程式時已經在採，接著採完）" : ""))
+        EventLog(p.name, "MN_GATHER_DONE", "採集完成｜今天第 " st.gathers " 顆" (regather ? "（沒按十字鎬就讀到在採，等它結束）" : joined ? "（重開程式時已經在採，接著採完）" : ""))
     }
     if MnBossTimerDue(p, st, false)   ; 按了「現在讀王重生時間」：不在採集中的空檔去讀
         return {action: "bosstimer"}
@@ -1586,7 +1615,7 @@ MnLoopsNotify(p, st) {
     st.loopDone := true
     EventLog(p.name, "MN_LOOPS_DONE", "已跑完 " st.visits " 趟（設定 " MN_LOOPS " 趟），不再進圖")
     AddRecentEvent("⛏ " p.name " 已跑完 " st.visits " 趟自動採礦，停止進圖")
-    try SendDiscordMessage("✅ HIHIYONG 自動採礦已跑完設定的趟數`n角色：" p.name "`n共 " st.visits " 趟（設定 " MN_LOOPS " 趟）。")
+    try SendDiscordMessage("✅ HIHIYONG 自動採礦已跑完設定的趟數`n角色：" p.name "`n共 " st.visits " 趟（設定 " MN_LOOPS " 趟）。`n如果不是你設的：到「自動採礦」頁把「進礦場趟數」改回 0（0 = 一直循環）。")
 }
 MnVisitText(st) {
     global MN_LOOPS
@@ -1956,6 +1985,7 @@ AutoMiningSet(rawValue) {
     parts := StrSplit(rawValue, "~")
     if parts.Length < 2 || !IsInteger(parts[1])
         return
+    before := MnCfgSnap()
     wasRunning := MN_RUNNING
     MN_RUNNING := Integer(parts[1]) ? 1 : 0
     if MN_RUNNING && !MnFeatureOK() {
@@ -2016,6 +2046,7 @@ AutoMiningSet(rawValue) {
     }
     for p in profiles
         p.mnActive := MN_RUNNING && MN_CHARS.Has(p.name) ? true : false
+    MnCfgLog(before)
     AddRecentEvent("⛏ 自動採礦：" (MN_RUNNING ? "▶ 啟動" : "■ 停止") "｜角色 " (names = "" ? "（沒勾選）" : StrReplace(names, "|", "、")) "｜自動進圖 " (MN_AUTOENTER ? "開" : "關") "｜背包 " (MN_KEEP_INV ? "一直開著" : "每次開關") "｜礦石 " (colorText = "" ? "（沒勾選）" : StrReplace(colorText, ",", " > ")) "｜打王 " (MN_BOSS_ON ? "開（技能欄 " (MN_BOSS_BAR ? "F" MN_BOSS_BAR : "不檢查") (MN_BOSS_SKILL != "" ? "、右鍵技能 " MN_BOSS_SKILL : "") "）" : "關"))
 }
 
@@ -2068,3 +2099,27 @@ AutoMiningPushWeb() {
 }
 
 #Include %A_LineFile%\..\BossTimer.ahk
+
+; 11/22：「進礦場趟數」不知道什麼時候被改成 1（可能滑鼠滾輪），20:04 跑完就不進圖，日誌查不到是哪時改的
+; → 每次存採礦設定都把有變的項目記一筆 MN_CFG（舊 → 新）
+MnCfgSnap() {
+    global MN_RUNNING, MN_CHARS, MN_AUTOENTER, MN_KEEP_INV, MN_COLORS, MN_BOSS_ON, MN_BOSS_BAR, MN_BOSS_SKILL, MN_SKIPHARD, MN_LOOPS, MN_RANK_SEC, MN_RESUME
+    names := "", colors := ""
+    for n, _ in MN_CHARS
+        names .= (names = "" ? "" : "、") n
+    for c in MN_COLORS
+        colors .= (colors = "" ? "" : ">") c
+    onoff(v) => v ? "開" : "關"
+    return [["啟動", onoff(MN_RUNNING)], ["角色", names = "" ? "（沒勾選）" : names], ["自動進圖", onoff(MN_AUTOENTER)], ["背包一直開著", onoff(MN_KEEP_INV)]
+        , ["礦石", colors = "" ? "（沒勾選）" : colors], ["打王", onoff(MN_BOSS_ON)], ["打王技能欄", MN_BOSS_BAR], ["打王右鍵技能", MN_BOSS_SKILL = "" ? "（沒設）" : MN_BOSS_SKILL]
+        , ["略過不好走的礦", onoff(MN_SKIPHARD)], ["進礦場趟數", MN_LOOPS = 0 ? "0（一直循環）" : MN_LOOPS], ["嚴格依顏色順序", onoff(MN_RANK_SEC >= 100)], ["重開後接續", onoff(MN_RESUME)]]
+}
+MnCfgLog(before) {
+    after := MnCfgSnap(), diff := ""
+    for i, kv in after
+        if i <= before.Length && String(before[i][2]) != String(kv[2])
+            diff .= (diff = "" ? "" : "｜") kv[1] " " before[i][2] " → " kv[2]
+    if diff != ""
+        EventLog("GLOBAL", "MN_CFG", "採礦設定改了：" diff)
+    return diff
+}
