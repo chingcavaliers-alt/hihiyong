@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HIHIYONG 多帳號管理器</title>
-<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.65">
+<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.95">
 </head>
 <body><div class="app">
 <aside class="side"><div class="brand"><img class="logo" id="appLogo" alt="" src="../HiHiyong.ico" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='../HiHiyong_default.ico';}"><div>HIHIYONG<small>多帳號管理器</small></div></div>
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.65· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.95· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -32,8 +32,8 @@
  <div class="feat-list" id="featList"><span class="muted">讀取中…</span></div>
 </div>
 <div class="card feat-card" id="matrixCard">
- <div class="section-title"><span class="ni"><span class="emo">📅</span></span>每隻角色啟動指令</div>
- <div class="hint">每個角色一行，綠色 = 有開，灰色 = 沒開。<b>點一下標籤就能直接開 / 關</b>（組隊設定較複雜，點了會前往設定）。下拉選單設定這個角色<b>死亡後</b>怎麼復活、<b>回城復活後</b>要不要用前點卡回怪區（和「設定 → 帳號」是同一個設定）。</div>
+ <div class="section-title"><span class="ni"><span class="emo">📅</span></span>角色</div>
+ <div class="hint">每個角色一行：<b>類型</b>決定一整組預設動作，下面是這個角色<b>會怎麼動</b>；跟類型不一樣的地方標「已自訂」。按「展開設定」改這個角色的所有設定。</div>
  <div class="matrix" id="matrixList"><span class="muted">讀取中…</span></div>
 </div>
 <div class="card table-card">
@@ -161,7 +161,7 @@
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="automining">⛏ 自動採礦</button><button data-sub="priority">⚖️ 功能優先順序</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="automining">⛏ 自動採礦</button><button data-sub="buffcast">✨ 一鍵施法</button><button data-sub="priority">⚖️ 功能優先順序</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -196,19 +196,15 @@
  </div>
  <div class="dh-run">
   <label class="toggle" title="角色不在水晶礦場時，從背包 / 銀行的「水晶礦場傳送卡(2H)禮盒」開出傳送卡並右鍵傳進去。"><input type="checkbox" id="mnEnter" checked onchange="saveAutoMining()"> 不在水晶礦場時自動進圖（用傳送卡禮盒）</label>
-  <label class="toggle" title="道具讓角色在礦場待約 2 小時，時間到被踢出後，會自動重新進圖繼續挖。這裡設定總共要進幾趟（第一次進去算第 1 趟）；跑滿後被踢出就不再進圖並通知 Discord。0 = 一直循環。">進礦場趟數 <input type="number" id="mnLoops" min="0" max="99" value="0" style="width:60px" onchange="saveAutoMining()"> <span class="account-sub">（0 = 一直循環）</span></label>
-  <label class="toggle" title="水晶礦場的王（虹光秘脈礦主，每 2 小時重生）出現在畫面範圍內時，中斷採礦去打：走到王旁邊、游標對準王的身體、壓住右鍵，打完回去採礦。右鍵技能要先設好；開著時請不要同時用鍵盤滑鼠。這個功能還沒在真正的王身上驗證過，預設關閉。"><input type="checkbox" id="mnBoss" onchange="saveAutoMining()"> 王重生時去打王（壓住右鍵）</label>
   <label class="toggle" title="勾選後，管理程式重新開啟（或當掉重開）時，如果上次是「啟動」狀態，會自動接續採礦（趟數也接續），不用人在電腦前按啟動。"><input type="checkbox" id="mnResume" onchange="saveAutoMining()"> 重開程式後自動接續採礦</label>
  </div>
- <details class="page-help" style="margin-top:10px"><summary>進階設定（背包、不好走的礦、打王技能）</summary><div class="page-help-body"><div class="dh-run" style="margin-top:8px">
+ <details class="page-help" style="margin-top:10px"><summary>進階設定（背包、不好走的礦、顏色挑法）——所有角色共用</summary><div class="page-help-body"><div class="dh-run" style="margin-top:8px">
   <label class="toggle" title="只用道具視窗（I），不開角色視窗（C）。開著時地面點擊會閃開背包區域；關掉則每顆礦開一次、關一次。"><input type="checkbox" id="mnKeep" checked onchange="saveAutoMining()"> 背包一直開著（省每顆礦開關一次）</label>
   <label class="toggle" title="走不到、走很久（超過 35 秒）、右鍵採不起來的礦，記下它的位置；失敗 2 次或太慢 3 次就當作不好走，之後先挑別顆（沒有別顆才回頭挑）。另外每台電腦會長期記每個位置的成功 / 失敗次數：常失敗的位置挑礦時排後面，試過 4 次以上、失敗率 40% 以上就不去採（3 天後再試一次）。走得順、採起來了會把次數減回去，24 小時沒再遇到就忘掉。單次走路最多 45 秒。"><input type="checkbox" id="mnSkipHard" checked onchange="saveAutoMining()"> 自動略過不好走的礦 <span class="account-sub" id="mnHardCount"></span> <button class="btn" onclick="mnResetHard()">清除略過紀錄</button></label>
-  <label class="toggle" title="打王前要求技能欄在這一排（預設 F8，第二頁的 F18 也算）；不對程式會按這個 F 鍵切過去，切不過去就不打。選「不檢查」就照目前的技能打。">打王技能欄 <select id="mnBar" onchange="saveAutoMining()"><option value="0">不檢查</option><option value="1">F1</option><option value="2">F2</option><option value="3">F3</option><option value="4">F4</option><option value="5">F5</option><option value="6">F6</option><option value="7">F7</option><option value="8" selected>F8</option><option value="9">F9</option><option value="10">F10</option></select></label>
-  <label class="toggle" title="固定右鍵技能：填技能代碼（例如 15-0），打王前會確認目前的右鍵技能和它完全一樣，不一樣就不打。空白 = 不檢查。按「記下目前的」會填入第一個勾選角色現在的右鍵技能。">右鍵技能代碼 <input type="text" id="mnSkill" maxlength="12" style="width:70px" placeholder="例 15-0" onchange="saveAutoMining()"> <button class="btn" onclick="mnUseCurSkill()">記下目前的</button> <span class="account-sub" id="mnCurSkill"></span></label>
+  <label class="toggle" title="預設：旁邊有選定顏色的礦就先挑旁邊的（顏色順序差一名只當作多 4 秒的走路時間），不會為了顏色多跑幾百單位。勾選後嚴格照每個角色自己的顏色順序挑，會多跑遠路。"><input type="checkbox" id="mnStrict" onchange="saveAutoMining()"> 嚴格依顏色順序挑礦（會多跑遠路；預設以距離近的優先）</label>
  </div></div></details>
- <div class="dh-block"><div class="dh-label">要採礦的角色</div><div class="char-cards" id="mnChars"></div></div>
- <div class="dh-block"><div class="dh-label">要挖的礦石顏色（由上到下 = 優先順序，用 ▲▼ 調整）</div>
-  <label class="toggle" title="預設：旁邊有選定顏色的礦就先挑旁邊的（顏色順序差一名只當作多 4 秒的走路時間），不會為了顏色多跑幾百單位。勾選後嚴格照上面的顏色順序挑，會多跑遠路。"><input type="checkbox" id="mnStrict" onchange="saveAutoMining()"> 嚴格依顏色順序挑礦（會多跑遠路；預設以距離近的優先）</label><div class="dh-chars" id="mnColors" style="flex-direction:column;align-items:flex-start;gap:6px"></div></div>
+ <div class="dh-block"><div class="dh-label">採礦排班</div><div id="mnRelay"></div></div>
+ <div class="dh-block"><div class="dh-label">要採礦的角色（顏色順序、打王、打王技能、趟數、排班都在每個角色的「設定」裡）</div><div class="char-cards" id="mnChars"></div></div>
  <div class="dh-block"><div class="dh-label">挖礦統計（累積 / 今天 / 每輪）</div><div id="mnStats" class="hint">還沒有紀錄</div><button class="btn" style="margin-top:8px" onclick="mnResetStats()">清除統計</button></div>
  <div class="hint">背包裡要有「十字鎬」。傳送卡禮盒在背包或銀行都可以（銀行要先打開過一次分頁才讀得到）。遊戲畫面要是 1024x768。採集時請不要操作鍵盤滑鼠。</div>
 </div>
@@ -317,25 +313,18 @@
  <div class="table-wrap"><table><thead><tr><th>角色</th><th>遊戲視窗</th><th>記錄位置</th><th>大小</th><th>狀態</th></tr></thead><tbody id="layoutRows"></tbody></table></div>
 </div>
 </div>
+<div class="subpage" id="buffcast">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">✨</span></span>一鍵施法（手動玩的時候用）</div>
+ <div class="hint">按一下觸發鍵，就幫<b>現在在最前面的那隻角色</b>把一組技能放完：切到那一排技能欄 → 照順序每一格按數字鍵選技能、讀回確認、在游標位置按右鍵 →（等施法動作結束）→ 下一格。空的、選不到的格子跳過；放到一半再按一次＝中止。跟自動掛機無關，有自動操作在用那個視窗時不會放。</div>
+ <div class="hint" style="margin-top:6px">每組選一個<b>觸發鍵</b>（滑鼠後退 / 前進鍵、Ctrl＋左鍵、或鍵盤 A～Z 等）、<b>技能欄</b>，再<b>依序點下面的技能格子</b>加入施放順序（格子上的數字＝第幾個放，再點一下拿掉；施法久的最後點）。要更多組按「＋ 新增一組」，最多 6 組。被選成觸發鍵的鍵在遊戲視窗裡<b>不會再送給遊戲</b>，請挑遊戲沒在用的鍵；數字 1～0、F1～F10 不能選。</div>
+ <div class="dh-run" style="margin-top:10px"><label class="toggle"><input type="checkbox" id="bcOnAll" onchange="send('buffcastset',{value:this.checked?'1':'0'})"> <b>一鍵施法總開關（所有角色）</b></label><span class="cc-meta">關掉時所有觸發鍵都照常交給遊戲（要打字前先關）；小窗第 3 頁也可以開關。每個角色卡右上角還有自己的開關。</span></div>
+ <div class="dh-block"><div class="dh-label">每個角色的技能組（技能名稱要角色在遊戲裡才讀得到）</div><div id="bcChars" class="char-cards"></div></div>
+</div>
+</div>
 <div class="subpage" id="devzone">
 <div class="card" style="margin-bottom:14px"><div class="section-title"><span class="ni"><span class="emo">🚧</span></span>開發中</div><div class="hint">這裡的功能還在調整，可能不夠穩定；要用的話建議先在單一角色上試用。</div>
-<div class="chips dev-tabs" style="margin-top:10px"><button class="chip active" data-dev="skillcombo" onclick="devShow('skillcombo')">⚡ 技能組合</button><button class="chip" data-dev="inventory" onclick="devShow('inventory')">🧹 背包清理</button></div></div>
-<div class="dev-part active" id="skillcombo">
-<div class="card">
- <div class="section-title"><span class="ni"><span class="emo">⚡</span></span>技能組合快速施法 <span class="pill" id="scPill">—</span></div>
- <div class="hint">按一個鍵，用最快速度連續送出幾個技能鍵。例如設「觸發鍵 1、技能鍵 1,2,3」：你按 1，程式就把 1、2、3 一口氣送給遊戲。<b>只在遊戲視窗在最前面、而且沒有其他自動操作在用遊戲時才會攔截</b>；其他時候按鍵照常交給遊戲。F7 / F10 是停止鍵，不能拿來用。</div>
- <div class="inv-toolbar" style="margin-top:12px">
-  <label class="toggle"><input type="checkbox" id="scEnabled" onchange="saveSCCfg()"> 啟用技能組合</label>
-  <label title="打字聊天時按一下暫停，再按一下恢復（不填就沒有暫停鍵）">暫停鍵 <input id="scPauseKey" type="text" maxlength="12" placeholder="例如 Pause" style="width:110px" onchange="saveSCCfg()"></label>
-  <span class="account-sub" id="scState"></span>
- </div>
-</div>
-<div class="card table-card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎛️</span></span>組合清單</div>
- <div class="table-wrap"><table><thead><tr><th>開</th><th>名稱</th><th>觸發鍵</th><th>送出的技能鍵（逗號分隔，依序）</th><th>送法</th><th title="每個鍵按住幾毫秒（最少 30；太短遊戲會漏掉鍵）">按住 ms</th><th title="依序送時，兩個鍵之間隔幾毫秒">間隔 ms</th><th title="按住觸發鍵就一直重複">連發</th><th></th></tr></thead><tbody id="scRows"><tr><td colspan="9" class="hint">讀取中…</td></tr></tbody></table></div>
- <div class="inv-toolbar" style="margin-top:10px"><button class="btn soft" onclick="scAdd()">＋ 新增組合</button><span class="account-sub">最多 12 組。改完會自動儲存。</span></div>
-</div>
-<details class="page-help"><summary>ⓘ 功能說明</summary><div class="page-help-body"><div class="hint"><b>送法：</b>「依序」是一個一個按（每個鍵按住 N 毫秒、間隔 M 毫秒），最穩；「同時」是全部一起按下、一起放開，最快，但遊戲不一定吃得下（可能只放出第一個技能），請自己試。按住 / 間隔太小，遊戲可能收不到，卡住不放技能時調大一點（建議 30～60）。</div><div class="hint"><b>注意：</b>觸發鍵在遊戲裡原本的功能會被攔下來換成這組技能；<b>在遊戲的聊天框打字時，按到觸發鍵也會被攔</b>，要打字請先按暫停鍵，或選一個平常不打字的鍵（例如滑鼠側鍵 XButton1）。</div><div class="hint"><b>安全：</b>預設關閉；F10 / 停止監控後不再觸發；重新登入、每日道具、命運箱子等自動操作正在用遊戲視窗時不會插進去。</div></div></details>
-</div><div class="dev-part" id="inventory">
+<div class="chips dev-tabs" style="margin-top:10px"><button class="chip active" data-dev="inventory" onclick="devShow('inventory')">🧹 背包清理</button></div></div>
+<div class="dev-part active" id="inventory">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🧹</span></span>① 選擇要清理的角色</div>
  <div class="hint">背包清理有自己的清單。可以從已連接的帳號加入，也可以直接選開著的遊戲視窗；不確定是哪個角色時，先按「顯示視窗」確認。</div>
@@ -659,12 +648,12 @@
 </div>
 <ul class="gd-legend"><li><b>1</b><span>啟動監控時自動還原。</span></li><li><b>2</b><span>排好視窗後按這個記下來。</span></li></ul>
 </div>
-<div class="gd-step"><h3>🚧 開發中：技能組合 / 背包清理</h3>
-<p>還在調整的功能，建議先在單一角色試用。<b>技能組合</b>：設定觸發鍵，一鍵連按一組技能；<b>背包清理</b>：依序清理多個角色的背包。</p>
-<div class="gd-shot"><img src="guide/gd7_21.png" alt="🚧 開發中：技能組合 / 背包清理" loading="lazy">
+<div class="gd-step"><h3>🚧 開發中：背包清理</h3>
+<p>還在調整的功能，建議先在單一角色試用。<b>背包清理</b>：依序清理多個角色的背包。（一鍵連放技能請用「工具 → ✨ 一鍵施法」）</p>
+<div class="gd-shot"><img src="guide/gd7_21.png" alt="🚧 開發中：背包清理" loading="lazy">
 <i class="gd-box" style="left:18.456%;top:20.278%;width:78.676%;height:4.778%"><b>1</b></i>
 </div>
-<ul class="gd-legend"><li><b>1</b><span>切換：技能組合 / 背包清理。</span></li></ul>
+<ul class="gd-legend"><li><b>1</b><span>背包清理（技能組合已拿掉，改用一鍵施法）。</span></li></ul>
 </div>
 </div>
 <div class="subpage" id="gd8">
@@ -697,7 +686,7 @@
 <div class="actions" style="margin-top:14px"><button class="btn soft" onclick="send('accountAdd')">＋ 新增帳號</button><button class="btn blue" onclick="saveAcct()">儲存帳號</button><button class="btn danger" onclick="if(confirm('確定刪除目前選取的帳號？遊戲本身不會被關閉。'))send('accountDelete')">刪除帳號</button></div>
 <div class="formgrid" style="margin-top:16px"><div class="field"><label>選擇帳號</label><select id="profileSelect" onchange="send('profileSelect',{value:Number(this.value)})"></select></div><div class="field"><label>名稱（顯示用）</label><input id="acctName" placeholder="例如：椰奶"></div><div class="field"><label>遊戲帳號</label><input id="acctLogin" autocomplete="off"><div class="account-sub warn" id="acctLoginNote"></div></div><div class="field"><label>遊戲密碼</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="留空保留原密碼"><div class="account-sub warn" id="acctPassNote"></div></div></div>
 <div class="gd-warn" id="acctWarn" style="display:none;margin-top:12px"></div><div class="gd-warn" id="acctFailNote" style="display:none;margin-top:12px"></div>
-<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="formgrid" style="margin-top:12px"><div class="field"><label>死亡後自動復活（死亡超過 30 秒）</label><select id="acctReviveMode"><option value="auto">有歸魂珠用歸魂珠，沒有就復活回城</option><option value="bead">只用歸魂珠（沒有就通知）</option><option value="off">不自動復活，只通知</option></select></div><label title="沒有歸魂珠回城復活後，等你沒在操作電腦時按前點卡回到死亡的地圖。每日道具到期時改由每日道具更換送回去；30 分鐘內第 3 次回城就不送。"><input id="acctReviveReturn" type="checkbox"> 回城復活後用前點卡回怪區</label><label><input id="acctReviveF6" type="checkbox"> 回怪區後開啟自動攻擊（F6）</label></div><div class="hint" id="acctReviveHint" style="margin-top:6px"></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
+<div class="formgrid" style="margin-top:12px"><label><input id="acctEnabled" type="checkbox"> 納入監控</label><label><input id="acctLaunch" type="checkbox"> 批次啟動時開啟</label><label><input id="acctDeath" type="checkbox"> 死亡偵測</label><label><input id="acctNotify" type="checkbox"> 死亡通報</label><label title="這個角色死亡超過 30 秒還沒復活時，電腦會響警報音。只影響這個角色；總開關在「設定 → 通知」。"><input id="acctAlarm" type="checkbox"> 🔔 死亡警報音</label><label><input id="acctSoft" type="checkbox"> 假在線偵測</label><label><input id="acctSoftAuto" type="checkbox"> 假在線自動恢復</label><label title="一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。"><input id="acctFirst" type="checkbox"> 優先重新登入（隊長）</label></div><div class="formgrid" style="margin-top:12px"><div class="field"><label>死亡後自動復活（死亡超過 30 秒）</label><select id="acctReviveMode"><option value="auto">有歸魂珠用歸魂珠，沒有就復活回城</option><option value="bead">只用歸魂珠（沒有就通知）</option><option value="off">不自動復活，只通知</option></select></div><label title="沒有歸魂珠回城復活後，等你沒在操作電腦時按前點卡回到死亡的地圖。每日道具到期時改由每日道具更換送回去；30 分鐘內第 3 次回城就不送。"><input id="acctReviveReturn" type="checkbox"> 回城復活後用前點卡回怪區</label><label><input id="acctReviveF6" type="checkbox"> 回怪區後開啟自動攻擊（F6）</label></div><div class="hint" id="acctReviveHint" style="margin-top:6px"></div><div class="formgrid" style="margin-top:12px"><div class="field" title="斷線 / 遊戲關閉後自動重新登入、或批次啟動進遊戲之後要做什麼。登入後按鍵裡的其他鍵（例如 A）照常送出。"><label>重新登入後</label><select id="acctLoginAct"><option value="back_f6">在城裡就用前點卡回怪區＋開 F6</option><option value="back">在城裡就用前點卡回怪區（不開 F6）</option><option value="stay">留在城裡（不按前點卡、不開 F6）</option></select></div></div><div class="hint" style="margin-top:10px">「假在線自動恢復」建議只對長時間掛機打怪的角色開啟。一般斷線或遊戲關閉不受這個開關影響，都會自動重新登入。</div></div>
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">🔗</span></span>遊戲視窗綁定</div><div class="hint">把帳號和開著的遊戲視窗配對。一般按「自動連接」即可（會依遊戲中的角色名稱配對）；配錯時再手動選擇。</div><div class="formgrid" style="margin-top:16px"><div class="field"><label>目前帳號</label><select id="profileSelectMirror" disabled><option>請在上方選擇帳號</option></select></div><div class="field"><label>遊戲視窗</label><select id="gameSelect" onchange="send('gameSelect',{value:Number(this.value)})"></select></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="send('autoBind')">自動連接遊戲視窗</button><button class="btn soft" onclick="send('refreshGames')">重新整理清單</button><button class="btn soft" onclick="send('bindSelected')">連接選定視窗</button><button class="btn danger" onclick="send('unbindSelected')">解除連接</button><button class="btn soft" onclick="send('showWindow')">顯示遊戲視窗</button><button class="btn soft" onclick="send('recordPosition')">記錄視窗位置</button></div></div></div>
 <div class="subpage" id="monitor">
 <div class="card"><div class="section-title"><span class="ni"><span class="emo">👻</span></span>假在線判定</div>
@@ -779,4 +768,4 @@
  <div class="actions"><button class="btn soft" onclick="send('shortcuticon');showToast('請選擇要當圖示的圖片')">🖼️ 更換桌面圖示…</button><button class="btn soft" onclick="send('shortcuticonreset')">↺ 還原預設圖示</button><button class="btn soft" onclick="send('shortcutcreate')">重新建立桌面捷徑</button></div></div></div>
 </section>
 </div></main></div>
-<script src="app.js?v=1.3.90.65"></script><div id="toast"></div></body></html>
+<script src="app.js?v=1.3.90.95"></script><div id="toast"></div></body></html>

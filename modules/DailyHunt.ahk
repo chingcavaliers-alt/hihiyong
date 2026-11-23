@@ -566,7 +566,7 @@ DailyHuntTick() {
             continue
         if !ApReady(p) {
             dead := p.HasOwnProp("hpEventOpen") && p.hpEventOpen
-            st.text := dead ? "💀 死亡中，用歸魂珠原地復活後自動繼續" : "還沒進遊戲世界（或死亡中）"
+            st.text := dead ? "💀 死亡中，復活後自動繼續（有歸魂珠原地復活，沒有就回城再從起點出發）" : "還沒進遊戲世界（或死亡中）"
             DhWaitNote(p, DhNotReadyWhy(p))
             if dead   ; 跑圖期間死亡：馬上用歸魂珠原地復活（不等 60 秒；鍵鼠閒置 3 秒就動手），復活後從頭判斷、重新開地圖走過去
                 try ReviveStuckCheck(p, 0, 3)

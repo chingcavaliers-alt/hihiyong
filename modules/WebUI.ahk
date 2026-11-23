@@ -86,6 +86,7 @@ WebNavigationCompleted(sender,args) {
     SetTimer DailyHuntTick, DH_TICK_MS    ; 每日討伐自動跑圖（預設關閉）
     SetTimer DailyHuntSchedTick, 10000    ; 每日討伐：各角色的定時啟動
     SetTimer MnTick, MN_TICK_MS           ; 水晶礦場自動採礦（預設關閉）
+    SetTimer AutoMiningSchedTick, 10000   ; 自動採礦：各角色的定時進礦場
     SetTimer LagFixTick, 5000   ; 變慢自動過圖（預設關閉；待救援的角色即使關閉也會送回去）
     SetTimer AutoAttackTick, AUTOATTACK_TICK_MS
     SetTimer ReportsTick, 30000
@@ -249,14 +250,18 @@ WebRunAction(action,value:=0,rawValue:="") {
     } else if action="mboxrole" {
         MBoxSetRole(WebUrlDecode(rawValue))
         MBoxPushWeb()
-    } else if action="skillcombostate" {
-        SkillComboPushWeb()
-    } else if action="skillcombocfg" {
-        SkillComboSetGlobal(WebUrlDecode(rawValue))
-        SkillComboPushWeb()
-    } else if action="skillcombolist" {
-        SkillComboSetList(WebUrlDecode(rawValue))
-        SkillComboPushWeb()
+    } else if action="buffcaststate" {
+        BuffCastPushWeb()
+    } else if action="buffcastset" {
+        BuffCastSetGlobal(WebUrlDecode(rawValue))
+        BuffCastPushWeb()
+    } else if action="buffcastcharon" {
+        BuffCastCharOnSet(WebUrlDecode(rawValue))
+        BuffCastApply()
+        BuffCastPushWeb()
+    } else if action="buffcastchar" {
+        BuffCastCharSet(WebUrlDecode(rawValue))
+        BuffCastPushWeb()
     } else if action="dailyhuntstate" {
         DailyHuntPushWeb()
     } else if action="dailyhuntafter" {
@@ -289,6 +294,15 @@ WebRunAction(action,value:=0,rawValue:="") {
         AutoMiningPushWeb()
     } else if action="autominingreset" {
         AutoMiningReset()
+        AutoMiningPushWeb()
+    } else if action="mncharcfg" {
+        AutoMiningCharCfgSet(WebUrlDecode(rawValue))
+        AutoMiningPushWeb()
+    } else if action="mncharskill" {
+        AutoMiningCharSkillGrab(WebUrlDecode(rawValue))
+        AutoMiningPushWeb()
+    } else if action="mnschedset" {
+        AutoMiningSchedSet(WebUrlDecode(rawValue))
         AutoMiningPushWeb()
     } else if action="autominingset" {
         AutoMiningSet(WebUrlDecode(rawValue))
@@ -446,6 +460,12 @@ WebRunAction(action,value:=0,rawValue:="") {
         WebSetDeathAlarm(rawValue)
     } else if action="revivecfg" {
         WebSetReviveConfig(rawValue)
+    } else if action="logincfg" {
+        WebSetLoginConfig(rawValue)
+    } else if action="roletype" {
+        WebSetRoleType(rawValue)
+    } else if action="roleapply" {
+        WebApplyRoleType(rawValue)
     } else if action="alarmglobal" {
         WebSetAlarmGlobal(rawValue)
     } else if action="alarmtest" {
@@ -942,6 +962,68 @@ WebSetReviveConfig(rawValue) {
     EventLog(p.name,"REVIVE_CFG",txt)
 }
 
+; 重新登入後的動作（每個角色）：「編號~回怪區 0/1~開 F6 0/1」
+WebSetLoginConfig(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<3 || !IsInteger(parts[1]) || !IsInteger(parts[2]) || !IsInteger(parts[3])
+        return
+    idx:=Integer(parts[1])
+    if idx<1 || idx>profiles.Length
+        return
+    p:=profiles[idx]
+    p.loginReturn:=Integer(parts[2]) ? 1 : 0, p.loginF6:=Integer(parts[3]) ? 1 : 0
+    SaveProfiles()
+    txt:="重新登入後：" LoginCfgText(p)
+    AddRecentEvent(p.name " → " txt)
+    EventLog(p.name,"LOGIN_CFG",txt)
+}
+
+; 角色類型（v1.3.90.69）：「編號~hunt/mine/member/idle」，空白 = 未選。只記類型；
+; 套用範本時各項設定由網頁照原本的指令（revivecfg / logincfg / 採礦、每日討伐、命運箱子勾選）逐項送出。
+RoleTypeText(t) => t="hunt" ? "打怪掛網" : t="mine" ? "採礦" : t="member" ? "組隊隊員" : t="idle" ? "只上線不動" : "未選"
+WebSetRoleType(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<2 || !IsInteger(parts[1])
+        return
+    idx:=Integer(parts[1]), t:=parts[2]
+    if idx<1 || idx>profiles.Length || !(t="hunt" || t="mine" || t="member" || t="idle" || t="")
+        return
+    p:=profiles[idx]
+    p.roleType:=t
+    SaveProfiles()
+    AddRecentEvent(p.name " → 角色類型：" RoleTypeText(t))
+    EventLog(p.name,"ROLE_TYPE","角色類型：" RoleTypeText(t))
+}
+
+; 套用角色類型（v1.3.90.70）：類型＋死亡後＋登入後在這裡一次改好、只存一次檔。
+; 11/23 12:06 欸等欸選「採礦」時網頁分開送 roletype / revivecfg / logincfg，存檔（約 2 秒）期間後面的指令被蓋掉，
+; 「登入後：留在城裡」沒有存到。自動採礦 / 每日討伐 / 命運箱子的勾選仍由網頁照原本的指令送（間隔拉長）。
+WebApplyRoleType(rawValue) {
+    global profiles
+    parts:=StrSplit(rawValue,"~")
+    if parts.Length<2 || !IsInteger(parts[1])
+        return
+    idx:=Integer(parts[1]), t:=parts[2]
+    if idx<1 || idx>profiles.Length || !(t="hunt" || t="mine" || t="member" || t="idle")
+        return
+    p:=profiles[idx]
+    p.roleType:=t
+    if t="hunt" || t="member"
+        p.reviveMode:="auto", p.reviveReturn:=1, p.reviveF6:=1, p.loginReturn:=1, p.loginF6:=1
+    else if t="mine"
+        p.reviveMode:="auto", p.reviveReturn:=0, p.loginReturn:=0, p.loginF6:=0
+    else
+        p.reviveMode:="off", p.loginReturn:=0, p.loginF6:=0
+    SaveProfiles()
+    txt:="角色類型：" RoleTypeText(t) "｜死亡後：" ReviveModeText(p)
+        . (ReviveModeOf(p)="auto" ? "，回城後" (p.reviveReturn ? "用前點卡回怪區" (p.reviveF6 ? "並開 F6" : "（不開 F6）") : "留在城裡") : "")
+        . "｜重新登入後：" LoginCfgText(p)
+    AddRecentEvent(p.name " → " txt)
+    EventLog(p.name,"ROLE_TYPE",txt)
+}
+
 ; H-020：死亡警報音 — 總開關與響的秒數（「0/1~秒數」）；總開關關掉時所有角色都不響
 WebSetAlarmGlobal(rawValue) {
     global DeathAlarmEnableCB,DeathAlarmSecondsEdit,INI
@@ -1113,6 +1195,9 @@ PushWebState(*) {
             . ',"reviveReturn":' (ReviveReturnOf(p) ? "true":"false")
             . ',"reviveF6":' (ReviveF6Of(p) ? "true":"false")
             . ',"reviveHint":"' JsonEscapeWeb(ReviveQuickHint(p)) '"'
+            . ',"loginReturn":' (LoginReturnOf(p) ? "true":"false")
+            . ',"loginF6":' (LoginF6Of(p) ? "true":"false")
+            . ',"roleType":"' JsonEscapeWeb(p.HasOwnProp("roleType") ? p.roleType : "") '"'
             . ',"memHp":' (p.memHp+0)
             . ',"memHpMin":' (p.memHpMin+0)
             . ',"memHpMax":' (p.memHpMax+0)

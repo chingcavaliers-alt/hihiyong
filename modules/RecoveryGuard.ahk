@@ -65,6 +65,24 @@ RecoveryQuick(hwnd, needle) {
     return pid ? DailyQuickInfo(pid,needle) : ""
 }
 
+; 登入後動作（每個角色，v1.3.90.68，角色設定 LoginReturn / LoginF6，空白 = 照舊：前點卡回怪區並開 F6）。
+; 跟死亡後的「回城後」一樣三種：回怪區＋開 F6／回怪區不開 F6／留在城裡（不按前點卡、也不開 F6）。
+; 管：登入流程的登入後按鍵與前點卡、綁回監控時補做的前點卡、登入後 3 分鐘檢查、一直死亡時補開 F6。
+LoginReturnOf(p) => (p.HasOwnProp("loginReturn") && p.loginReturn!="" ? (p.loginReturn ? 1 : 0) : 1)
+LoginF6Of(p) => LoginReturnOf(p) && (p.HasOwnProp("loginF6") && p.loginF6!="" ? (p.loginF6 ? 1 : 0) : 1)
+LoginCfgText(p) => !LoginReturnOf(p) ? "留在城裡" : LoginF6Of(p) ? "前點卡回怪區＋開 F6" : "前點卡回怪區（不開 F6）"
+
+; 登入後按鍵（例如「F6,A」）：這個角色不開 F6 時拿掉 F6，其他鍵照舊
+LoginPostKeysOf(p, post) {
+    if LoginF6Of(p)
+        return post
+    out:=""
+    for key in StrSplit(post,",")
+        if Trim(key)!="" && StrUpper(Trim(key))!="F6"
+            out.=(out="" ? "" : ",") Trim(key)
+    return out
+}
+
 ; 前點卡要按的鍵：快捷欄上前點傳送卡實際的鍵；讀不到 / 沒放才用設定的 ReturnKey。
 ; 快捷欄讀得到、但沒有前點傳送卡（沒放 / 用完）→ 回傳 ""，不盲按設定的鍵（那一格可能是寵物卡或消耗品）。
 RecoveryReturnKey(hwnd) {
@@ -228,13 +246,14 @@ RecoveryGuardPostCheck(p) {
     gained:=kills>=p.rgKills ? kills-p.rgKills : kills   ; 跨日時今天從 0 開始
     mins:=Round(RG_POST_CHECK_SEC/60,1)
     problems:=[]
-    if town!=""
+    ; 角色設定「登入後」留在城裡 / 不開 F6：在城裡、F6 沒開、沒有擊殺都不算異常
+    if town!="" && LoginReturnOf(p)
         problems.Push("還在 " town)
-    if auto=0
+    if auto=0 && LoginF6Of(p)
         problems.Push("自動攻擊（F6）沒開")
     money:=RecoveryGuardMoney(p)
     moneyUp:=money!="" && p.HasOwnProp("rgMoney") && p.rgMoney!="" && money>p.rgMoney
-    if p.rgUseKills && gained<=0 && !moneyUp
+    if p.rgUseKills && LoginF6Of(p) && gained<=0 && !moneyUp
         problems.Push(mins " 分鐘內沒有擊殺")
     ; 寵物不在外面（重新登入時換地圖可能把它收起來）：補開
     if RG_AUTO_PET && ReadGamePetOut(p.pid)=0 && IsObject(DailyQuickInfo(p.pid,"寵物卡"))
@@ -273,7 +292,7 @@ RecoveryGuardFix(p, town) {
         DailyEnsureOnScreen(ctx)
         EnsureRecoveryFocus(p.hwnd,p.name)
         Sleep 300
-        if town!="" && (key:=RecoveryReturnKey(p.hwnd))!="" {
+        if town!="" && LoginReturnOf(p) && (key:=RecoveryReturnKey(p.hwnd))!="" {
             before:=ReadGameMapId(p.pid)
             SendOneKey(key)
             moved:=RecoveryGuardWaitMap(p.pid,before,20000)
@@ -287,7 +306,8 @@ RecoveryGuardFix(p, town) {
                 continue
             if StrUpper(key)="F6" {
                 hasF6:=true
-                done.Push(RecoveryGuardAutoOn(p))
+                if LoginF6Of(p)
+                    done.Push(RecoveryGuardAutoOn(p))
                 continue
             }
             if RecoveryPetKeyHandled(p.hwnd,key)
@@ -296,7 +316,7 @@ RecoveryGuardFix(p, town) {
             Sleep 300
             done.Push("按 " key)
         }
-        if !hasF6
+        if !hasF6 && LoginF6Of(p)
             done.Push(RecoveryGuardAutoOn(p))
         if (pet:=RecoveryEnsurePet(p.hwnd,p))!=""
             done.Push(pet)
@@ -355,6 +375,12 @@ RecoveryGuardDeathLoop(p) {
     if RecoveryGuardMiningRecently(p) {
         p.rgDeathChecked:=last,p.rgAutoOffSeen:=0
         EventLog(p.name,"DEATH_LOOP_SKIP",RG_DEATH_WINDOW_MIN " 分鐘內死亡 " n " 次，自動攻擊（F6）沒開｜挖礦中，不開 F6")
+        return
+    }
+    ; 角色設定「登入後」不開 F6（例如採礦角色）：不補開，只記一次
+    if !LoginF6Of(p) {
+        p.rgDeathChecked:=last,p.rgAutoOffSeen:=0
+        EventLog(p.name,"DEATH_LOOP_SKIP",RG_DEATH_WINDOW_MIN " 分鐘內死亡 " n " 次，自動攻擊（F6）沒開｜角色設定「登入後：" LoginCfgText(p) "」，不開 F6")
         return
     }
     ; 剛復活的瞬間可能讀到關閉：連續兩輪（約 5 秒以上）都是關閉才按。

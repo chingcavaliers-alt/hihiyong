@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.65"
+global APP_VERSION := "v1.3.90.95"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -131,6 +131,7 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\DailyHunt.ahk
 ; 水晶礦場自動採礦（依顏色挑礦、走過去、右鍵十字鎬；沒在礦場時用傳送卡禮盒進圖）。
 #Include modules\AutoMining.ahk
+#Include modules\AutoMiningSchedule.ahk
 ; 首頁角色卡「現在在做什麼」。
 #Include modules\Activity.ahk
 ; 首頁每小時摘要（死亡、採礦效率、異常事件，只讀日誌）。
@@ -139,7 +140,7 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\FeaturePriority.ahk
 #Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
-#Include modules\SkillCombo.ahk
+#Include modules\BuffCast.ahk
 ; 縮小小窗：主視窗縮小時顯示監控狀態與功能開關（設定頁勾選才啟用）。
 #Include modules\MiniWindow.ahk
 #Include modules\NetGuard.ahk
@@ -657,7 +658,7 @@ SetTimer QuietFlushTick, 60000
 ; Network Watch 延後啟動，避免 WebView/GUI 啟動階段被網路探測阻塞。
 ; Network Watch 僅作佐證，延後到 WebView 完成後啟動。
 LoadSwitchStopHotkey()
-SkillComboInit()   ; H-027 技能組合快速施法（預設關閉）
+BuffCastInit()     ; 一鍵施法（手動玩的時候用）
 g.Show("Hide w1080 h748")
 SetTimer InitWebUI, -50
 SetTimer MonitorAutoResume, -30000   ; 啟動 30 秒後（WebView、位置資料都好了）接續上次的監控
@@ -686,6 +687,9 @@ LoadProfiles() {
             reviveMode: IniRead(PROFILE_INI,sec,"ReviveMode",""),
             reviveReturn: IniRead(PROFILE_INI,sec,"ReviveReturn",""),
             reviveF6: IniRead(PROFILE_INI,sec,"ReviveF6",""),
+            loginReturn: IniRead(PROFILE_INI,sec,"LoginReturn",""),
+            loginF6: IniRead(PROFILE_INI,sec,"LoginF6",""),
+            roleType: IniRead(PROFILE_INI,sec,"RoleType",""),
             dailyItems: DailyNormalizeItems(IniRead(PROFILE_INI,sec,"DailyItems",DAILY_ALL_ITEMS)),
             dailyMode: IniRead(PROFILE_INI,sec,"DailyMode","town"),
             dailyWeapon: IniRead(PROFILE_INI,sec,"DailyWeapon",""),
@@ -738,6 +742,9 @@ SaveProfiles() {
         IniWrite (p.HasOwnProp("reviveMode") ? p.reviveMode : ""), PROFILE_INI, sec, "ReviveMode"
         IniWrite (p.HasOwnProp("reviveReturn") ? p.reviveReturn : ""), PROFILE_INI, sec, "ReviveReturn"
         IniWrite (p.HasOwnProp("reviveF6") ? p.reviveF6 : ""), PROFILE_INI, sec, "ReviveF6"
+        IniWrite (p.HasOwnProp("loginReturn") ? p.loginReturn : ""), PROFILE_INI, sec, "LoginReturn"
+        IniWrite (p.HasOwnProp("loginF6") ? p.loginF6 : ""), PROFILE_INI, sec, "LoginF6"
+        IniWrite (p.HasOwnProp("roleType") ? p.roleType : ""), PROFILE_INI, sec, "RoleType"
         IniWrite DailyItemsOf(p), PROFILE_INI, sec, "DailyItems"
         IniWrite DailyModeOf(p), PROFILE_INI, sec, "DailyMode"
         IniWrite DailyWeaponOf(p), PROFILE_INI, sec, "DailyWeapon"
@@ -3892,7 +3899,7 @@ FinalizeRecovery(idx, newHwnd, oldBoundPid) {
             EventLog(p.name,"RECOGNITION_MEMORY","畫面掃描判成復活點，但記憶體確認在怪物地圖（" fieldNow "）｜不按前點卡")
             p.locType:="怪物區"
         }
-        if p.locType="復活點" {
+        if p.locType="復活點" && LoginReturnOf(p) {
             EventLog(p.name,"NORMAL_AREA_ACTION","RECOVERY_REBIND 確認一般區｜開始前點")
             Status.Text:="狀態：" p.name "｜一般區確認，使用前點卡"
             key:=RecoveryUseReturnCard(newHwnd,p)
@@ -4533,7 +4540,11 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
 
     ; v1.3.7.6 Fast PostKeys：HUD 已確認 ALIVE 後先保命，再做耗時的位置辨識。
     ; 使用原本 PostKeys 設定，不硬編碼；目前設定為 F5,F6,A。
-    post:=Trim(PostKeysEdit.Value)
+    ; 角色設定「登入後」不開 F6 / 留在城裡：登入後按鍵裡的 F6 不送（其他鍵照送）。
+    raw:=Trim(PostKeysEdit.Value)
+    post:=LoginPostKeysOf(p,raw)
+    if post!=raw
+        EventLog(p.name,"LOGIN_NO_F6","角色設定「登入後：" LoginCfgText(p) "」｜登入後按鍵 " raw " 不送 F6")
     if post!="" {
         ActivateGame(hwnd)
         for key in StrSplit(post,",") {
@@ -4571,7 +4582,10 @@ RecoverProfileEnterGame(idx, hwnd, hudTimeoutSec:=90) {
     else if decision="revive"
         p.locType:="復活點"
 
-    if decision="revive" {
+    if decision="revive" && !LoginReturnOf(p) {
+        ; 11/23 09:49 挖礦（採礦角色）重新登入後在學院廣場被開 F6、按 3 次前點卡 → 角色設定留在城裡就不送回怪區
+        EventLog(p.name,"LOGIN_STAY","角色設定「登入後：留在城裡」｜在 " (town!="" ? town : "復活點") "，不按前點卡")
+    } else if decision="revive" {
         Status.Text:="狀態：" p.name "｜確認復活點，使用前點卡"
         key:=RecoveryUseReturnCard(hwnd,p)
         Status.Text:="狀態：" p.name "｜已使用前點卡 " key

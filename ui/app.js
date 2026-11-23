@@ -152,7 +152,6 @@ function showSub(page,sub){
  onSubShown(sub);
 }
 function onSubShown(sub){
- if(sub==='devzone')send('skillcombostate');
  if(sub==='daily'||sub==='roleCards')send('dailystate');
  if(sub==='recovery')send('recstats');
  if(sub==='dropRates')send('dropindex');
@@ -163,7 +162,7 @@ function onSubShown(sub){
  if(sub==='dailyhunt')send('dailyhuntstate');
  if(sub==='automining')send('autominingstate');
  if(sub==='priority')send('prioritystate');
- if(sub==='skillcombo')send('skillcombostate');
+ if(sub==='buffcast')send('buffcaststate');
  if(sub==='settings')send('loginchars');
  if(sub==='invMain')requestInvStats();
  if(sub==='roleCards'&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats('',true);
@@ -372,7 +371,7 @@ if(selected){
  }
  if(ap)ap.placeholder=selected.hasPassword?'已載入已儲存密碼':'請輸入密碼';
  if(!window.accountFormDirty){
-   ['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{const e=document.getElementById('acct'+k);if(e)e.checked=({Enabled:selected.enabled,Launch:selected.launch,Death:selected.deathDetect,Notify:selected.deathNotify,Soft:selected.soft})[k]||false;}); const as=document.getElementById('acctSoftAuto');if(as)as.checked=!!selected.softAutoRecover; const af=document.getElementById('acctFirst');if(af)af.checked=!!selected.recoveryFirst; const aal=document.getElementById('acctAlarm');if(aal)aal.checked=selected.deathAlarm!==false; const arm=document.getElementById('acctReviveMode');if(arm&&document.activeElement!==arm)arm.value=selected.reviveMode||'auto'; const arr=document.getElementById('acctReviveReturn');if(arr){arr.checked=selected.reviveReturn!==false;arr.disabled=(selected.reviveMode||'auto')!=='auto';} const arf=document.getElementById('acctReviveF6');if(arf){arf.checked=selected.reviveF6!==false;arf.disabled=(selected.reviveMode||'auto')!=='auto'||selected.reviveReturn===false;} const arh=document.getElementById('acctReviveHint');if(arh)arh.textContent=selected.reviveHint?('目前抓到：'+selected.reviveHint+'（回城復活後會按這個鍵用前點卡）'):'';
+   ['Enabled','Launch','Death','Notify','Soft'].forEach(k=>{const e=document.getElementById('acct'+k);if(e)e.checked=({Enabled:selected.enabled,Launch:selected.launch,Death:selected.deathDetect,Notify:selected.deathNotify,Soft:selected.soft})[k]||false;}); const as=document.getElementById('acctSoftAuto');if(as)as.checked=!!selected.softAutoRecover; const af=document.getElementById('acctFirst');if(af)af.checked=!!selected.recoveryFirst; const aal=document.getElementById('acctAlarm');if(aal)aal.checked=selected.deathAlarm!==false; const arm=document.getElementById('acctReviveMode');if(arm&&document.activeElement!==arm)arm.value=selected.reviveMode||'auto'; const arr=document.getElementById('acctReviveReturn');if(arr){arr.checked=selected.reviveReturn!==false;arr.disabled=(selected.reviveMode||'auto')!=='auto';} const arf=document.getElementById('acctReviveF6');if(arf){arf.checked=selected.reviveF6!==false;arf.disabled=(selected.reviveMode||'auto')!=='auto'||selected.reviveReturn===false;} const ala=document.getElementById('acctLoginAct');if(ala&&document.activeElement!==ala)ala.value=selected.loginReturn===false?'stay':(selected.loginF6===false?'back':'back_f6'); const arh=document.getElementById('acctReviveHint');if(arh)arh.textContent=selected.reviveHint?('目前抓到：'+selected.reviveHint+'（回城復活後會按這個鍵用前點卡）'):'';
  }
 } else {
  window.accountFormProfile=0;
@@ -523,8 +522,8 @@ function renderAccounts(a){
  dragSortable(el,'tr.drag-row',(f,t,after)=>{lastAccountStructureSig='';if(f===null)return;const r=dragReorder(a.map(x=>String(x.index)),f,t,after);if(r)send('startorderset',{value:r.join(',')});});
 }
 // v1.3.22.0 首頁「目前啟動的功能」：每個功能一個標籤，點了跳到設定
-function devShow(id){if(id==='skillcombo')send('skillcombostate');document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
-function goTo(page,sub){document.querySelector(`.side [data-page="${page}"]`)?.click();if(page==='tools'&&(sub==='skillcombo'||sub==='inventory')){showSub('tools','devzone');devShow(sub);return;}if(sub)showSub(page,sub);}
+function devShow(id){document.querySelectorAll('#devzone .dev-part').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('#devzone .dev-tabs .chip').forEach(x=>x.classList.toggle('active',x.dataset.dev===id));}
+function goTo(page,sub){document.querySelector(`.side [data-page="${page}"]`)?.click();if(page==='tools'&&sub==='inventory'){showSub('tools','devzone');devShow(sub);return;}if(sub)showSub(page,sub);}
 function renderFeatures(s){
  const el=document.getElementById('featList'); if(!el)return;
  const a=s.accounts||[], en=a.filter(x=>x.enabled), auto=en.filter(x=>x.softAutoRecover).length;
@@ -545,8 +544,99 @@ function renderFeatures(s){
  const html=items.sort((x,y)=>(x[2]==='off')-(y[2]==='off')).map(([ic,name,st,det,pg,sb])=>`<button class="feat ${st==='off'?'':st}" onclick="goTo('${pg}'${sb?`,'${sb}'`:''})" title="${st==='off'?'目前關閉':'目前開著'}｜點一下前往設定"><span class="emo">${ic}</span>${st==='off'?'○':'●'} ${esc(name)}${det?` <small>${esc(det)}</small>`:''}</button>`).join('');
  if(el.innerHTML!==html)el.innerHTML=html;
 }
-// 首頁「每隻角色啟動指令」：把採礦 / 每日討伐 / 命運箱子 / 組隊各自的角色勾選，整理成「每個角色一行」；
-// 後面接死亡後 / 回城復活後的下拉設定（和帳號頁的 revivecfg 同一份設定）
+// 首頁「角色」：每個角色一行（類型＋會怎麼動的摘要＋跟類型不一樣的「已自訂」），點「展開設定」才出現這個角色全部的設定。
+// v1.3.90.69 角色類型範本：選一種就把死亡後 / 登入後 / 自動功能套成那一組；之後手動改的項目標「已自訂」。
+const ROLE_TYPES={
+ hunt:{name:'打怪掛網',desc:'死亡沒珠回城→前點卡回怪區＋F6；重新登入回怪區＋F6',tpl:{reviveMode:'auto',back:'back_f6',login:'back_f6'}},
+ mine:{name:'採礦',desc:'死亡回城後留在城裡；重新登入留在城裡、不開 F6',tpl:{reviveMode:'auto',back:'stay',login:'stay'}},
+ member:{name:'組隊隊員',desc:'同打怪（接受隊長邀請在組隊頁設定）',tpl:{reviveMode:'auto',back:'back_f6',login:'back_f6'}},
+ idle:{name:'只上線不動',desc:'死亡只通知；重新登入留在城裡',tpl:{reviveMode:'off',login:'stay'}}
+};
+// v1.3.90.72：類型只管「死亡後」和「登入後」；自動採礦 / 每日討伐 / 命運箱子不會因為換類型被勾掉或勾上（11/23 15:59 欸等切到組隊隊員又切回來，每日討伐被取消）
+const ROLE_BACK={back_f6:'前點卡回怪區＋開 F6',back:'前點卡回怪區（不開 F6）',stay:'留在城裡'};
+const ROLE_ITEMS=[
+ {g:'死亡',k:'reviveMode',label:'死亡後自動復活',tip:'死亡超過 30 秒還沒復活時。每日討伐途中死亡會馬上處理。',opts:[['auto','有歸魂珠用歸魂珠，沒有就復活回城'],['bead','只用歸魂珠（沒有就通知）'],['off','不自動復活，只通知']]},
+ {g:'死亡',k:'back',label:'回城後',tip:'沒有歸魂珠回城復活之後。每日道具到期時改由每日道具更換送回去；30 分鐘內第 3 次回城就不送。',opts:Object.entries(ROLE_BACK),dis:c=>c.reviveMode!=='auto'},
+ {g:'重新登入',k:'login',label:'登入後',tip:'斷線 / 遊戲關閉後自動重新登入進遊戲之後。登入後按鍵裡的其他鍵（例如 A）照常送出。',opts:[['back_f6','在城裡就用前點卡回怪區＋開 F6'],['back','在城裡就用前點卡回怪區（不開 F6）'],['stay','留在城裡（不按前點卡、不開 F6）']]},
+ {g:'重新登入',k:'first',label:'優先重新登入（隊長）',tip:'一起重新登入時排在最前面。隊長勾這個，隊員回來時隊長已經在怪區。',bool:true},
+ {g:'自動功能',k:'mn',label:'自動採礦',tip:'水晶礦場。顏色順序、打王技能、趟數在「工具 → 自動採礦」設定。',bool:true},
+ {g:'自動功能',k:'dh',label:'每日討伐',tip:'每日討伐任務。定時啟動與項目在「工具 → 每日討伐」設定。',bool:true},
+ {g:'自動功能',k:'mb',label:'命運箱子',tip:'自動開命運箱子。總開關與按鍵在「工具 → 命運箱子」設定。',bool:true},
+ {g:'監控與偵測',k:'mon',label:'納入監控',tip:'關掉就不偵測死亡、不自動重新登入。',bool:true},
+ {g:'監控與偵測',k:'soft',label:'假在線偵測',tip:'血量長時間沒變化時判定假在線。總開關在「設定 → 監控」。',bool:true},
+ {g:'監控與偵測',k:'auto',label:'假在線自動恢復',tip:'建議只對長時間掛機打怪的角色開啟。一般斷線不受這個開關影響。',bool:true}
+];
+// 目前的值；採礦 / 每日討伐 / 命運箱子清單還沒讀到時是 undefined（不判斷是否自訂）
+function roleCur(x){
+ const F=homeFeat,on=(l,f)=>l?l.some(f):undefined;
+ return {reviveMode:x.reviveMode||'auto',back:x.reviveReturn===false?'stay':(x.reviveF6===false?'back':'back_f6'),
+  login:x.loginReturn===false?'stay':(x.loginF6===false?'back':'back_f6'),first:!!x.recoveryFirst,
+  mn:on(F.mn&&F.mn.chars,c=>c.name===x.name&&c.on),dh:on(F.dh&&F.dh.chars,c=>c.name===x.name&&c.on),
+  mb:on(F.mbox&&F.mbox.roles,r=>r.name===x.name&&r.on),mon:!!x.enabled,soft:!!x.soft,auto:!!x.softAutoRecover};
+}
+function roleDiff(x){
+ const t=ROLE_TYPES[x.roleType];if(!t)return [];
+ const c=roleCur(x);
+ return ROLE_ITEMS.filter(it=>(it.k in t.tpl)&&c[it.k]!==undefined&&!(it.dis&&it.dis(c))&&c[it.k]!==t.tpl[it.k]);
+}
+function roleSummary(x){
+ const c=roleCur(x),F=homeFeat,out=[];
+ out.push('死亡：'+(c.reviveMode==='auto'?'沒珠回城→'+ROLE_BACK[c.back].replace('（不開 F6）',''):c.reviveMode==='bead'?'只用歸魂珠':'只通知'));
+ out.push('登入：'+ROLE_BACK[c.login].replace('（不開 F6）','').replace('開 F6','F6'));
+ // 組隊：自己是隊長、自己勾了接受邀請、或被某隻隊長列在隊員名單裡（11/23 小柯基、椰奶在欸等的隊員名單，首頁卻沒標）
+ const roles=(F.party&&F.party.roles)||[],me=roles.find(r=>r.name===x.name);
+ const lead=roles.find(r=>r.leader&&r.name!==x.name&&(r.members||[]).includes(x.name));
+ const pt=me&&me.leader?'組隊（隊長）':lead?`組隊（隊員，隊長 ${lead.name}）`:me&&me.accept?`組隊（接受${me.acceptFrom?' '+me.acceptFrom+' ':''}邀請）`:'';
+ const fs=[c.mn&&('自動採礦'+(F.mn&&F.mn.running?'（執行中）':'')),c.dh&&('每日討伐'+(F.dh&&F.dh.running?'（執行中）':'')),c.mb&&'命運箱子',pt].filter(Boolean);
+ if(fs.length)out.push(fs.join('、'));
+ if(!c.mon)out.push('沒有納入監控');
+ return out;
+}
+let mxOpen=0;
+function mxOpenToggle(idx){mxOpen=mxOpen===idx?0:idx;renderMatrix();}
+function rolePanel(x){
+ const t=ROLE_TYPES[x.roleType],c=roleCur(x),diffK=new Set(roleDiff(x).map(it=>it.k));
+ const types=Object.entries(ROLE_TYPES).map(([k,v])=>`<label class="rp-type ${x.roleType===k?'on':''}"><span><input type="radio" name="rt${x.index}" ${x.roleType===k?'checked':''} onchange="roleApply(${x.index},'${k}')"> ${v.name}</span><small>${esc(v.desc)}</small></label>`).join('');
+ let g='',body='';
+ ROLE_ITEMS.forEach(it=>{
+  if(it.g!==g){body+=(g?'</div>':'')+`<div class="rp-group"><h4>${it.g}</h4>`;g=it.g;}
+  const v=c[it.k],dis=it.dis&&it.dis(c);
+  const ctl=it.bool?`<label class="toggle"><input type="checkbox" ${v?'checked':''} ${v===undefined?'disabled':''} onchange="roleItem(${x.index},'${it.k}',this.checked)"> ${v===undefined?'讀取中…':v?'開':'關'}</label>`
+   :`<select ${dis?'disabled':''} onchange="roleItem(${x.index},'${it.k}',this.value)">${it.opts.map(([o,l])=>`<option value="${o}" ${o===v?'selected':''}>${l}</option>`).join('')}</select>`;
+  const st=!t||!(it.k in t.tpl)||dis?'':diffK.has(it.k)?`<span class="mx-custom">已自訂</span><button class="rp-reset" onclick="roleReset(${x.index},'${it.k}')">改回預設</button>`:'<span class="muted">跟著類型</span>';
+  body+=`<div class="rp-item"><span class="rp-label">${it.label}<span class="rp-tip" tabindex="0" title="${esc(it.tip)}" aria-label="說明：${esc(it.tip)}">ⓘ</span></span><span class="rp-ctl">${ctl}</span><span class="rp-st">${st}</span></div>`;
+ });
+ body+='</div>';
+ const hint=(x.reviveHint||'').split('｜')[0];
+ return `<div class="rp"><div class="rp-head"><b>角色類型</b><span class="muted">類型只套用「死亡後」和「登入後」；自動採礦、每日討伐、命運箱子不會因為換類型改到。手動改過的標「已自訂」。</span>${t&&diffK.size?`<button class="btn" onclick="roleResetAll(${x.index})">全部改回類型預設</button>`:''}</div>`
+  +`<div class="rp-types">${types}</div>${body}<div class="hint">每日道具、組隊、採礦顏色等細項仍在各自的頁面設定。${hint?'｜'+esc(hint):''}</div></div>`;
+}
+// 指令一個一個送（間隔 1.5 秒）：程式存檔約 2 秒，期間連續改 location.href，後面的會蓋掉前面的（11/23 12:06 登入後沒存到）
+let roleQ=[],roleQT=0;
+function roleQueue(fn){roleQ.push(fn);if(!roleQT)roleQT=setInterval(()=>{const f=roleQ.shift();if(f){try{f();}catch(e){}}if(!roleQ.length){clearInterval(roleQT);roleQT=0;}},1500);}
+const roleAcc=idx=>(latestState.accounts||[]).find(a=>a.index==idx);
+function roleSet(idx,k,v){
+ const x=roleAcc(idx);if(!x)return;
+ if(k==='reviveMode')mxRevive(idx,'mode',v);
+ else if(k==='back')mxRevive(idx,'back',v);
+ else if(k==='login')mxLogin(idx,v);
+ else if(k==='first'){x.recoveryFirst=v?1:0;location.href='hihiyong://recoveryfirst/'+idx+'~'+(v?1:0);renderMatrix();}
+ else if(roleCur(x)[k]!==undefined&&roleCur(x)[k]!==v)mxToggle(k,idx,x.name);
+}
+function roleItem(idx,k,v){roleQueue(()=>roleSet(idx,k,v));}
+// 類型＋死亡後＋登入後由程式一次改好（roleapply）；自動採礦 / 每日討伐 / 命運箱子再一項一項送
+function roleApply(idx,type){
+ const x=roleAcc(idx),t=ROLE_TYPES[type];if(!x||!t)return;
+ const p=t.tpl;
+ x.roleType=type;x.reviveMode=p.reviveMode;
+ if(p.back){x.reviveReturn=p.back!=='stay';if(p.back!=='stay')x.reviveF6=p.back==='back_f6';}
+ x.loginReturn=p.login!=='stay';x.loginF6=p.login==='back_f6';
+ roleQueue(()=>{location.href='hihiyong://roleapply/'+idx+'~'+type;});
+ ['mn','dh','mb'].filter(k=>k in p).forEach(k=>roleQueue(()=>{const y=roleAcc(idx);if(y&&roleCur(y)[k]!==undefined&&roleCur(y)[k]!==p[k])mxToggle(k,idx,y.name);}));
+ renderMatrix();
+}
+function roleReset(idx,k){const x=roleAcc(idx),t=x&&ROLE_TYPES[x.roleType];if(t&&k in t.tpl)roleItem(idx,k,t.tpl[k]);}
+function roleResetAll(idx){const x=roleAcc(idx);if(x&&ROLE_TYPES[x.roleType])roleApply(idx,x.roleType);}
 const homeFeat={mn:null,dh:null,mbox:null,party:null};
 function wrapHomeFeed(fn,key){const orig=window[fn];if(typeof orig!=='function')return;window[fn]=function(d){orig.apply(this,arguments);homeFeat[key]=d;renderMatrix();};}
 function requestHomeFeat(){['autominingstate','dailyhuntstate','mboxstate','partystate'].forEach(a=>send(a));}
@@ -555,37 +645,13 @@ function renderMatrix(){
  if(el.contains(document.activeElement)&&document.activeElement.tagName==='SELECT')return;   // 正在選下拉選單：先不重畫
  const acc=(latestState.accounts||[]).filter(x=>x.enabled||x.launch);
  if(!acc.length){el.innerHTML='<span class="muted">目前沒有勾選的角色</span>';return;}
- const F=homeFeat;
- const mnOn=n=>((F.mn&&F.mn.chars)||[]).some(c=>c.name===n&&c.on);
- const dhOn=n=>((F.dh&&F.dh.chars)||[]).some(c=>c.name===n&&c.on);
- const mbOn=n=>((F.mbox&&F.mbox.roles)||[]).some(r=>r.name===n&&r.on);
- const ptOn=n=>((F.party&&F.party.roles)||[]).some(r=>r.name===n&&(r.leader||r.accept));
- const feats=[
-  ['mon','🛡️','監控',x=>!!x.enabled,'',true],
-  ['soft','👻','假在線偵測',x=>!!x.soft&&!!latestState.softEnabled,latestState.softEnabled?'':'（總開關關閉）',true],
-  ['auto','🔧','自動恢復',x=>!!x.softAutoRecover,'',true],
-  ['mn','⛏','採礦',x=>mnOn(x.name),F.mn&&F.mn.running?'執行中':'',F.mn!==null],
-  ['dh','🎯','每日討伐',x=>dhOn(x.name),F.dh&&F.dh.running?'執行中':'',F.dh!==null],
-  ['mb','🎁','命運箱子',x=>mbOn(x.name),F.mbox&&!F.mbox.enabled?'（總開關關閉）':'',F.mbox!==null],
-  ['pt','🤝','組隊',x=>ptOn(x.name),'',false]];
- const html=acc.map(x=>{const f=friendlyState(x);
-  return `<div class="mx-row"><div class="mx-name">${esc(x.name)}<small class="${f[2]}">${esc(f[1])}</small></div><div class="mx-chips">`
-   +feats.map(([k,ic,t,get,note,canToggle])=>{const on=get(x);const busy=on&&note==='執行中';
-    const act=canToggle?`mxToggle('${k}',${x.index},'${esc(x.name).replace(/'/g,"\'")}')`:`goTo('tools','party')`;
-    return `<button class="mx-chip ${on?'on':''} ${busy?'busy':''}" ${canToggle?'':'data-nav="1"'} onclick="${act}" title="${canToggle?'點一下開 / 關':'組隊設定較複雜，點一下前往設定'}">${ic} ${t}${note&&(on||note.startsWith('（'))?' <small>'+note+'</small>':''}</button>`;}).join('')
-   +`</div>`+mxCmds(x)+`</div>`;}).join('');
+ const html=acc.map(x=>{const f=friendlyState(x);const t=ROLE_TYPES[x.roleType];const diff=roleDiff(x);
+  return `<div class="mx-row"><div class="mx-name">${esc(x.name)}<small class="${f[2]}">${esc(f[1])}</small></div>`
+   +`<span class="mx-type ${t?'on':''}">${t?t.name:'未選類型'}</span>`
+   +`<div class="mx-sum">${roleSummary(x).map(v=>`<span>${esc(v)}</span>`).join('')}${diff.length?`<span class="mx-custom">已自訂：${esc(diff.map(it=>it.label).join('、'))}</span>`:''}</div>`
+   +`<button class="btn mx-open" onclick="mxOpenToggle(${x.index})">${mxOpen===x.index?'收起設定':'展開設定'}</button>`
+   +(mxOpen===x.index?rolePanel(x):'')+`</div>`;}).join('');
  if(el.innerHTML!==html)el.innerHTML=html;
-}
-// 死亡後 / 回城復活後的下拉選單；後面一行小字是目前從遊戲讀到的前點卡按鍵與歸魂珠
-function mxCmds(x){
- const mode=x.reviveMode||'auto',back=x.reviveReturn===false?'stay':(x.reviveF6===false?'back':'back_f6');
- const opt=(v,t,cur)=>`<option value="${v}" ${v===cur?'selected':''}>${t}</option>`;
- const hint=(x.reviveHint||'').split('｜')[0];
- return `<div class="mx-cmds"><label title="死亡超過 30 秒還沒復活時">💀 死亡後<select onchange="mxRevive(${x.index},'mode',this.value)">`
-  +opt('auto','有歸魂珠用歸魂珠，沒有就復活回城',mode)+opt('bead','只用歸魂珠',mode)+opt('off','不自動復活，只通知',mode)
-  +`</select></label><label title="沒有歸魂珠回城復活後（每日道具到期時改由每日道具更換送回去）">🏙 回城後<select ${mode==='auto'?'':'disabled'} onchange="mxRevive(${x.index},'back',this.value)">`
-  +opt('back_f6','前點卡回怪區＋開 F6',back)+opt('back','前點卡回怪區（不開 F6）',back)+opt('stay','留在城裡',back)
-  +`</select></label>${hint?`<small class="mx-hint">${esc(hint)}</small>`:''}</div>`;
 }
 function mxRevive(idx,field,v){
  const x=(latestState.accounts||[]).find(a=>a.index==idx);if(!x)return;
@@ -703,6 +769,7 @@ function saveAcct(){
 const acctAlarm=document.getElementById('acctAlarm'); if(acctAlarm)acctAlarm.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://deathalarm/'+idx+'~'+(acctAlarm.checked?1:0);});
 const reviveCfgSend=()=>{const idx=Number(document.getElementById('profileSelect')?.value||0),m=document.getElementById('acctReviveMode'),r=document.getElementById('acctReviveReturn'),f=document.getElementById('acctReviveF6');if(idx&&m&&r&&f)location.href='hihiyong://revivecfg/'+idx+'~'+m.value+'~'+(r.checked?1:0)+'~'+(f.checked?1:0);};
 ['acctReviveMode','acctReviveReturn','acctReviveF6'].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener('change',reviveCfgSend);});
+{const e=document.getElementById('acctLoginAct');if(e)e.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://logincfg/'+idx+'~'+(e.value!=='stay'?1:0)+'~'+(e.value==='back_f6'?1:0);});}
 const acctFirst=document.getElementById('acctFirst'); if(acctFirst)acctFirst.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://recoveryfirst/'+idx+'~'+(acctFirst.checked?1:0);});
 const acctSoftAuto=document.getElementById('acctSoftAuto'); if(acctSoftAuto)acctSoftAuto.addEventListener('change',()=>{const idx=Number(document.getElementById('profileSelect')?.value||0);if(idx)location.href='hihiyong://softautorecover/'+idx+'~'+(acctSoftAuto.checked?1:0);});
 
@@ -914,39 +981,6 @@ function saveMBoxCfg(){send('mboxcfg',{value:`${document.getElementById('mboxEna
 function saveMBoxRole(el){const tr=el.closest('tr');const key=(tr.querySelector('input[type=text]').value||'e').trim();
  send('mboxrole',{value:`${tr.dataset.idx}~${tr.querySelector('input[type=checkbox]').checked?1:0}~${key}~${tr.dataset.name}`});}
 // H-027 技能組合
-function renderSkillCombo(d){
- const en=document.getElementById('scEnabled'),pk=document.getElementById('scPauseKey'),pill=document.getElementById('scPill'),st=document.getElementById('scState');
- if(en&&document.activeElement!==en)en.checked=!!d.enabled;
- if(pk&&document.activeElement!==pk)pk.value=d.pauseKey||'';
- const on=(d.combos||[]).filter(c=>c.on&&!c.err).length;
- if(pill)pill.textContent=d.enabled?(d.paused?`已暫停｜${on} 組`:`啟用中｜${on} 組`):'未啟用';
- if(st)st.textContent=d.enabled?`已送出 ${d.fired||0} 次`:'';
- const box=document.getElementById('scRows');if(!box)return;
- if(box.contains(document.activeElement)&&document.activeElement.tagName==='INPUT'&&document.activeElement.type==='text')return;   // 正在輸入時不重畫
- const rows=d.combos||[];
- box.innerHTML=rows.length?rows.map((c,i)=>`<tr data-i="${i}"><td><input type="checkbox" ${c.on?'checked':''} onchange="saveSCList()"></td>`
-  +`<td><input type="text" class="sc-label" value="${esc(c.label)}" maxlength="12" style="width:90px" onchange="saveSCList()"></td>`
-  +`<td><input type="text" class="sc-trigger" value="${esc(c.trigger)}" maxlength="10" style="width:76px" onchange="saveSCList()"></td>`
-  +`<td><input type="text" class="sc-keys" value="${esc(c.keys)}" maxlength="40" style="width:150px" placeholder="例如 1,2,3" onchange="saveSCList()"></td>`
-  +`<td><select class="sc-mode" onchange="saveSCList()"><option value="seq"${c.mode==='all'?'':' selected'}>依序</option><option value="all"${c.mode==='all'?' selected':''}>同時</option></select></td>`
-  +`<td><input type="number" class="sc-hold" value="${c.hold}" min="30" max="500" title="每個鍵按住幾毫秒：最少 30（遊戲大約每 16 毫秒才讀一次鍵盤，按得太短會被漏掉，只放出其中一個技能）" style="width:70px" onchange="saveSCList()"></td>`
-  +`<td><input type="number" class="sc-gap" value="${c.gap}" min="0" max="1000" style="width:70px" onchange="saveSCList()"></td>`
-  +`<td><input type="checkbox" class="sc-rep" ${c.repeat?'checked':''} onchange="saveSCList()"></td>`
-  +`<td><button class="btn soft" onclick="scDel(${i})">刪除</button></td></tr>`
-  +(c.err?`<tr class="sc-err"><td></td><td colspan="8" class="warn">⚠ ${esc(c.err)}</td></tr>`:'')).join('')
-  :'<tr><td colspan="9" class="hint">還沒有組合，按下面「＋ 新增組合」</td></tr>';
-}
-function scCollect(){
- return [...document.querySelectorAll('#scRows tr[data-i]')].map(tr=>{
-  const g=s=>tr.querySelector(s);
-  const clean=v=>String(v).replace(/[~|\r\n]/g,'').trim();
-  return [g('input[type=checkbox]').checked?1:0,clean(g('.sc-trigger').value),clean(g('.sc-keys').value).replace(/\s+/g,''),g('.sc-mode').value,g('.sc-hold').value||40,g('.sc-gap').value||10,g('.sc-rep').checked?1:0,clean(g('.sc-label').value)].join('~');
- });
-}
-function saveSCList(){send('skillcombolist',{value:scCollect().join('|')});}
-function scAdd(){const rows=scCollect();if(rows.length>=12)return;rows.push('1~~~all~45~0~0~');send('skillcombolist',{value:rows.join('|')});}
-function scDel(i){const rows=scCollect();rows.splice(i,1);send('skillcombolist',{value:rows.join('|')});}
-function saveSCCfg(){send('skillcombocfg',{value:`${document.getElementById('scEnabled').checked?1:0}~${document.getElementById('scPauseKey').value.trim()}`});}// H-018 自動組隊
 let partySig='';
 function renderParty(d){
  const en=document.getElementById('partyEnabled'),st=document.getElementById('partySettle'),bl=document.getElementById('partyBlocker'),pill=document.getElementById('partyPill');
@@ -1060,7 +1094,7 @@ function renderMnColors(){const el=document.getElementById('mnColors');if(!el||d
  dragSortable(el,'.fp-row',(f,t,after)=>{if(f!==null){const r=dragReorder(mnColorList,f,t,after);if(r){mnColorList=r;saveAutoMining();}}renderMnColors();});}
 function mnColorToggle(c,on){if(on)mnColorOn.add(c);else mnColorOn.delete(c);renderMnColors();saveAutoMining();}
 function mnColorMove(i,dir){const j=i+dir;if(j<0||j>=mnColorList.length)return;[mnColorList[i],mnColorList[j]]=[mnColorList[j],mnColorList[i]];renderMnColors();saveAutoMining();}
-function renderAutoMining(d){renderMnStats(d.stats);if(Array.isArray(d.colors)){mnColorOn=new Set(d.colors);mnColorList=[...d.colors,...mnColorList.filter(c=>!d.colors.includes(c))];renderMnColors();}mnChars=d.chars||[];mnRunning=!!d.running;const btn=document.getElementById('mnRun'),box=document.getElementById('mnChars'),pill=document.getElementById('mnPill'),en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),bs=document.getElementById('mnBoss'),br=document.getElementById('mnBar'),sk=document.getElementById('mnSkill'),cs=document.getElementById('mnCurSkill'),sh=document.getElementById('mnSkipHard'),hc=document.getElementById('mnHardCount'),lp=document.getElementById('mnLoops'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume');if(rs&&document.activeElement!==rs&&d.resume!==undefined)rs.checked=!!d.resume;if(lp&&document.activeElement!==lp&&d.loops!==undefined)lp.value=String(d.loops);if(stc&&document.activeElement!==stc&&d.strictColor!==undefined)stc.checked=!!d.strictColor;mnCur=d.curSkill||null;if(sh&&document.activeElement!==sh&&d.skipHard!==undefined)sh.checked=!!d.skipHard;if(hc)hc.textContent=(d.hardCount||d.blockCount)?`（已記下 ${d.hardCount||0} 個不好走、${d.blockCount||0} 個不去採的位置）`:'';if(btn)btn.textContent=mnRunning?'■ 停止':'▶ 啟動';if(pill)pill.textContent=mnRunning?'採礦中':'已停止';if(btn)btn.disabled=d.licensed===false;if(d.licensed===false&&pill)pill.textContent='🔒 這台電腦沒有有效的使用授權';if(en&&document.activeElement!==en)en.checked=!!d.autoEnter;if(kp&&document.activeElement!==kp)kp.checked=!!d.keepInv;if(bs&&document.activeElement!==bs)bs.checked=!!d.boss;if(br&&document.activeElement!==br&&d.bossBar!==undefined)br.value=String(d.bossBar);if(sk&&document.activeElement!==sk&&d.bossSkill!==undefined)sk.value=d.bossSkill;if(cs)cs.textContent=mnCur?`目前：${mnCur.name||'（未知技能）'}（${mnCur.id||'—'}）｜技能欄 F${mnCur.bar}`:'';if(box)box.innerHTML=mnChars.length?mnChars.map((c,i)=>{const s=(d.states||[]).find(x=>x.name===c.name)||{};const sr=(d.stats||[]).find(x=>x.name===c.name);const bad=/⚠|卡住|失敗|不足|沒有入場|斷線/.test(s.text||'');return `<div class="char-card ${c.on?(bad?'warn':'on'):''}"><div class="cc-head"><label class="toggle" style="margin:0"><input type="checkbox" ${c.on?'checked':''} onchange="mnCharToggle(${i},this.checked)"> ${esc(c.name)}</label>${sr?`<span class="cc-meta" style="margin-left:auto">今天 ${sr.dayGathers} 顆</span>`:''}</div>${mnRunning&&c.on?`<div class="cc-state">${esc(s.text||'等待中')}</div>${s.visit?`<div class="cc-meta">${esc(s.visit)}</div>`:''}${s.eta?`<div class="cc-meta">⏱ ${esc(s.eta)}</div>`:''}`:`<div class="cc-meta">${c.on?'已勾選，按啟動開始':'未勾選'}</div>`}<div class="cc-row"><span class="cc-meta">打王技能</span><select title="這個角色打王用技能欄第 1 排的第幾格（按 F1～F10 選）。「依職業」：欸等（職業 8）用右鍵技能代碼，其他職業用第 1 格。" onchange="mnSlot(${i},this.value)"><option value="0" ${!c.slot?'selected':''}>依職業</option>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}" ${c.slot===n?'selected':''}>第 ${n} 格</option>`).join('')}</select></div></div>`;}).join(''):'<span class="hint">沒有可用的角色</span>';
+function renderAutoMining(d){mnLast=d;renderMnStats(d.stats);if(Array.isArray(d.colors)){mnColorOn=new Set(d.colors);mnColorList=[...d.colors,...mnColorList.filter(c=>!d.colors.includes(c))];renderMnColors();}mnChars=d.chars||[];mnRunning=!!d.running;const btn=document.getElementById('mnRun'),box=document.getElementById('mnChars'),pill=document.getElementById('mnPill'),en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),bs=document.getElementById('mnBoss'),br=document.getElementById('mnBar'),sk=document.getElementById('mnSkill'),cs=document.getElementById('mnCurSkill'),sh=document.getElementById('mnSkipHard'),hc=document.getElementById('mnHardCount'),lp=document.getElementById('mnLoops'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume');if(rs&&document.activeElement!==rs&&d.resume!==undefined)rs.checked=!!d.resume;if(lp&&document.activeElement!==lp&&d.loops!==undefined)lp.value=String(d.loops);if(stc&&document.activeElement!==stc&&d.strictColor!==undefined)stc.checked=!!d.strictColor;mnCur=d.curSkill||null;if(sh&&document.activeElement!==sh&&d.skipHard!==undefined)sh.checked=!!d.skipHard;if(hc)hc.textContent=(d.hardCount||d.blockCount)?`（已記下 ${d.hardCount||0} 個不好走、${d.blockCount||0} 個不去採的位置）`:'';if(btn)btn.textContent=mnRunning?'■ 停止':'▶ 啟動';if(pill)pill.textContent=mnRunning?'採礦中':'已停止';if(btn)btn.disabled=d.licensed===false;if(d.licensed===false&&pill)pill.textContent='🔒 這台電腦沒有有效的使用授權';if(en&&document.activeElement!==en)en.checked=!!d.autoEnter;if(kp&&document.activeElement!==kp)kp.checked=!!d.keepInv;if(bs&&document.activeElement!==bs)bs.checked=!!d.boss;if(br&&document.activeElement!==br&&d.bossBar!==undefined)br.value=String(d.bossBar);if(sk&&document.activeElement!==sk&&d.bossSkill!==undefined)sk.value=d.bossSkill;if(cs)cs.textContent=mnCur?`目前：${mnCur.name||'（未知技能）'}（${mnCur.id||'—'}）｜技能欄 F${mnCur.bar}`:'';renderMnRelay(d);if(box&&!(box.contains(document.activeElement)&&['INPUT','SELECT'].includes(document.activeElement.tagName)))box.innerHTML=mnChars.length?mnChars.map((c,i)=>{const s=(d.states||[]).find(x=>x.name===c.name)||{};const sr=(d.stats||[]).find(x=>x.name===c.name);const bad=/⚠|卡住|失敗|不足|沒有入場|斷線/.test(s.text||'');return `<div class="char-card ${c.on?(bad?'warn':'on'):''}"><div class="cc-head"><label class="toggle" style="margin:0"><input type="checkbox" ${c.on?'checked':''} onchange="mnCharToggle(${i},this.checked)"> ${esc(c.name)}</label>${sr?`<span class="cc-meta" style="margin-left:auto">今天 ${sr.dayGathers} 顆</span>`:''}</div>${mnRunning&&c.on?`<div class="cc-state">${esc(s.text||'等待中')}</div>${s.visit?`<div class="cc-meta">${esc(s.visit)}</div>`:''}${s.eta?`<div class="cc-meta">⏱ ${esc(s.eta)}</div>`:''}`:`<div class="cc-meta">${c.on?'已勾選，按啟動開始':'未勾選'}</div>`}${c.sched?`<div class="cc-meta">⏰ 排班 ${esc(c.sched)}｜${esc(c.schedStatus||'')}</div>`:''}${mnCharCfgHtml(c,i)}</div>`;}).join(''):'<span class="hint">沒有可用的角色</span>';
  {const bar=document.getElementById('mnOpBar'),sum=document.getElementById('mnSum'),sub=document.getElementById('mnSumSub');if(bar&&sum&&sub){const on=mnChars.filter(c=>c.on),sts=(d.states||[]).filter(x=>on.some(c=>c.name===x.name));const bad=sts.find(x=>/⚠|卡住|失敗|不足|沒有入場|斷線/.test(x.text||''));const today=(d.stats||[]).filter(x=>on.some(c=>c.name===x.name)).reduce((a,x)=>a+(x.dayGathers||0),0);
   bar.className='op-bar'+(d.licensed===false?' warn':(bad?' warn':(mnRunning?' on':'')));
   if(d.licensed===false){sum.textContent='🔒 這台電腦沒有有效的使用授權';sub.textContent='請到「設定 → 其他 → 使用授權」確認';}
@@ -1073,7 +1107,9 @@ function mnUseCurSkill(){if(mnCur&&mnCur.id){const sk=document.getElementById('m
 function mnSlot(i,v){if(mnChars[i])mnChars[i].slot=parseInt(v)||0;saveAutoMining();}
 function mnCharToggle(i,on){if(mnChars[i])mnChars[i].on=on;saveAutoMining();}
 function mnToggleRun(){mnRunning=!mnRunning;saveAutoMining();}
-function saveAutoMining(){const en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),bs=document.getElementById('mnBoss'),br=document.getElementById('mnBar'),sk=document.getElementById('mnSkill'),sh=document.getElementById('mnSkipHard'),lp=document.getElementById('mnLoops'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume');send('autominingset',{value:`${mnRunning?1:0}~${mnChars.filter(c=>c.on).map(c=>c.name).join('|')}~${en&&en.checked?1:0}~${kp&&kp.checked?1:0}~${mnColorList.filter(c=>mnColorOn.has(c)).join(',')}~${bs&&bs.checked?1:0}~${br?br.value:8}~${sk?sk.value.trim():''}~${sh&&sh.checked?1:0}~${lp?Math.max(0,Math.min(99,parseInt(lp.value)||0)):0}~${stc&&stc.checked?1:0}~${mnChars.filter(c=>c.slot>0).map(c=>c.name+':'+c.slot).join('|')}~${rs&&rs.checked?1:0}`});}
+// v1.3.90.72：顏色、打王、打王技能欄 / 右鍵技能、趟數改成只在每個角色的「設定」裡改；共用值保留在設定檔當作新角色的預設，這裡照最後讀到的送回去
+let mnLast={};
+function saveAutoMining(){const en=document.getElementById('mnEnter'),kp=document.getElementById('mnKeep'),sh=document.getElementById('mnSkipHard'),stc=document.getElementById('mnStrict'),rs=document.getElementById('mnResume'),L=mnLast;send('autominingset',{value:`${mnRunning?1:0}~${mnChars.filter(c=>c.on).map(c=>c.name).join('|')}~${en&&en.checked?1:0}~${kp&&kp.checked?1:0}~${(L.colors||[]).join(',')}~${L.boss?1:0}~${L.bossBar??8}~${L.bossSkill||''}~${sh&&sh.checked?1:0}~${Math.max(0,Math.min(99,parseInt(L.loops)||0))}~${stc&&stc.checked?1:0}~${mnChars.filter(c=>c.slot>0).map(c=>c.name+':'+c.slot).join('|')}~${rs&&rs.checked?1:0}`});}
 function dhNpcPick(){const sel=document.getElementById('dhNpcSel'),inp=document.getElementById('dhNpc');if(sel.value==='__other'){inp.style.display='';inp.focus();return;}inp.style.display='none';inp.value=sel.value;saveDailyHunt();}
 function dhSpot(map,what){send('dailyhuntspot',{value:`${map}~${what}`});}
 function dhAfter(v){send('dailyhuntafter',{value:v});}
@@ -1085,6 +1121,111 @@ function renderDhSched(d){
  const stb=document.getElementById('dhStats');
  if(stb)stb.innerHTML=(d.stats||[]).length?`<table><thead><tr><th>角色</th><th>開始</th><th>觸發</th><th>各地圖花的時間</th><th>總時長</th><th>實際作業</th></tr></thead><tbody>`+(d.stats||[]).map(r=>`<tr><td>${esc(r.char)}</td><td>${esc(r.date)}</td><td>${esc(r.trigger)}</td><td>${r.maps.map(m=>esc(m.n)+' '+dhFmt(m.s)).join('<br>')}</td><td>${dhFmt(r.wall)}</td><td>${dhFmt(r.active)}</td></tr>`).join('')+'</tbody></table>':'還沒有跑完的紀錄';
 }
+// v1.3.90.71 每個角色自己的採礦設定（空白 = 用上面的共用設定）＋排班進場時間；「存」一次送出
+const mnOpen=new Set();
+const MN_ALL_COLORS=['綠','紫','紅','黃','藍'];
+// 顏色文字用的色（比圓點的色深一點，白底看得清楚；黃色特別加深）
+const MN_COLOR_TEXT={'綠':'#1e8449','紫':'#7d3c98','紅':'#c0392b','黃':'#9a7d0a','藍':'#1f618d'};
+const mnColorWord=x=>`<b style="color:${MN_COLOR_TEXT[x]||'inherit'}">${esc(x)}</b>`;
+function mnCharCfgHtml(c,i){
+ const L=mnLast,opt=(val,t,cur)=>`<option value="${val}" ${String(cur)===String(val)?'selected':''}>${t}</option>`;
+ const colors=c.cColors==='-'?'':(c.cColors||(L.colors||[]).join(',')),boss=c.cBoss!==''&&c.cBoss!==undefined?c.cBoss:(L.boss?'1':'0'),loops=c.cLoops!==''&&c.cLoops!==undefined?c.cLoops:String(L.loops??0);
+ const cl=colors?colors.split(','):[];
+ // 顏色順序：第 1～5 順位各一個下拉，選「—」= 不挖；同一個顏色選兩次只算前面那個
+ const colorSel=[0,1,2,3,4].map(k=>`<label class="cc-meta" style="display:inline-flex;align-items:center;gap:3px">${k+1}<select id="mnCo${i}_${k}" aria-label="第 ${k+1} 順位" onchange="mnColorDedupe(${i})" style="color:${MN_COLOR_TEXT[cl[k]]||'inherit'};font-weight:${cl[k]?'700':'400'}">${opt('','—',cl[k]||'').replace('<option','<option style="color:var(--text);font-weight:400"')}${MN_ALL_COLORS.map(x=>opt(x,'● '+x,cl[k]||'').replace('<option',(cl.includes(x)&&cl[k]!==x?'<option disabled':'<option')+` style="color:${MN_COLOR_TEXT[x]};font-weight:700"`)).join('')}</select></label>`).join('');
+ const sl=c.slots||null,slot=c.slot>=1&&c.slot<=10?c.slot:1;
+ return `<details class="cc-more" ${mnOpen.has(c.name)?'open':''} ontoggle="mnOpenToggle(${i},this.open)"><summary><span class="cc-more-btn">⚙ 採礦設定<small>排班・顏色・打王・趟數</small></span><span class="cc-more-sum">${colors?cl.map(mnColorWord).join(' &gt; '):'沒有選顏色'}｜${boss==='1'?'打王':'不打王'}｜${loops==='0'?'一直循環':loops+' 趟'}${c.sched?'｜排班 '+esc(c.sched):''}</span></summary>`
+  +`<div class="cc-row"><span class="cc-meta">排班進場時間</span><input id="mnSc${i}" value="${esc(c.sched||'')}" placeholder="例如 06:00（空白＝不排班）" style="width:150px" title="照時間排順序，一次只有一隻在礦場；上一隻結束（跑滿趟數或入場卷用完）就換下一隻，實際以結束時間為準"></div>`
+  +`<div class="cc-row"><span class="cc-meta">顏色順序</span><span style="display:inline-flex;flex-wrap:wrap;gap:6px">${colorSel}</span></div>`
+  +`<div class="cc-row"><span class="cc-meta">打王</span><select id="mnBo${i}">${opt('1','打',boss)}${opt('0','不打',boss)}</select></div>`
+  +`<div class="cc-row"><span class="cc-meta">打王技能（F1 技能欄）</span><select id="mnSl${i}" onchange="mnSlot(${i},this.value)" title="打王前按 F1 切到第一排技能欄，再按這一格的數字鍵選成右鍵技能">${[1,2,3,4,5,6,7,8,9,10].map(n=>opt(String(n),`${n===10?0:n}${sl&&sl[n-1]?'：'+esc(sl[n-1]):(sl?'（空）':'')}`,String(slot))).join('')}</select></div>`
+  +`<div class="cc-meta">${sl?(sl[slot-1]?`會用：F1 第 ${slot===10?0:slot} 格＝<b>${esc(sl[slot-1])}</b>`:'<span style="color:var(--amber)">這一格是空的，請選有技能的格子</span>'):'技能名稱要角色在遊戲裡才讀得到'}</div>`
+  +`<div class="cc-row"><span class="cc-meta">進礦場趟數</span><input id="mnLp${i}" value="${esc(loops)}" placeholder="0＝一直循環" style="width:80px" inputmode="numeric"></div>`
+  +`<div class="cc-row">${c.boxes>=0?`<span class="cc-meta">入場卷禮盒剩 ${c.boxes} 個</span>`:'<span class="cc-meta">入場卷：進過礦場後才讀得到</span>'}<button class="btn primary" style="margin-left:auto" onclick="mnCharSave(${i})">存</button></div></details>`;
+}
+// 顏色順序防呆：其他順位已經選的顏色變灰、不能再選
+function mnColorDedupe(i){
+ const sels=[0,1,2,3,4].map(k=>document.getElementById('mnCo'+i+'_'+k)).filter(Boolean);
+ const used=sels.map(e=>e.value);
+ sels.forEach((e,k)=>{[...e.options].forEach(o=>{o.disabled=!!o.value&&used.some((u,j)=>j!==k&&u===o.value);});if(e.style){e.style.color=MN_COLOR_TEXT[e.value]||'inherit';e.style.fontWeight=e.value?'700':'400';}});
+}
+function mnOpenToggle(i,open){const c=mnChars[i];if(!c)return;open?mnOpen.add(c.name):mnOpen.delete(c.name);}
+function mnCharSave(i){
+ const c=mnChars[i];if(!c)return;const g=id=>(document.getElementById(id+i)?.value||'').trim().replace(/~/g,'');
+ const cols=[];for(let k=0;k<5;k++){const v=(document.getElementById('mnCo'+i+'_'+k)?.value||'');if(v&&!cols.includes(v))cols.push(v);}
+ send('mncharcfg',{value:[c.name,cols.join(','),g('mnBo'),'','',g('mnLp'),g('mnSc')].join('~')});   // 打王技能固定 F1：不再送右鍵技能 / 技能欄
+ document.activeElement&&document.activeElement.blur&&document.activeElement.blur();
+}
+// 排班表：順序、設定時間、趟數、預估開始（上一隻開始＋趟數 × 一趟分鐘）、今天狀態、警語
+function renderMnRelay(d){
+ const el=document.getElementById('mnRelay');if(!el)return;
+ const r=d.relay||[];
+ if(!r.length){el.innerHTML='<span class="hint">還沒有排班。在下面角色卡的「個別設定」填「排班進場時間」，就會照時間排成順序，一次一隻輪流進礦場。</span>';return;}
+ el.innerHTML=`<div class="hint" style="margin-bottom:6px">一次只有一隻在礦場；上一隻跑滿趟數或入場卷用完就換下一隻（以實際結束時間為準）。預估一趟 ${d.tripMin||150} 分鐘。王打到一半被踢出，下一隻進場接著打。</div>`
+  +`<div style="overflow-x:auto"><table><thead><tr><th>順序</th><th>角色</th><th>設定</th><th>趟數</th><th>預估開始</th><th>今天</th></tr></thead><tbody>`
+  +r.map((w,k)=>`<tr><td>${k+1}</td><td>${esc(w.name)}</td><td>${esc(w.time)}</td><td>${w.loops?w.loops:'0（一直循環）'}${w.tickets>=0?`<br><small class="muted">禮盒 ${w.tickets}</small>`:''}</td><td>${esc(w.est)}</td><td>${esc(w.status)}</td></tr>${w.warn?`<tr><td></td><td colspan="5"><span class="mx-custom">⚠ ${esc(w.warn)}</span></td></tr>`:''}`).join('')
+  +'</tbody></table></div>';
+}
+// v1.3.90.88 一鍵施法：每個角色一張卡、6 組，每組自己選觸發鍵（滑鼠側鍵 / Ctrl＋左鍵 / 鍵盤鍵），各自設技能欄、施放順序、等施法、切回
+let bcData=null;
+const BC_KEYS=[['XButton1','滑鼠：後退鍵'],['XButton2','滑鼠：前進鍵'],['^LButton','滑鼠：Ctrl＋左鍵'],...'abcdefghijklmnopqrstuvwxyz'.split('').map(k=>[k,'鍵盤：'+k.toUpperCase()]),...['`','-','=','[',']',',','.','/',"'",'\\'].map(k=>[k,'鍵盤：'+k]),...[0,1,2,3,4,5,6,7,8,9].map(n=>['Numpad'+n,'數字鍵盤 '+n])];
+function renderBuffCast(d){
+ bcData=d;const oa=document.getElementById('bcOnAll');if(oa&&document.activeElement!==oa)oa.checked=d.on!==false;
+ const el=document.getElementById('bcChars');if(!el)return;
+ if(el.contains(document.activeElement)&&['INPUT','SELECT'].includes(document.activeElement.tagName))return;
+ el.innerHTML=(d.chars||[]).length?d.chars.map((x,i)=>bcCardHtml(x,i)).join(''):'<span class="hint">沒有啟用的角色</span>';
+}
+// 只顯示有設定的組（至少一組）；「＋ 新增一組」再多出一組，最多 6 組；「刪除」把那組移到最後清空（按「存」才生效）
+const bcShow={};   // 角色名 → 多顯示幾個空白組
+const BC_BLANK=()=>({key:'',on:true,bar:2,order:[1,2,3,4,5,6,7,8],delay:150,waitCast:true,retBar:0,retSlot:1,clicks:1});
+function bcVisible(x){const g=x.groups||[];let n=0;g.forEach((v,j)=>{if(v.key||v.on)n=j+1;});return Math.min(g.length,Math.max(1,n)+(bcShow[x.name]||0));}
+function bcCardHtml(x,i){
+ const nm=(b,k)=>x.names&&x.names[b-1]?x.names[b-1][k-1]:'';
+ const kk=k=>k===10?0:k;
+ const opt=(v,t,cur)=>`<option value="${esc(v)}" ${String(v)===String(cur)?'selected':''}>${esc(t)}</option>`;
+ const groups=x.groups||[],vis=bcVisible(x);
+ const keysUsed=groups.slice(0,vis).filter(g=>g.on).map(g=>g.key);
+ const gHtml=(g,j)=>{
+  // 這一排 1～0 每一格：點一下加入施放順序（標出第幾個放），再點一下拿掉；空格（讀得到技能時）不能點
+  const slotBtns=[1,2,3,4,5,6,7,8,9,10].map(k=>{const pos=(g.order||[]).indexOf(k)+1,n=nm(g.bar,k),empty=x.alive&&!n;
+   return `<button class="bc-slot ${pos?'on':''}" ${empty&&!pos?'disabled':''} onclick="bcToggleSlot(${i},${j},${k})" title="${pos?'第 '+pos+' 個放，點一下拿掉':'點一下加入施放順序'}"><span class="bc-no">${pos||''}</span><span class="bc-k">${kk(k)}</span>${n?esc(n):(x.alive?'（空）':'')}</button>`;}).join('');
+  const dup=g.on&&g.key&&keysUsed.filter(k=>k===g.key).length>1;
+  const adv=`${(g.clicks||1)>1?'右鍵 '+g.clicks+' 下｜':''}${g.waitCast!==false?'等施法結束':'固定間隔'}${g.delay?'＋'+g.delay+'ms':''}｜${g.retBar?'切回 F'+g.retBar+'-'+kk(g.retSlot):'不切回'}`;
+  return `<div class="bc-group ${g.on?'on':''}"><div class="cc-row">`
+   +`<label class="toggle" title="取消勾選＝先不用這組"><input type="checkbox" id="bcOn${i}_${j}" ${g.on||!g.key?'checked':''}> <b>${j+1}</b></label>`
+   +`<select id="bcK${i}_${j}" onchange="bcRerender(${i})" aria-label="觸發鍵">${opt('','觸發鍵…',g.key)}${BC_KEYS.map(([v,t])=>opt(v,t,g.key)).join('')}</select>`
+   +`<select id="bcB${i}_${j}" onchange="bcBarSwitch(${i},${j})" aria-label="技能欄">${[1,2,3,4,5,6,7,8,9,10].map(b=>opt(b,'F'+b,g.bar)).join('')}</select>`
+   +`<span class="cc-meta">${(g.order||[]).length?'放 '+g.order.length+' 個':'點下面的格子加入'}</span>`
+   +`<button class="rp-reset" onclick="bcClearOrder(${i},${j})">清除</button>`
+   +`<button class="rp-reset" style="margin-left:auto" onclick="bcDel(${i},${j})">刪除</button></div>`
+   +(dup?'<div class="cc-meta"><span class="mx-custom">這個鍵別組也用了</span></div>':'')
+   +`<div class="bc-slots">${slotBtns}</div>`
+   +(x.alive?'':'<div class="cc-meta">技能名稱要角色在遊戲裡才讀得到（沒讀到也可以先選格子）</div>')
+   +`<details class="bc-adv"><summary>進階（${esc(adv)}）</summary><div class="cc-row" style="flex-wrap:wrap">`
+   +`<span class="cc-meta">每格右鍵連按</span><select id="bcC${i}_${j}" title="照手動的習慣連按右鍵，前一招動作還沒結束時比較接得上">${[1,2,3,4,5,6].map(n=>opt(n,n+' 下',g.clicks||1)).join('')}</select>`
+   +`<label class="toggle"><input type="checkbox" id="bcW${i}_${j}" ${g.waitCast!==false?'checked':''}> 等施法動作結束才放下一格</label><span class="cc-meta">再多等</span><input id="bcD${i}_${j}" value="${g.delay}" style="width:60px" inputmode="numeric"><span class="cc-meta">毫秒</span>`
+   +`<span class="cc-meta">放完切回</span><select id="bcRB${i}_${j}" onchange="bcRerender(${i})">${opt(0,'不切回',g.retBar)}${[1,2,3,4,5,6,7,8,9,10].map(b=>opt(b,'F'+b,g.retBar)).join('')}</select>${g.retBar?`<select id="bcRS${i}_${j}">${[1,2,3,4,5,6,7,8,9,10].map(k=>opt(k,kk(k)+(nm(g.retBar,k)?'：'+nm(g.retBar,k):(x.alive?'（空）':'')),g.retSlot)).join('')}</select>`:''}</div></details></div>`;
+ };
+ return `<div class="char-card ${x.enabled!==false&&groups.some(g=>g.on&&g.key)?'on':''}"><div class="cc-head"><b>${esc(x.name)}</b><label class="toggle" style="margin-left:auto" title="關掉＝這隻角色的觸發鍵都不攔（打字照常）"><input type="checkbox" ${x.enabled!==false?'checked':''} onchange="send('buffcastcharon',{value:'${esc(x.name).replace(/'/g,"\\'")}~'+(this.checked?1:0)})"> ${x.enabled!==false?'一鍵施法：開':'一鍵施法：關'}</label>${x.alive?'':'<span class="cc-meta">沒有連接遊戲視窗</span>'}</div>`
+  +(x.enabled===false?'<div class="cc-meta" style="margin:4px 0"><span class="mx-custom">總開關關著：下面的觸發鍵都不會動作</span></div>':'')
+  +groups.slice(0,vis).map(gHtml).join('')
+  +`<div class="cc-row">${vis<groups.length?`<button class="btn" onclick="bcAdd(${i})">＋ 新增一組</button>`:'<span class="cc-meta">最多 6 組</span>'}<button class="btn primary" style="margin-left:auto" onclick="bcSaveChar(${i})">存</button></div></div>`;
+}
+function bcCollect(i){const x=bcData.chars[i],vis=bcVisible(x);
+ (x.groups||[]).forEach((g,j)=>{if(j>=vis)return;const v=id=>document.getElementById(id+i+'_'+j);
+  g.on=!!v('bcOn')?.checked;g.key=v('bcK')?.value||'';g.bar=+(v('bcB')?.value)||2;
+  if(v('bcW')){g.clicks=+(v('bcC')?.value)||1;g.waitCast=!!v('bcW').checked;g.delay=Math.max(0,parseInt(v('bcD')?.value)||0);g.retBar=+(v('bcRB')?.value)||0;g.retSlot=+(v('bcRS')?.value||g.retSlot||1);}});
+ return x;}
+function bcBarSwitch(i,j){if(!bcData)return;const x=bcData.chars[i],old=x.groups[j].bar;bcCollect(i);if(x.groups[j].bar!==old)x.groups[j].order=[];bcRedraw();}
+function bcToggleSlot(i,j,k){if(!bcData)return;const x=bcCollect(i),g=x.groups[j];const p=g.order.indexOf(k);if(p>=0)g.order.splice(p,1);else g.order.push(k);bcRedraw();}
+function bcClearOrder(i,j){if(!bcData)return;const x=bcCollect(i);x.groups[j].order=[];bcRedraw();}
+function bcRedraw(){const el=document.getElementById('bcChars');document.activeElement&&document.activeElement.blur&&document.activeElement.blur();el.innerHTML=bcData.chars.map((x,k)=>bcCardHtml(x,k)).join('');}
+function bcRerender(i){if(!bcData)return;bcCollect(i);bcRedraw();}
+function bcAdd(i){if(!bcData)return;const x=bcCollect(i);const vis=bcVisible(x);if(vis>=x.groups.length)return;x.groups[vis]=BC_BLANK();bcShow[x.name]=0;bcRedraw();}
+function bcDel(i,j){if(!bcData)return;const x=bcCollect(i);x.groups.splice(j,1);x.groups.push({...BC_BLANK(),on:false});bcShow[x.name]=0;bcRedraw();showToast&&showToast('按「存」才會真的刪掉這一組');}
+function bcSaveChar(i){if(!bcData)return;const x=bcCollect(i),vis=bcVisible(x);
+ send('buffcastchar',{value:x.name+'~'+(x.groups||[]).map((g,j)=>j<vis?[g.key,g.on?1:0,g.bar,g.order.join(','),g.delay,g.waitCast?1:0,g.retBar,g.retSlot,g.clicks||1].join(';'):';0;2;;150;1;0;1;1').join('|')});
+ bcShow[x.name]=0;document.activeElement&&document.activeElement.blur&&document.activeElement.blur();}
 function dhSchedSave(i){const e=document.getElementById('dhSchedIn'+i);if(!e||!dhSchedNames[i])return;send('dhschedset',{value:dhSchedNames[i]+'~'+e.value});e.blur();}
 function dhCharToggle(i,on){if(dhChars[i])dhChars[i].on=on;saveDailyHunt();}
 function dhToggleRun(){dhRunning=!dhRunning;saveDailyHunt();}function dhToggle(id,on){if(on)dhOn.add(id);else dhOn.delete(id);saveDailyHunt();}
@@ -1339,13 +1480,12 @@ setInterval(()=>{if(isShown('party'))send('partystate');},2000);
 setInterval(()=>{if(isShown('companion'))send('companionstate');},2000);
 setInterval(()=>{if(isShown('dailyhunt')&&!dhEditing())send('dailyhuntstate');},3000);
 setInterval(()=>{if(isShown('automining'))send('autominingstate');},3000);
-setInterval(()=>{if(isShown('skillcombo'))send('skillcombostate');},2500);
 setInterval(()=>{if(isShown('home')||!dailyCache)send('dailystate');},60000);
 setTimeout(()=>send('dailystate'),1500);
 setTimeout(()=>send('updatestate'),2500);
 setTimeout(()=>send('licensestate'),2000);setInterval(()=>send('licensestate'),600000);
 setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
 setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
-if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='hoursum')renderHourSum(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='automining')renderAutoMining(m.data);if(m?.type==='priority')renderPriority(m.data);if(m?.type==='skillcombo')renderSkillCombo(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='hoursum')renderHourSum(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='automining')renderAutoMining(m.data);if(m?.type==='priority')renderPriority(m.data);if(m?.type==='buffcast')renderBuffCast(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
 // 11/22：滑鼠停在數字框上滾輪會改到數字（挖礦「進礦場趟數」被改成 1，傳送卡到期後就不進圖）→ 數字框有焦點時滾輪先讓它失去焦點，不改值
 document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.tagName==='INPUT'&&t.type==='number'&&document.activeElement===t)t.blur();},{passive:true});

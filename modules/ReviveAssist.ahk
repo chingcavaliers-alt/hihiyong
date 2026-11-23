@@ -7,7 +7,7 @@
 ; - 有歸魂珠只點「使用歸魂珠」（原地復活）。沒有歸魂珠（v1.3.90.57）：點「復活」回城
 ;   （DailyTemplates\revive_town_button.bmp；[Revive] TownWhenNoBead=0 可關掉，改回只通知），
 ;   每日道具已到期就接著排入更換（城裡換、換完 W 前點卡回怪區，念珠也一起換上）。
-;   每日討伐跑圖途中的死亡不回城（照舊只用歸魂珠）。
+;   每日討伐跑圖途中的死亡：沒有歸魂珠也回城（v1.3.90.67），不用前點卡，每日討伐從起點繼續。
 ;   每日道具沒到期（v1.3.90.63）：列入「待救援」，等空檔用前點卡回到死亡的野外地圖，回去後補開 F6、叫出寵物 / 雇傭兵
 ;   （沿用 LagFix 的救援流程；[Revive] ReturnAfterTown=0 可關掉）。死在城裡 / 副本、自動採礦中、或 30 分鐘內已回城復活
 ;   3 次（怪太強，回去還是會死）→ 不送回去，只通知。
@@ -47,13 +47,16 @@ ReviveReturnOf(p) {
 ReviveF6Of(p) => (p.HasOwnProp("reviveF6") && p.reviveF6!="" ? (p.reviveF6 ? 1 : 0) : 1)
 
 ; 由 Memory HP 監控在死亡事件進行中呼叫（每次取樣一次）。
-; stuckSec / idleSec：預設用設定值（死亡超過 30 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上用歸魂珠原地復活，不等 60 秒。
+; stuckSec / idleSec：預設用設定值（死亡超過 30 秒、鍵鼠閒置 20 秒）。每日討伐跑圖途中死亡傳 0 / 3：馬上復活（有歸魂珠原地、沒有就回城），不等 30 秒。
 ReviveStuckCheck(p, stuckSec := -1, idleSec := -1) {
     global REVIVE_AUTOCLICK,REVIVE_STUCK_SEC,REVIVE_IDLE_SEC,REVIVE_RETRY_SEC,REVIVE_MAX_ATTEMPTS
     global foregroundOwner,processingQueue,fastLoginCritical,asyncLoadingEntries,abortRequested,dailyRunning,recorder
     if !REVIVE_AUTOCLICK || !p.hpEventOpen || abortRequested
         return
-    allowTown:=stuckSec<0   ; 一般掛機的死亡才可以回城；每日討伐跑圖途中（傳 0 / 3）不回城
+    ; 每日討伐跑圖途中（傳 0 / 3）也可以回城：11/23 08:46 欸等在波斯宮死亡、沒有歸魂珠，以前只記「不使用回城復活」就不管，
+    ; 每日討伐一直停在「死亡中」。每日討伐每一項本來就先用新生起點傳送卡回起點再搭公車，回城復活後會自己從頭判斷 → 不用前點卡送回去
+    inDaily:=stuckSec>=0
+    allowTown:=true
     if p.HasOwnProp("reviveEventNo") && p.reviveEventNo!=p.hpEventNo
         p.reviveAttempts:=0,p.reviveLastTick:=0
     p.reviveEventNo:=p.hpEventNo
@@ -80,10 +83,10 @@ ReviveStuckCheck(p, stuckSec := -1, idleSec := -1) {
         return
     p.reviveAttempts+=1
     p.reviveLastTick:=A_TickCount
-    ReviveAttempt(p, allowTown)
+    ReviveAttempt(p, allowTown, inDaily)
 }
 
-ReviveAttempt(p, allowTown := false) {
+ReviveAttempt(p, allowTown := false, inDaily := false) {
     global foregroundOwner,activeRecoveryHwnd,activeRecoveryPid,REVIVE_MAX_ATTEMPTS
     ctx:={name:p.name,hwnd:p.hwnd,pid:p.pid}
     foregroundOwner:="revive"
@@ -93,7 +96,7 @@ ReviveAttempt(p, allowTown := false) {
     allowTown:=allowTown && ReviveModeOf(p)="auto"
     try {
         if !ReviveHasSoulBead(p.pid) && allowTown {
-            ReviveTown(p, ctx, secs)
+            ReviveTown(p, ctx, secs, inDaily)
             DailyRestorePosition(ctx)
             activeRecoveryHwnd:=0,activeRecoveryPid:=0,foregroundOwner:=""
             return
@@ -113,6 +116,14 @@ ReviveAttempt(p, allowTown := false) {
         Sleep 300
         shot:=ReviveSaveShot(ctx)
         how:=ReviveClick(ctx)
+        if how="" && allowTown {
+            ; 11/23 02:58 欸等：判定有歸魂珠，畫面上卻只有「復活」，找 3 次就放棄、躺到 07:36 斷線 → 改點「復活」回城（之後照回城流程）
+            EventLog(p.name,"REVIVE_BEAD_MISSING","畫面上沒有「使用歸魂珠」按鈕（遊戲認為沒有歸魂珠），改點「復活」回城")
+            ReviveTown(p, ctx, secs, inDaily)
+            DailyRestorePosition(ctx)
+            activeRecoveryHwnd:=0,activeRecoveryPid:=0,foregroundOwner:=""
+            return
+        }
         if how="" {
             result:="找不到「使用歸魂珠」按鈕（缺少 DailyTemplates\revive_button.bmp 或畫面上沒有），未點擊"
         } else if ReviveWaitAlive(p.pid) {
@@ -145,7 +156,7 @@ ReviveAttempt(p, allowTown := false) {
 }
 
 ; 沒有歸魂珠：點「復活」回城；復活後每日道具已到期就排入更換（換上念珠，換完 W 前點卡回怪區）
-ReviveTown(p, ctx, secs) {
+ReviveTown(p, ctx, secs, inDaily := false) {
     global REVIVE_MAX_ATTEMPTS,REPORT_ERROR_SHOTS,profiles
     mapB:=""
     try mapB:=LfFieldMap(p.pid)   ; 死亡當下的野外地圖：回城復活後用前點卡回這裡
@@ -169,12 +180,13 @@ ReviveTown(p, ctx, secs) {
         if q=p
             idx:=i
     queued:=idx && ReviveDailyDue(p)
-    back:=queued ? {ok:false,text:""} : ReviveTownReturn(p, mapB)
-    EventLog(p.name,"REVIVE_TOWN_OK","死亡 " secs " 秒後沒有歸魂珠，已點「復活」回城｜" how (queued ? "｜每日道具已到期，排入更換" : "｜每日道具沒有到期，不更換｜" back.text))
-    AddRecentEvent("♥ " p.name " 沒有歸魂珠，已回城復活" (queued ? "，接著更換每日道具" : back.ok ? "，接著用前點卡回怪區" : ""))
+    back:=queued ? {ok:false,text:""} : inDaily ? {ok:false,text:"每日討伐中：不用前點卡，每日討伐從起點繼續"} : ReviveTownReturn(p, mapB)
+    EventLog(p.name,"REVIVE_TOWN_OK","死亡 " secs " 秒後沒有歸魂珠，已點「復活」回城" (inDaily ? "（每日討伐中）" : "") "｜" how (queued ? "｜每日道具已到期，排入更換" : "｜每日道具沒有到期，不更換｜" back.text))
+    AddRecentEvent("♥ " p.name " 沒有歸魂珠，已回城復活" (queued ? "，接著更換每日道具" : inDaily ? "，每日討伐從起點繼續" : back.ok ? "，接著用前點卡回怪區" : ""))
     if p.deathNotify {
-        msg:="✅ HIHIYONG 卡復活已自動處理`n角色：" p.name "`n死亡 " secs " 秒後背包沒有歸魂珠，已點「復活」回城"
+        msg:="✅ HIHIYONG 卡復活已自動處理`n角色：" p.name "`n死亡 " secs " 秒後背包沒有歸魂珠，已點「復活」回城" (inDaily ? "（每日討伐中）" : "")
             . (queued ? "`n每日道具已到期：接著自動更換（含念珠），換完用前點卡回怪區"
+            : inDaily ? "`n每日討伐會從起點搭公車繼續"
             : back.ok ? "`n每日道具沒有到期：" back.text "，回去後補開自動攻擊（F6）"
             : "`n每日道具沒有到期，角色留在城裡（" back.text "），請人工帶回怪區")
         try (shot!="" && REPORT_ERROR_SHOTS) ? SendDiscordImage(msg "`n（附上死亡當時畫面）",shot) : SendDiscordMessage(msg)
@@ -226,15 +238,11 @@ ReviveQuickHint(p) {
 }
 ReviveBeadText(pid) {
     slots:=ReadGameInventorySlots(pid,"InvenOffset")
-    equip:=ReadGameEquipment(pid)
-    if !IsObject(slots) || !IsObject(equip)
+    if !IsObject(slots)
         return "讀不到有沒有歸魂珠"
     for s in slots
-        if InStr(GameItemName(s.key,pid),"歸魂")
+        if InStr(GameItemName(s.key,pid),"歸魂珠")
             return "背包有歸魂珠（會原地復活）"
-    for e in equip
-        if e && InStr(GameItemName(e.key,pid),"歸魂")
-            return "身上有歸魂道具（會原地復活）"
     return "沒有歸魂珠（死亡會回城復活）"
 }
 
@@ -262,16 +270,14 @@ ReviveClickTown(ctx) {
 
 ; 有沒有歸魂珠效果：背包裡的歸魂珠，或身上的「歸魂」道具（例如項鍊欄的 4倍歸魂修煉念珠，
 ; 2026-10-22 椰奶示範：背包沒有歸魂珠，靠念珠也能使用歸魂珠）。讀不到資料時當作有（交給畫面辨識決定）。
+; 只看背包裡名稱有「歸魂珠」的道具。11/23 欸等身上戴著每日禮包的「4倍經驗歸魂飾品」，以前名稱有「歸魂」就算，
+; 死亡時復活視窗卻只有「復活」、沒有「使用歸魂珠」→ 身上的裝備不算。讀不到背包時當作有（先找歸魂珠按鈕，找不到會改回城）。
 ReviveHasSoulBead(pid) {
     slots:=ReadGameInventorySlots(pid,"InvenOffset")
-    equip:=ReadGameEquipment(pid)
-    if !IsObject(slots) || !IsObject(equip)
+    if !IsObject(slots)
         return true
     for s in slots
-        if InStr(GameItemName(s.key,pid),"歸魂")
-            return true
-    for e in equip
-        if e && InStr(GameItemName(e.key,pid),"歸魂")
+        if InStr(GameItemName(s.key,pid),"歸魂珠")
             return true
     return false
 }

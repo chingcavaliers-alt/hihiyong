@@ -611,14 +611,168 @@ global MN_BOSS_ON := MnIniGet("Boss", "0") = "1" ? 1 : 0   ; 王重生時中斷�
 global MN_LOOPS := Min(99, Max(0, Integer(MnIniGet("Loops", "0"))))   ; 要進礦場幾趟（0 = 一直循環）；每次進去算一趟，跑滿後被踢出就不再進圖
 global MN_KEEP_INV := MnIniGet("KeepInv", "1") = "0" ? 0 : 1   ; 背包一直開著（省每顆礦開關一次）；走路時地面點擊會閃開背包區域
 
-; ---------------------------------------------------------------- 純邏輯（不碰遊戲）
-; 礦石顏色的優先序：1 = 最優先；沒勾選 / 不認得的顏色回傳 99（不挖）。
-MnColorRank(name) {
+; ---------------------------------------------------------------- 每個角色自己的採礦設定（v1.3.90.71）
+; 設定檔 [AutoMiningChar] 「角色名|項目=值」：Colors（顏色順序，例如 紅,綠,藍）、Boss（1 打 / 0 不打）、BossSkill（右鍵技能代碼）、
+; BossBar（技能欄 F1～F10，0 = 不檢查）、Loops（進礦場趟數，0 = 一直循環）。沒有設定（空白）= 用頁面上的共用設定。
+global MN_CHAR_CFG := Map()   ; 角色名 → Map(項目 → 值)
+global MN_CHAR_CFG_KEYS := ["Colors", "Boss", "BossSkill", "BossBar", "Loops"]
+global MN_COLORS_CUR := 0     ; 挑礦時用的顏色順序（MnPlan 挑礦前換成這個角色的；0 = 共用 MN_COLORS）
+global MN_ENTRY_BOSSTIMER := MnIniGet("BossTimerOnEnter", "1") = "0" ? 0 : 1   ; 每次進場先讀一次王的重生時間（設定檔 BossTimerOnEnter=0 關掉）
+; 打王技能一律在 F1 技能欄：每個角色選第幾格（1～0），打王前按 F1 切到這一排、再按那一格的數字鍵（1～9、0）選成右鍵技能，
+; 讀回右鍵技能確認是那一格的技能才開打（v1.3.90.76）。以前按的是「F + 格數」，F 鍵其實是切換技能欄：
+; 11/20 克勞德要第 7 格、按 F7 切不過去。設定檔 [AutoMining] BossF1Only=0 改回舊的職業 / 技能欄規則。
+global MN_BOSS_F1_ONLY := MnIniGet("BossF1Only", "1") = "0" ? 0 : 1
+global MN_RELAY_BOSS := 0     ; 排班接力：上一隻王還沒打完就被踢出（A_TickCount）；30 分鐘內進場的角色接著打
+MnCharCfgLoad() {
+    global INI, MN_CHAR_CFG
+    MN_CHAR_CFG := Map()
+    raw := ""
+    try raw := IniRead(INI, "AutoMiningChar")
+    for line in StrSplit(raw, "`n", "`r") {
+        if !RegExMatch(line, "^(.+)\|(\w+)=(.*)$", &m)
+            continue
+        if !MN_CHAR_CFG.Has(m[1])
+            MN_CHAR_CFG[m[1]] := Map()
+        MN_CHAR_CFG[m[1]][m[2]] := Trim(m[3])
+    }
+}
+MnCharCfgGet(name, k) {
+    global MN_CHAR_CFG
+    return MN_CHAR_CFG.Has(name) && MN_CHAR_CFG[name].Has(k) ? MN_CHAR_CFG[name][k] : ""
+}
+MnColorsOf(p) {
     global MN_COLORS
+    v := MnCharCfgGet(p.name, "Colors")
+    return v = "" ? MN_COLORS : v = "-" ? [] : MnParseColors(v)
+}
+MnBossOnOf(p) {
+    global MN_BOSS_ON, MN_RELAY_BOSS
+    if MN_RELAY_BOSS && A_TickCount - MN_RELAY_BOSS < 1800000   ; 交接：上一隻沒打完的王一律接著打（用這個角色自己的打王技能）
+        return 1
+    v := MnCharCfgGet(p.name, "Boss")
+    return v = "" ? MN_BOSS_ON : (v = "1" ? 1 : 0)
+}
+MnBossBarOf(p) {
+    global MN_BOSS_BAR
+    v := MnCharCfgGet(p.name, "BossBar")
+    return IsInteger(v) ? Min(10, Max(0, Integer(v))) : MN_BOSS_BAR
+}
+MnBossSkillOf(p) {
+    global MN_BOSS_SKILL
+    v := MnCharCfgGet(p.name, "BossSkill")
+    return v = "" ? MN_BOSS_SKILL : v
+}
+MnLoopsOf(p) {
+    global MN_LOOPS
+    v := MnCharCfgGet(p.name, "Loops")
+    return IsInteger(v) ? Min(99, Max(0, Integer(v))) : MN_LOOPS
+}
+MnCharCfgText(name) {
+    t := ""
+    for k in ["Colors", "Boss", "BossSkill", "BossBar", "Loops"] {
+        v := MnCharCfgGet(name, k)
+        if v != ""
+            t .= (t = "" ? "" : "｜") ({Colors: "顏色 ", Boss: "打王 ", BossSkill: "右鍵技能 ", BossBar: "技能欄 F", Loops: "趟數 "}.%k%) (k = "Boss" ? (v = "1" ? "打" : "不打") : v)
+    }
+    return t = "" ? "全部用共用設定" : t
+}
+; 頁面「存」：角色名~顏色~打王(""/1/0)~右鍵技能~技能欄~趟數~排班進場時間（空白 = 用共用設定 / 不排班）
+AutoMiningCharCfgSet(rawValue) {
+    global INI, MN_CHAR_CFG, MN_CHAR_CFG_KEYS
+    parts := StrSplit(rawValue, "~")
+    if parts.Length < 6 || Trim(parts[1]) = ""
+        return
+    name := Trim(parts[1])
+    vals := Map()
+    cols := ""
+    for c in MnParseColors(parts[2])
+        cols .= (cols = "" ? "" : ",") c
+    vals["Colors"] := Trim(parts[2]) = "" ? "-" : cols   ; 頁面一律送實際的值：清空 = 這個角色一個顏色都不挖（"-"）
+    vals["Boss"] := parts[3] = "1" || parts[3] = "0" ? parts[3] : ""
+    vals["BossSkill"] := RegExMatch(Trim(parts[4]), "^\d+-\d+$") ? Trim(parts[4]) : ""
+    vals["BossBar"] := IsInteger(Trim(parts[5])) ? String(Min(10, Max(0, Integer(Trim(parts[5]))))) : ""   ; 打王固定 F1 時頁面送空白
+    vals["Loops"] := IsInteger(Trim(parts[6])) ? String(Min(99, Max(0, Integer(Trim(parts[6]))))) : ""
+    before := MnCharCfgText(name)
+    if !MN_CHAR_CFG.Has(name)
+        MN_CHAR_CFG[name] := Map()
+    for k in MN_CHAR_CFG_KEYS {
+        MN_CHAR_CFG[name][k] := vals[k]
+        if vals[k] = "" {
+            try IniDelete INI, "AutoMiningChar", name "|" k
+        } else
+            IniWrite vals[k], INI, "AutoMiningChar", name "|" k
+    }
+    if parts.Length >= 7
+        AutoMiningSchedSet(name "~" parts[7])
+    after := MnCharCfgText(name)
+    if after != before {
+        EventLog(name, "MN_CHAR_CFG", "這個角色的採礦設定：" before " → " after)
+        AddRecentEvent("⛏ " name " 採礦設定：" after)
+    }
+}
+; 頁面「記下目前的」：把這個角色現在的右鍵技能存成它自己的打王技能
+AutoMiningCharSkillGrab(name) {
+    global INI, MN_CHAR_CFG, profiles
+    for p in profiles {
+        if p.name != name || !p.pid
+            continue
+        me := 0
+        try me := MiningCharState(p.pid)
+        if !IsObject(me) || me.runSkill = "" {
+            AddRecentEvent("⛏ " name "：讀不到現在的右鍵技能（遊戲要在角色畫面裡）")
+            return
+        }
+        if !MN_CHAR_CFG.Has(name)
+            MN_CHAR_CFG[name] := Map()
+        MN_CHAR_CFG[name]["BossSkill"] := me.runSkill
+        IniWrite me.runSkill, INI, "AutoMiningChar", name "|BossSkill"
+        p.mnSlotCache := 0
+        nm := ""
+        try nm := MiningSkillName(p.pid, me.runSkill)
+        EventLog(name, "MN_CHAR_CFG", "記下打王右鍵技能 " me.runSkill (nm != "" ? "（" nm "）" : ""))
+        AddRecentEvent("⛏ " name " 打王技能記成 " me.runSkill (nm != "" ? "（" nm "）" : ""))
+        return
+    }
+}
+MnCharCfgLoad()
+; 頁面用：這個角色技能欄第 1 排 1～10 格現在放的技能名稱（選打王技能時對照）、自己記的右鍵技能名稱。讀記憶體，30 秒快取一次
+MnSlotNamesJson(p) {
+    own := MnCharCfgGet(p.name, "BossSkill")
+    if p.HasOwnProp("mnSlotCache") && IsObject(p.mnSlotCache) && A_TickCount - p.mnSlotCache.at < 30000 && p.mnSlotCache.pid = p.pid && p.mnSlotCache.own = own
+        return p.mnSlotCache.json
+    names := ["", "", "", "", "", "", "", "", "", ""]
+    alive := false
+    try alive := p.pid && ProfileGameAlive(p)
+    if alive {
+        try {
+            for s in MiningSkillSlots(p.pid) {
+                if s.bar = 1 && s.key >= 1 && s.key <= 10 && s.id != "" {
+                    nm := ""
+                    try nm := MiningSkillName(p.pid, s.id)
+                    names[s.key] := nm != "" ? nm : s.id
+                }
+            }
+        }
+    }
+    ownName := ""
+    if own != "" && alive
+        try ownName := MiningSkillName(p.pid, own)
+    j := ""
+    for n in names
+        j .= (j = "" ? "" : ",") '"' JsonEscapeWeb(n) '"'
+    json := ',"slots":[' j '],"cSkillName":"' JsonEscapeWeb(ownName) '"'
+    p.mnSlotCache := {at: A_TickCount, pid: p.pid, own: own, json: json}
+    return json
+}
+
+; ---------------------------------------------------------------- 純邏輯（不碰遊戲）
+; 礦石顏色的優先序：1 = 最優先；沒勾選 / 不認得的顏色回傳 99（不挖）。挑礦時用這個角色自己的順序（MN_COLORS_CUR）。
+MnColorRank(name) {
+    global MN_COLORS, MN_COLORS_CUR
     if name = ""
         return 99
     c := SubStr(name, 1, 1)
-    for i, k in MN_COLORS
+    for i, k in (IsObject(MN_COLORS_CUR) ? MN_COLORS_CUR : MN_COLORS)
         if k = c
             return i
     return 99
@@ -750,6 +904,7 @@ MnTick() {
 ; 進出水晶礦場的紀錄：道具讓角色在礦場待約 2 小時，時間到會被踢出去（有時會延遲），這裡以「實際被踢出（地圖變了）」為準：
 ; 被踢出後 MnPlan 看到不在礦場就走進圖流程，進去後繼續挖，一直循環。mapId 讀不到（換圖載入中）時不判斷。
 MnTrackVisit(p, st, mapId) {
+    global MN_RELAY_BOSS, MN_ENTRY_BOSSTIMER
     if mapId = ""
         return
     inMine := MnIsMineMap(mapId)
@@ -762,13 +917,19 @@ MnTrackVisit(p, st, mapId) {
             st.visits += 1
             MnRunVisitsSave(p.name, st.visits)
             MnRunBegin(p.name, st.visits)
-            EventLog(p.name, "MN_IN", "進入水晶礦場（今天第 " st.visits " 趟）")
+            if MN_ENTRY_BOSSTIMER
+                st.bossTimerNow := true   ; 每次進場先讀一次王的重生時間（頁面顯示）
+            EventLog(p.name, "MN_IN", "進入水晶礦場（今天第 " st.visits " 趟）" (MN_ENTRY_BOSSTIMER ? "｜先讀王的重生時間" : ""))
         }
     } else if !inMine && st.inMine {
         st.progressAt := A_TickCount
         st.inMine := false, st.lastStay := Round((A_TickCount - st.inSince) / 60000, 1), st.gathering := false
         st.next := 0
         MnRunEnd(p.name)
+        if st.HasOwnProp("bossFightEnd") && st.bossFightEnd && A_TickCount - st.bossFightEnd < 60000 {
+            MN_RELAY_BOSS := A_TickCount
+            EventLog(p.name, "MN_RELAY_BOSS", "王還沒打完就離開水晶礦場｜30 分鐘內進場的角色會接著打")
+        }
         EventLog(p.name, "MN_KICKED", "離開水晶礦場（到 " mapId "）｜這趟待了 " st.lastStay " 分鐘｜自動重新進圖")
         AddRecentEvent("⛏ " p.name " 離開水晶礦場（待了 " st.lastStay " 分鐘），自動重新進圖")
     }
@@ -857,8 +1018,9 @@ MnNoLootNote(p, st, got) {
 
 ; 現在該做什麼：{action: "wait", text, wait} / {action: "enter"} / {action: "mine", ore}
 MnPlan(p) {
-    global MN_AUTOENTER, MN_ORE_NAME, MN_RESPAWN_CHECK_MS, GLAT_GATHERING, MN_COLORS, MN_BOSS_ON, MN_LOOPS, INI
+    global MN_AUTOENTER, MN_ORE_NAME, MN_RESPAWN_CHECK_MS, GLAT_GATHERING, MN_COLORS, MN_BOSS_ON, MN_LOOPS, INI, MN_COLORS_CUR
     st := MnSt(p), pid := p.pid
+    st.loops := MnLoopsOf(p)
     MnLootSettle(p, st)
     mapId := ""
     try mapId := ReadGameMapId(pid)
@@ -867,7 +1029,7 @@ MnPlan(p) {
         st.gathering := false
         MnLoopsNotify(p, st)
         st.progressAt := A_TickCount
-        return {action: "wait", text: "已跑完 " st.visits " 趟（設定 " MN_LOOPS " 趟），不再進圖", wait: 30000}
+        return {action: "wait", text: "已跑完 " st.visits " 趟（設定 " st.loops " 趟），不再進圖", wait: 30000}
     }
     if !MnIsMineMap(mapId) {
         st.gathering := false
@@ -956,7 +1118,7 @@ MnPlan(p) {
     fpWhy := FpBlocked("mining", p)
     if fpWhy != ""
         return {action: "wait", text: "等待：" fpWhy, wait: 2000}
-    if MN_BOSS_ON {   ; 王活著（在怪物清單裡）就先去打；採集中的那一顆已經在上面先等它採完
+    if MnBossOnOf(p) {   ; 王活著（在怪物清單裡）就先去打；採集中的那一顆已經在上面先等它採完
         boss := MnFindBoss(pid)
         ; 上次因右鍵技能不對沒打：等待期間每回合只讀記憶體（不按鍵），右鍵技能已經改成要的就提早去打
         if IsObject(boss) && A_TickCount < st.bossSkip && st.HasOwnProp("bossSkillWant") && st.bossSkillWant != "" {
@@ -977,7 +1139,8 @@ MnPlan(p) {
         if IsObject(boss) && A_TickCount >= st.bossSkip
             return {action: "boss", boss: boss}
     }
-    if !MN_COLORS.Length {
+    myColors := MnColorsOf(p)
+    if !myColors.Length {
         st.progressAt := A_TickCount
         return {action: "wait", text: "沒有勾選要挖的礦石顏色", wait: 10000}
     }
@@ -985,7 +1148,9 @@ MnPlan(p) {
     try crows := MiningCrows(pid, MN_ORE_NAME)
     if !IsObject(crows)
         return {action: "wait", text: "讀不到礦石清單", wait: 3000}
-    ore := MnPickOre(crows, me, st.skip, A_TickCount, MnIsHard, st.useMax - 2)
+    MN_COLORS_CUR := myColors
+    try ore := MnPickOre(crows, me, st.skip, A_TickCount, MnIsHard, st.useMax - 2)
+    finally MN_COLORS_CUR := 0
     if !ore {   ; 礦都採完了等重生（遊戲 30 分鐘一次）：最久算 40 分鐘的正常等待，超過才當成卡住
         if MnBossTimerDue(p, st, true)   ; 空檔順便讀王的重生時間（BossTimerAuto=1 才會自動）
             return {action: "bosstimer"}
@@ -1051,6 +1216,16 @@ MnRun(p, d) {
             EventLog(p.name, "MN_ERROR", d.action "｜" e.Message)
             if st.fails = 3
                 AddRecentEvent("⛏ " p.name " 採礦連續失敗：" e.Message)
+            ; 只有「真的找不到禮盒」才算入場卷用完（視窗被擋住之類的其他失敗不算，免得提早換人）
+            if d.action = "enter" && st.fails >= 2 && !(st.HasOwnProp("noTickets") && st.noTickets) && InStr(e.Message, "沒有水晶礦場傳送卡禮盒") {
+                card := 0, left := 0
+                try card := MnFindIn(p.pid, "InvenOffset", MnIsCard)
+                try left := MnCountBoxes(p.pid)
+                if !card && left = 0 {
+                    st.noTickets := true
+                    EventLog(p.name, "MN_NO_TICKET", "背包和銀行都沒有水晶礦場傳送卡 / 禮盒，進不了礦場")
+                }
+            }
             if d.action = "enter" && st.fails >= 3 && !st.enterAlert {   ; 進圖一直失敗（禮盒用完、銀行沒載入、被別的視窗擋住…）：通知一次，之後照退避繼續試
                 st.enterAlert := true
                 try SendDiscordMessage("⚠️ HIHIYONG 自動進水晶礦場失敗`n角色：" p.name "`n連續 " st.fails " 次：" e.Message "`n程式會繼續重試（間隔最多 10 分鐘）。若是禮盒用完了，請補貨。")
@@ -1252,7 +1427,24 @@ MnBossSkillPlan(p) {
     global MN_BOSS_BAR, MN_BOSS_SKILL, MN_BOSS_CLASS_SLOTS, MN_BOSS_FIXED_CLASSES, MN_BOSS_CHAR_SLOTS
     cls := 0
     try cls := ReadGameCharClass(p.pid)
+    global MN_BOSS_F1_ONLY
+    if MN_BOSS_F1_ONLY {   ; F1 技能欄的第 N 格（每個角色自己選，預設第 1 格）：按 F1、再按數字鍵
+        n := MN_BOSS_CHAR_SLOTS.Get(p.name, 0)
+        n := n >= 1 && n <= 10 ? n : 1
+        code := ""
+        for s in MiningSkillSlots(p.pid) {
+            if s.bar = 1 && s.key = n {
+                code := s.id
+                break
+            }
+        }
+        return {key: "F1", slotKey: n = 10 ? "0" : String(n), code: code, byClass: true, cls: cls, slot: n, f1: true}
+    }
     charSlot := MN_BOSS_CHAR_SLOTS.Get(p.name, 0)   ; 這個角色自己指定了第幾格：最優先
+    if charSlot <= 0 && MnCharCfgGet(p.name, "BossSkill") != "" {   ; 這個角色自己記了右鍵技能代碼
+        bar := MnBossBarOf(p)
+        return {key: bar > 0 ? "F" bar : "", code: MnCharCfgGet(p.name, "BossSkill"), byClass: false, cls: cls, slot: bar}
+    }
     if charSlot > 0 || (cls != 0 && !MN_BOSS_FIXED_CLASSES.Has(cls)) {   ; 其餘（固定技能職業以外）：技能欄第 N 個（預設第 1 個）
         n := charSlot > 0 ? charSlot : MN_BOSS_CLASS_SLOTS.Get(cls, 1), code := ""
         for s in MiningSkillSlots(p.pid) {
@@ -1263,7 +1455,8 @@ MnBossSkillPlan(p) {
         }
         return {key: "F" n, code: code, byClass: true, cls: cls, slot: n}
     }
-    return {key: MN_BOSS_BAR > 0 ? "F" MN_BOSS_BAR : "", code: MN_BOSS_SKILL, byClass: false, cls: cls, slot: MN_BOSS_BAR}
+    bar := MnBossBarOf(p)
+    return {key: bar > 0 ? "F" bar : "", code: MnBossSkillOf(p), byClass: false, cls: cls, slot: bar}
 }
 ; 等自動攻擊真的關掉：本來就關著回傳 false；等過（或補按了 F6）回傳 true。讀不到狀態（-1）就不等。
 MnWaitAutoAttackOff(p) {
@@ -1296,7 +1489,7 @@ MnEnsureBossSkill(p) {
         throw Error("讀不到技能欄")
     plan := MnBossSkillPlan(p)
     if plan.byClass {
-        EventLog(p.name, "MN_BOSS_CLASS", "職業 " plan.cls " 打王用技能欄第 " plan.slot " 個（按 " plan.key "）：" (plan.code = "" ? "（這一格沒有技能）" : MnSkillText(pid, plan.code)))
+        EventLog(p.name, "MN_BOSS_CLASS", (plan.HasOwnProp("f1") ? "打王用 F1 技能欄第 " plan.slot " 格（按 F1 再按 " plan.slotKey "）" : "職業 " plan.cls " 打王用技能欄第 " plan.slot " 個（按 " plan.key "）") "：" (plan.code = "" ? "（這一格沒有技能）" : MnSkillText(pid, plan.code)))
         if plan.code = ""
             throw Error("職業 " plan.cls " 要用技能欄第 " plan.slot " 個技能打王，但那一格是空的，不開打")
     }
@@ -1311,8 +1504,13 @@ MnEnsureBossSkill(p) {
             if MnWaitAutoAttackOff(p)
                 me := MiningCharState(pid)
             Loop 3 {
-                EventLog(p.name, "MN_BOSS_SKILLBAR", "右鍵技能是 " MnSkillText(pid, me.runSkill) "，要的是 " plan.code "，按 " plan.key " 選技能（第 " A_Index " 次）")
+                hasSlotKey := plan.HasOwnProp("slotKey")
+                EventLog(p.name, "MN_BOSS_SKILLBAR", "右鍵技能是 " MnSkillText(pid, me.runSkill) "，要的是 " plan.code "，按 " plan.key (hasSlotKey ? " 再按 " plan.slotKey : "") " 選技能（第 " A_Index " 次）")
                 ApKey(p, plan.key)
+                if hasSlotKey {   ; F1 切到第一排技能欄，數字鍵選那一格
+                    Sleep 300
+                    ApKey(p, plan.slotKey)
+                }
                 Sleep 600
                 me := MiningCharState(pid)
                 if IsObject(me) && me.runSkill = plan.code
@@ -1325,13 +1523,13 @@ MnEnsureBossSkill(p) {
                 throw Error("右鍵技能是 " (IsObject(me) ? MnSkillText(pid, me.runSkill) : "?") "，要的是 " MnSkillText(pid, plan.code) "，按 " plan.key " 也切不過去，不開打；請手動把右鍵技能選好" (plan.byClass ? "" : "，或到頁面改技能代碼"), , "skill")
             }
         }
-    } else if MN_BOSS_BAR > 0 && Mod(me.skillBar, 10) + 1 != MN_BOSS_BAR {
-        EventLog(p.name, "MN_BOSS_SKILLBAR", "技能欄是 F" (me.skillBar + 1) "，要求 F" MN_BOSS_BAR "，按 F" MN_BOSS_BAR " 切過去")
-        ApKey(p, "F" MN_BOSS_BAR)
+    } else if plan.slot > 0 && Mod(me.skillBar, 10) + 1 != plan.slot {
+        EventLog(p.name, "MN_BOSS_SKILLBAR", "技能欄是 F" (me.skillBar + 1) "，要求 F" plan.slot "，按 F" plan.slot " 切過去")
+        ApKey(p, "F" plan.slot)
         Sleep 500
         me := MiningCharState(pid)
-        if !IsObject(me) || Mod(me.skillBar, 10) + 1 != MN_BOSS_BAR
-            throw Error("技能欄不是 F" MN_BOSS_BAR "（現在 F" (IsObject(me) ? me.skillBar + 1 : "?") "），不開打")
+        if !IsObject(me) || Mod(me.skillBar, 10) + 1 != plan.slot
+            throw Error("技能欄不是 F" plan.slot "（現在 F" (IsObject(me) ? me.skillBar + 1 : "?") "），不開打")
     }
     EventLog(p.name, "MN_BOSS_SKILL", "技能欄 F" (me.skillBar + 1) "｜右鍵技能 " MnSkillText(pid, me.runSkill))
 }
@@ -1436,13 +1634,18 @@ MnBossLootWait(p, st, base) {
 ; 走到王旁邊 → 游標對準王的身體、壓住右鍵（右鍵技能是你設好的那個）→ 每 0.3 秒重新對準 → 王從清單消失（被打死）就放開。
 ; 角色死亡 / 你動鍵鼠 / 超時 / 視窗不在前面 / 出錯：一定放開右鍵。
 MnFightBoss(p, boss) {
-    global MN_BOSS_STAND, MN_BOSS_AIM_H, MN_BOSS_MAX_MS, MN_BOSS_TICK_MS, apRunStart, mnBossFight
+    global MN_BOSS_STAND, MN_BOSS_AIM_H, MN_BOSS_MAX_MS, MN_BOSS_TICK_MS, apRunStart, mnBossFight, MN_RELAY_BOSS
     st := MnSt(p), pid := p.pid
     mnBossFight := true   ; 打王優先：排隊重新登入 / 載入中的角色、要切視窗的功能都先等打完（ApBlockerRaw 看這個旗標）
+    if MN_RELAY_BOSS {
+        EventLog(p.name, "MN_RELAY_BOSS", "接手上一隻沒打完的王")
+        MN_RELAY_BOSS := 0
+    }
     try {
         MnFightBossCore(p, boss)
     } finally {
         mnBossFight := false
+        st.bossFightEnd := A_TickCount
     }
 }
 ; 游標要瞄王身上哪一點：預設是王身體（離地 MN_BOSS_AIM_H）；王的位置和礦石重疊時，游標剛好落在礦上會點到礦、一直對礦送無效攻擊。
@@ -1605,7 +1808,8 @@ MnFightBossCore(p, boss) {
 ; 設了趟數（MN_LOOPS > 0）、已經進過那麼多趟、而且現在不在礦場 = 跑完了
 MnLoopsDone(st) {
     global MN_LOOPS
-    return MN_LOOPS > 0 && st.visits >= MN_LOOPS && !st.inMine
+    n := st.HasOwnProp("loops") ? st.loops : MN_LOOPS
+    return n > 0 && st.visits >= n && !st.inMine
 }
 MnLoopsNotify(p, st) {
     global MN_LOOPS
@@ -1613,15 +1817,17 @@ MnLoopsNotify(p, st) {
     if st.loopDone
         return
     st.loopDone := true
-    EventLog(p.name, "MN_LOOPS_DONE", "已跑完 " st.visits " 趟（設定 " MN_LOOPS " 趟），不再進圖")
+    n := st.HasOwnProp("loops") ? st.loops : MN_LOOPS
+    EventLog(p.name, "MN_LOOPS_DONE", "已跑完 " st.visits " 趟（設定 " n " 趟），不再進圖")
     AddRecentEvent("⛏ " p.name " 已跑完 " st.visits " 趟自動採礦，停止進圖")
-    try SendDiscordMessage("✅ HIHIYONG 自動採礦已跑完設定的趟數`n角色：" p.name "`n共 " st.visits " 趟（設定 " MN_LOOPS " 趟）。`n如果不是你設的：到「自動採礦」頁把「進礦場趟數」改回 0（0 = 一直循環）。")
+    try SendDiscordMessage("✅ HIHIYONG 自動採礦已跑完設定的趟數`n角色：" p.name "`n共 " st.visits " 趟（設定 " n " 趟）。`n如果不是你設的：到「自動採礦」頁把「進礦場趟數」改回 0（0 = 一直循環）。")
 }
 MnVisitText(st) {
     global MN_LOOPS
     if !st.visits
         return ""
-    t := "第 " st.visits (MN_LOOPS > 0 ? " / " MN_LOOPS : "") " 趟"
+    n := st.HasOwnProp("loops") ? st.loops : MN_LOOPS
+    t := "第 " st.visits (n > 0 ? " / " n : "") " 趟"
     if st.inMine
         t .= "｜已待 " Round((A_TickCount - st.inSince) / 60000) " 分"
     if st.lastStay
@@ -2043,6 +2249,8 @@ AutoMiningSet(rawValue) {
         for p in profiles
             if p.HasOwnProp("mn")
                 p.DeleteProp("mn")
+        if MN_CHARS.Count >= 2   ; v1.3.90.75：勾了 2 隻以上 → 接力，一次只有一隻在礦場（照帳號清單順序）
+            MnRelayManualBegin()
     }
     for p in profiles
         p.mnActive := MN_RUNNING && MN_CHARS.Has(p.name) ? true : false
@@ -2058,7 +2266,8 @@ AutoMiningPushWeb() {
     for p in profiles {
         if !p.enabled
             continue
-        chars .= (chars = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","on":' (MN_CHARS.Has(p.name) ? "true" : "false") ',"slot":' MN_BOSS_CHAR_SLOTS.Get(p.name, 0) '}'
+        chars .= (chars = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","on":' (MN_CHARS.Has(p.name) ? "true" : "false") ',"slot":' MN_BOSS_CHAR_SLOTS.Get(p.name, 0) ',"sched":"' JsonEscapeWeb(MnSchedTimes(p.name)) '","schedStatus":"' JsonEscapeWeb(MnSchedStatusText(p.name)) '"'
+            . ',"cColors":"' JsonEscapeWeb(MnCharCfgGet(p.name, "Colors")) '","cBoss":"' MnCharCfgGet(p.name, "Boss") '","cSkill":"' JsonEscapeWeb(MnCharCfgGet(p.name, "BossSkill")) '","cBar":"' MnCharCfgGet(p.name, "BossBar") '","cLoops":"' MnCharCfgGet(p.name, "Loops") '","boxes":' (p.HasOwnProp("mn") && IsObject(p.mn) && p.mn.HasOwnProp("boxesLeft") ? p.mn.boxesLeft : -1) MnSlotNamesJson(p) '}'
         if MN_CHARS.Has(p.name)
             states .= (states = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","text":"' JsonEscapeWeb(MnSt(p).text) '","visit":"' JsonEscapeWeb(MnVisitText(MnSt(p))) '","eta":"' JsonEscapeWeb(MnBossEtaText(MnSt(p))) '"}'
     }
@@ -2094,7 +2303,7 @@ AutoMiningPushWeb() {
     colors := ""
     for c in MN_COLORS
         colors .= (colors = "" ? "" : ",") '"' c '"'
-    try WVCore.PostWebMessageAsJson('{"type":"automining","data":{"running":' (MN_RUNNING ? "true" : "false") ',"autoEnter":' (MN_AUTOENTER ? "true" : "false") ',"keepInv":' (MN_KEEP_INV ? "true" : "false") ',"colors":[' colors '],"boss":' (MN_BOSS_ON ? "true" : "false") ',"bossBar":' MN_BOSS_BAR ',"bossSkill":"' JsonEscapeWeb(MN_BOSS_SKILL) '","loops":' MN_LOOPS ',"resume":' (MN_RESUME ? "true" : "false") ',"resumed":' (MN_RESUMED ? "true" : "false") ',"strictColor":' (MN_RANK_SEC >= 100 ? "true" : "false") ',"skipHard":' (MN_SKIPHARD ? "true" : "false") ',"hardCount":' MnHardCount() ',"blockCount":' MnPosBlockCount() ',"curSkill":' (cur = "" ? "null" : cur) ',"stats":[' stats ']'
+    try WVCore.PostWebMessageAsJson('{"type":"automining","data":{"relay":' MnRelayJson() ',"tripMin":' MN_RELAY_TRIP_MIN ',"running":' (MN_RUNNING ? "true" : "false") ',"autoEnter":' (MN_AUTOENTER ? "true" : "false") ',"keepInv":' (MN_KEEP_INV ? "true" : "false") ',"colors":[' colors '],"boss":' (MN_BOSS_ON ? "true" : "false") ',"bossBar":' MN_BOSS_BAR ',"bossSkill":"' JsonEscapeWeb(MN_BOSS_SKILL) '","loops":' MN_LOOPS ',"resume":' (MN_RESUME ? "true" : "false") ',"resumed":' (MN_RESUMED ? "true" : "false") ',"strictColor":' (MN_RANK_SEC >= 100 ? "true" : "false") ',"skipHard":' (MN_SKIPHARD ? "true" : "false") ',"hardCount":' MnHardCount() ',"blockCount":' MnPosBlockCount() ',"curSkill":' (cur = "" ? "null" : cur) ',"stats":[' stats ']'
         . ',"licensed":' (MnFeatureOK() ? "true" : "false") ',"chars":[' chars '],"states":[' states ']}}')
 }
 
