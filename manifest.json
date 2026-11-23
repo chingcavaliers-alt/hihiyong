@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.95",
+    "version":  "v1.3.90.97",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "9ef19a879bcdac33e280a206e927bd7bdfe3f7cebb68350a474a649b9bff0d44"
+                      "sha256":  "33ae7507033e7f1b5339c60472599e697a896033e2b1c068214f64bccbea6b73"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "536d69b898e55d33266ff85ef5edc64f9053220f385e20eae39b5514ac72c439"
+                      "sha256":  "f0e35e5f2d8c09a396d658a35045a249e6a1f8ffaa92d5b3878feaaae541878b"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -139,11 +139,11 @@
                   },
                   {
                       "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "f459db11dd44c1d47b4964af58ec52b6a73d5adef0181ff75e20b117dc297f85"
+                      "sha256":  "9fd56159ddafd550d3f7d41ee817d0ca73fb84ed08581a4e8eadf8b4696d927b"
                   },
                   {
                       "path":  "modules\\AutoMiningSchedule.ahk",
-                      "sha256":  "4327592e25506b3c98ffa12b53b36b9661d6983fa1b803302726748c531e5749"
+                      "sha256":  "4a274e790bcc1ee0f81c9a85e78259fa63cac2eca4af83b26fe783a42bd37d95"
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
@@ -155,7 +155,7 @@
                   },
                   {
                       "path":  "modules\\BuffCast.ahk",
-                      "sha256":  "477ef155b8decb76af3617392be3cf1ad0d6f115c23e20e25ad55e8713add436"
+                      "sha256":  "71fb315dced5ffc2c556acaa9502fd1e075657bd1a786489c420eba4f836ee8b"
                   },
                   {
                       "path":  "modules\\CompanionWatch.ahk",
@@ -455,7 +455,7 @@
                   },
                   {
                       "path":  "ui\\app.js",
-                      "sha256":  "253eb1bd8cb08223453a7e62a4d6d590b862b161fb0c47d0ae514ee5ded62fbc"
+                      "sha256":  "c018f83a0ff1dccd713fdce511dbafec63bb64b98e213eea4de1bb1a81cb5f6f"
                   },
                   {
                       "path":  "ui\\guide\\dc_a_gear.png",
@@ -563,7 +563,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "74741a13021aec92eaeaf09d4f4908893420e9f5195a56b41231c7a3ca18413b"
+                      "sha256":  "22295967c579a46aea1c0f2d85320b5f266b0d1e1921bafc78a2b4c3073017a0"
                   },
                   {
                       "path":  "登入測試.bat",

@@ -101,6 +101,25 @@ MnParseChars(text) {
             out[n] := 1
     return out
 }
+MnParseOrderList(text) {
+    out := [], seen := Map()
+    for part in StrSplit(text, "|")
+        if (n := Trim(part)) != "" && !seen.Has(n)
+            seen[n] := 1, out.Push(n)
+    return out
+}
+; 第幾個勾的（1 起算；沒勾 0）
+MnOrderOf(name) {
+    global MN_ORDER, MN_CHARS
+    k := 0
+    for n in MN_ORDER
+        if MN_CHARS.Has(n) {
+            k += 1
+            if n = name
+                return k
+        }
+    return 0
+}
 ; 要挖的顏色（照優先順序排）：INI 沒有這一項 = 全部，預設順序綠 > 紫 > 紅 > 黃 > 藍；有這一項但是空的 = 一個都不挖
 MnParseColors(text) {
     global MN_COLORS_ALL
@@ -588,6 +607,8 @@ MnPosListText() {
     return out
 }
 global MN_CHARS := MnParseChars(MnIniGet("Chars", ""))
+; 勾選的先後順序（v1.3.90.97）：[AutoMining] Chars 照打勾的順序存；手動勾多隻按啟動時照這個順序接力（MN_CHARS 是 Map，會照名稱排序，所以另外記）
+global MN_ORDER := MnParseOrderList(MnIniGet("Chars", ""))
 MnStatsLoad()
 MnHardLoad()
 MnPosLoad()
@@ -2199,6 +2220,8 @@ AutoMiningSet(rawValue) {
         AddRecentEvent("🔒 這台電腦沒有有效的使用授權，自動採礦無法啟動")
     }
     MN_CHARS := MnParseChars(parts[2])
+    global MN_ORDER
+    MN_ORDER := MnParseOrderList(parts[2])   ; 頁面照打勾順序送
     if parts.Length >= 3 && IsInteger(parts[3])
         MN_AUTOENTER := Integer(parts[3]) ? 1 : 0
     if parts.Length >= 4 && IsInteger(parts[4])
@@ -2222,8 +2245,9 @@ AutoMiningSet(rawValue) {
     if parts.Length >= 13 && IsInteger(parts[13])
         MN_RESUME := Integer(parts[13]) ? 1 : 0
     names := ""
-    for n, _ in MN_CHARS
-        names .= (names = "" ? "" : "|") n
+    for n in MN_ORDER   ; 照打勾的順序存
+        if MN_CHARS.Has(n)
+            names .= (names = "" ? "" : "|") n
     IniWrite names, INI, "AutoMining", "Chars"
     IniWrite MN_AUTOENTER, INI, "AutoMining", "AutoEnter"
     IniWrite MN_KEEP_INV, INI, "AutoMining", "KeepInv"
@@ -2266,7 +2290,7 @@ AutoMiningPushWeb() {
     for p in profiles {
         if !p.enabled
             continue
-        chars .= (chars = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","on":' (MN_CHARS.Has(p.name) ? "true" : "false") ',"slot":' MN_BOSS_CHAR_SLOTS.Get(p.name, 0) ',"sched":"' JsonEscapeWeb(MnSchedTimes(p.name)) '","schedStatus":"' JsonEscapeWeb(MnSchedStatusText(p.name)) '"'
+        chars .= (chars = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","on":' (MN_CHARS.Has(p.name) ? "true" : "false") ',"slot":' MN_BOSS_CHAR_SLOTS.Get(p.name, 0) ',"ord":' MnOrderOf(p.name) ',"sched":"' JsonEscapeWeb(MnSchedTimes(p.name)) '","schedStatus":"' JsonEscapeWeb(MnSchedStatusText(p.name)) '"'
             . ',"cColors":"' JsonEscapeWeb(MnCharCfgGet(p.name, "Colors")) '","cBoss":"' MnCharCfgGet(p.name, "Boss") '","cSkill":"' JsonEscapeWeb(MnCharCfgGet(p.name, "BossSkill")) '","cBar":"' MnCharCfgGet(p.name, "BossBar") '","cLoops":"' MnCharCfgGet(p.name, "Loops") '","boxes":' (p.HasOwnProp("mn") && IsObject(p.mn) && p.mn.HasOwnProp("boxesLeft") ? p.mn.boxesLeft : -1) MnSlotNamesJson(p) '}'
         if MN_CHARS.Has(p.name)
             states .= (states = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","text":"' JsonEscapeWeb(MnSt(p).text) '","visit":"' JsonEscapeWeb(MnVisitText(MnSt(p))) '","eta":"' JsonEscapeWeb(MnBossEtaText(MnSt(p))) '"}'

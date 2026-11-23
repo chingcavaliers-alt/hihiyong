@@ -73,20 +73,32 @@ BcCharOn(name) {
 }
 BcSetCharOn(name, on, src := "") {
     global INI
+    BcCacheClear()
     IniWrite on ? "1" : "0", INI, "BuffCast", name "|Enabled"
     EventLog(name, "BUFF_CFG", "一鍵施法總開關：" (on ? "開" : "關") (src != "" ? "｜" src : ""))
     try BuffCastPushWeb()
 }
-; 這個角色用這個鍵的那一組（沒有回傳 0；總開關關著也回傳 0）
+; 這個角色用這個鍵的那一組（沒有回傳 0；總開關關著也回傳 0）。
+; v1.3.90.96：按鍵時不再每次讀設定檔（6 組 × 好幾個值），讀一次記在 bcCache，存檔 / 開關時清掉
+global bcCache := Map()
+BcCacheClear() {
+    global bcCache
+    bcCache := Map()
+}
 BcCfgByKey(name, key) {
-    global BC_GROUPS
-    if !BcCharOn(name)
+    global BC_GROUPS, bcCache
+    if !bcCache.Has(name) {
+        e := {on: BcCharOn(name), groups: []}
+        Loop BC_GROUPS
+            e.groups.Push(BcCfg(name, A_Index))
+        bcCache[name] := e
+    }
+    e := bcCache[name]
+    if !e.on
         return 0
-    Loop BC_GROUPS {
-        c := BcCfg(name, A_Index)
+    for c in e.groups
         if c.on && c.key = key
             return c
-    }
     return 0
 }
 BcCfgText(c) => "F" c.bar " 順序 " BcSlotsText(c.order) "｜" (c.clicks > 1 ? "右鍵連按 " c.clicks " 下｜" : "") (c.waitCast ? "等施法動作結束再多等 " : "每格間隔 ") c.delay " 毫秒｜" (c.retBar ? "放完切回 F" c.retBar " 第 " BcKey(c.retSlot) " 格" : "放完不切回")
@@ -101,6 +113,7 @@ BuffCastCharSet(rawValue) {
     if name = ""
         return
     used := Map(), dup := ""
+    BcCacheClear()
     for gi, grp in StrSplit(SubStr(rawValue, cut + 1), "|") {
         if gi > BC_GROUPS
             break
@@ -133,12 +146,14 @@ BuffCastCharSet(rawValue) {
             txt .= (txt = "" ? "" : "｜") BcKeyLabel(c.key) "：" BcCfgText(c)
     }
     EventLog(name, "BUFF_CFG", "一鍵施法：" (txt = "" ? "都沒有開" : txt) (dup != "" ? "｜重複的鍵沒開：" dup : ""))
+    BcCacheClear()
     BuffCastApply()
 }
 ; 全部角色的總開關（頁面 / 小窗）：0 / 1
 BuffCastSetGlobal(rawValue) {
     global INI, BC_ON
     BC_ON := Trim(rawValue) = "1" ? 1 : 0
+    BcCacheClear()
     IniWrite BC_ON, INI, "BuffCast", "Enabled"
     EventLog("GLOBAL", "BUFF_CFG", "一鍵施法總開關（所有角色）：" (BC_ON ? "開" : "關"))
     BuffCastApply()
@@ -204,11 +219,19 @@ BuffCastApply() {
     }
     HotIf()
 }
-; 11/23 18:30 欸等：側鍵還壓著時遊戲不收右鍵 → 等觸發的鍵放開才開始
+; 11/23 18:30 欸等：側鍵還壓著時遊戲不收右鍵 → 滑鼠觸發（側鍵、Ctrl＋左鍵）等放開才開始；
+; v1.3.90.96：鍵盤鍵按下去就馬上開始（不用等放開）。按住不放時鍵盤會自動連發，連發（上一下 0.6 秒內）不算「再按一次中止」
 BcHotkey(thisHotkey) {
     global bcBusy
     key := RegExReplace(thisHotkey, "^\$")
-    if !bcBusy {
+    isMouse := InStr(key, "Button")
+    if bcBusy {
+        if !isMouse && A_PriorHotkey = thisHotkey && A_TimeSincePriorHotkey < 600
+            return   ; 自動連發
+        BuffCastNow("熱鍵", key)
+        return
+    }
+    if isMouse {
         try KeyWait RegExReplace(key, "[~$*^!+#]"), "T1"
         if InStr(key, "^")
             try KeyWait "Ctrl", "T1"

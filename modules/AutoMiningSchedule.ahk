@@ -91,13 +91,17 @@ MnRelayNewDay() {
     MnRelaySetKey("Day", SubStr(A_Now, 1, 8))
 }
 
-; 手動接力：按「▶ 啟動」時勾的角色（照帳號清單順序）
+; 手動接力：按「▶ 啟動」時勾的角色，照打勾的順序（v1.3.90.97；沒有順序資料的照帳號清單排在後面）
 MnRelayManualBegin() {
-    global INI, MN_CHARS, profiles
-    names := ""
+    global INI, MN_CHARS, MN_ORDER, profiles
+    names := "", seen := Map()
+    if IsSet(MN_ORDER) && IsObject(MN_ORDER)
+        for n in MN_ORDER
+            if MN_CHARS.Has(n) && !seen.Has(n)
+                names .= (names = "" ? "" : "|") n, seen[n] := 1
     for p in profiles
-        if MN_CHARS.Has(p.name)
-            names .= (names = "" ? "" : "|") p.name
+        if MN_CHARS.Has(p.name) && !seen.Has(p.name)
+            names .= (names = "" ? "" : "|") p.name, seen[p.name] := 1
     try IniDelete INI, "AutoMiningRelay"
     MnRelaySetKey("Day", SubStr(A_Now, 1, 8))
     MnRelaySetKey("Manual", names)
