@@ -981,11 +981,42 @@ DhApproachNpc(p, name, minDist := 250, stopDist := 18, offset := 25) {
     DhRunTowardMap(p, gx, gz, stopDist)
     ApWait(() => (ApGuardAny(), false), 400)
 }
+; 貼在她旁邊還是看不到（11/24 06:20 欸等：站在護士東邊柱子旁 17 單位，鏡頭被建築擋住，之後 9 張圖每次都停在同一個位置失敗）：
+; 繞到她的另一側 / 左右兩側（離她 radius 單位）各試一次，每到一個點就重新投影，看得到就回傳畫面位置；都不行回傳 0。
+DhCircleNpc(p, name, radius := 35) {
+    pid := p.pid
+    npc := DhFindCrow(pid, name)
+    me := MiningCharState(pid)
+    if !npc || !IsObject(me)
+        return 0
+    d := Sqrt((me.x - npc.x) ** 2 + (me.z - npc.z) ** 2)
+    ux := d < 1 ? 1 : (me.x - npc.x) / d, uz := d < 1 ? 0 : (me.z - npc.z) / d
+    for deg in [180, 90, -90] {
+        r := deg * 3.141592653589793 / 180
+        vx := ux * Cos(r) - uz * Sin(r), vz := ux * Sin(r) + uz * Cos(r)
+        gx := npc.x + vx * radius, gz := npc.z + vz * radius
+        EventLog(p.name, "DH_CAMERA", "貼在「" name "」旁邊還是看不到，繞到她的" (deg = 180 ? "另一側" : deg > 0 ? "左側" : "右側") "｜目標 (" Round(gx) "," Round(gz) ")")
+        try DhRunTowardMap(p, gx, gz, 10)
+        catch as e {
+            if e.Extra = "stop"
+                throw e
+            continue
+        }
+        ApWait(() => (ApGuardAny(), false), 500)
+        npc := DhFindCrow(pid, name)
+        if !npc
+            return 0
+        sp := GameWorldToScreen(pid, npc.x, npc.y, npc.z)
+        if IsObject(sp) && sp.visible && DhScreenFree(sp)
+            return sp
+    }
+    return 0
+}
 ; NPC 現在在畫面上的位置（h = 離地高度：點 NPC 身體而不是腳下，鏡頭拉遠時身體變小也一樣準）。
 ; 不在畫面內：先用大地圖走到她旁邊；還是看不到再壓中鍵環繞鏡頭；都不行就停手（不點地板亂走）。
 DhNpcScreen(p, name, h := 0) {
     pid := p.pid
-    Loop 4 {
+    Loop 5 {
         npc := DhFindCrow(pid, name)
         if !npc
             throw Error("找不到「" name "」")
@@ -999,8 +1030,10 @@ DhNpcScreen(p, name, h := 0) {
                 DhSoft(p, "再靠近「" name "」", () => DhApproachNpc(p, name, 15, 10, 8))
             else if A_Index = 3
                 DhSoft(p, "旋轉鏡頭找「" name "」", () => DhRevealNpc(p, name))
+            else if A_Index = 4   ; v1.3.90.98：還是看不到就換個位置站（繞到她另一側 / 左右兩側）
+                DhSoft(p, "繞到「" name "」另一側", () => DhCircleNpc(p, name))
             else
-                throw Error("走到旁邊也轉過鏡頭，還是看不到「" name "」")
+                throw Error("走到旁邊、轉過鏡頭、繞到另一側，還是看不到「" name "」")
             continue
         }
         if h > 0 {
