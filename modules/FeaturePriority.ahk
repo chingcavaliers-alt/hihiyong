@@ -8,10 +8,10 @@
 ; 設定存在 INI [Priority] Order（功能代碼，逗號分隔）。
 ; ============================================================================
 
-global FP_KEYS := ["daily", "switcher", "mining", "boss", "dailyhunt", "party", "companion", "mbox", "lagfix"]
-global FP_NAMES := Map("daily", "每日更換道具", "switcher", "視窗按鍵精靈（輪流切換視窗 + 按鍵）", "mining", "自動採礦", "boss", "打王（自動採礦的一部分）", "dailyhunt", "每日討伐"
+global FP_KEYS := ["daily", "switcher", "mining", "boss", "raid", "dailyhunt", "party", "companion", "mbox", "lagfix"]
+global FP_NAMES := Map("daily", "每日更換道具", "switcher", "視窗按鍵精靈（輪流切換視窗 + 按鍵）", "mining", "自動採礦", "boss", "水晶礦場 Boss（自動採礦的一部分）", "raid", "冒險小隊 Boss（自動進場打王）", "dailyhunt", "每日討伐"
     , "party", "自動組隊", "companion", "寵物 / 雇傭兵 / 娃娃監測", "mbox", "命運箱子", "lagfix", "變慢自動過圖")
-global FP_DEFAULT := "daily,switcher,mining,boss,dailyhunt,party,companion,mbox,lagfix"
+global FP_DEFAULT := "daily,switcher,mining,boss,raid,dailyhunt,party,companion,mbox,lagfix"
 
 ; 只保留認得的功能、去重、缺的補在最後（照預設順序）
 FpParse(text) {
@@ -113,6 +113,14 @@ FpBusy(key, p := 0, asker := "") {
         return mnBossFight ? "打王中" : ""
     if key = "dailyhunt"
         return dhBusy ? "每日討伐進行中" : ""
+    if key = "raid" {   ; 冒險小隊 Boss（BossRaid.ahk；測試只載入本模組時沒有）
+        st := "idle", fnm := "BrStateNow"
+        try {
+            f := %fnm%
+            st := f()
+        }
+        return st != "idle" && st != "paused" ? "冒險小隊打王中" : ""
+    }
     if key = "party"
         return apBusy && foregroundOwner = "party" ? "自動組隊進行中" : ""
     if key = "companion"

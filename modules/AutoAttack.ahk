@@ -48,12 +48,35 @@ AutoAttackTick() {
         if offMin<AUTOATTACK_ALERT_MIN
             continue
         p.autoAtkAlerted:=1
+        ; v1.3.90.126：勾了自動採礦 / 冒險小隊打王（多開打王「參加」）的角色本來就不開 F6，只寫日誌、不提醒不發 Discord
+        ex:=AutoAttackExemptWhy(p)
+        if ex!="" {
+            EventLog(p.name,"AUTO_ATTACK_IDLE_SKIP","自動攻擊已關閉 " Floor(offMin) " 分鐘｜" ex "，不通知")
+            continue
+        }
         where:=""
         try where:=NotificationLocationText(p)
         EventLog(p.name,"AUTO_ATTACK_IDLE","自動攻擊已關閉 " Floor(offMin) " 分鐘｜" where)
         AddRecentEvent("💤 " p.name " 自動攻擊已關閉 " Floor(offMin) " 分鐘（" where "）")
         ReportEventShot(p,"💤 HIHIYONG 角色沒有在自動打怪`n角色：" p.name "`n所在地圖：" where "`n自動攻擊（F6）已關閉 " Floor(offMin) " 分鐘，請確認。（附上當下畫面）")
     }
+}
+
+; 這個角色是不是「本來就不開 F6」的特別功能角色（回傳原因；不是回傳空字串）。用名字取全域：單元測試不一定有那些模組
+AutoAttackExemptWhy(p) {
+    fm:="MnCharsHas"
+    try {
+        f:=%fm%
+        if f(p.name)
+            return "勾了自動採礦"
+    }
+    fn:="BlCfg"
+    try {
+        f:=%fn%
+        if f(p.name).on
+            return "勾了冒險小隊打王（多開打王參加）"
+    }
+    return ""
 }
 
 ; 網頁欄位：autoAttack 1 / 0 / -1（讀不到）。

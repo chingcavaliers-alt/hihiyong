@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.90.98",
+  "version": "v1.3.90.129",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "03d874703853dd69c4c1042dc01ce434b5bb46d9d10e802023bcac6a7b4fbac0"
+      "sha256": "3bade981a528a50c5acb94f8f9c59371e476c82676bf90cceca14ae91495eb1c"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -59,7 +59,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "563801ae34df38cdff225d7374486ba902815c2ab5efcb7230a366276d6c1919"
+      "sha256": "bdebec9185c6a9747ad629a059975c72057c407bd0b73d6f055202884a79d334"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -139,11 +139,11 @@
     },
     {
       "path": "modules\\AutoAttack.ahk",
-      "sha256": "e683d19274c588eaea616f5520d2fc65bdf2cafd152e996f356a5eb9cec74188"
+      "sha256": "e2c0499a0dce3a07a8e85fd6597964e41b56cee15c255a5c3f924cf3331a0cfe"
     },
     {
       "path": "modules\\AutoMining.ahk",
-      "sha256": "9fd56159ddafd550d3f7d41ee817d0ca73fb84ed08581a4e8eadf8b4696d927b"
+      "sha256": "a2430e1ae34c010d00bdea1f87c1984d91edb9999e2148b6d78958aa89bfa5ef"
     },
     {
       "path": "modules\\AutoMiningSchedule.ahk",
@@ -151,7 +151,15 @@
     },
     {
       "path": "modules\\AutoParty.ahk",
-      "sha256": "34ac83b0fe0bfd18c375dad2e0577aa4c937fd95100f101a3c34be99786cecd0"
+      "sha256": "09608f7f609dc33112498a6b1c1731b120441dcd678ec068f332d9726bd26c7f"
+    },
+    {
+      "path": "modules\\BossLock.ahk",
+      "sha256": "b3bef26d24234efc226d441730591dba5baa1eb6ca032d81b863beed83bc1144"
+    },
+    {
+      "path": "modules\\BossRaid.ahk",
+      "sha256": "d81569c53e7868badfee00711676c0eb0e7eb019d30b852f3b1f110af174670f"
     },
     {
       "path": "modules\\BossTimer.ahk",
@@ -179,7 +187,7 @@
     },
     {
       "path": "modules\\DailyRoutine.ahk",
-      "sha256": "73ce4f1c23647245c52b58fd4de81976c36596adcc7bcbd2bdc6a412f9bf9522"
+      "sha256": "a854c0b2138fbc163c19d88338f0ce3171976bb034978e38b6ad119805634802"
     },
     {
       "path": "modules\\DeathStats.ahk",
@@ -199,7 +207,7 @@
     },
     {
       "path": "modules\\FeaturePriority.ahk",
-      "sha256": "e59de41d5a41bc670cb39b0eef634a890f96e27635631ef94d6ba1520192762d"
+      "sha256": "5f1b7fc9849a4a4c97e827ce4f7ef528d147742a99409b12cff8147de26400e7"
     },
     {
       "path": "modules\\FocusWatch.ahk",
@@ -307,7 +315,7 @@
     },
     {
       "path": "modules\\WebUI.ahk",
-      "sha256": "02c2817c265b036140a6fa0b74b0a4352b082e6b506e0a472a6815fbd7820fdd"
+      "sha256": "f9d7feba33a1bfa7c33427708fe0b3976a799ac0822e12ff02a53dafe2615f45"
     },
     {
       "path": "offsets_db\\6AE9CFCB-2103000.ini",
@@ -459,7 +467,7 @@
     },
     {
       "path": "ui\\app.js",
-      "sha256": "c018f83a0ff1dccd713fdce511dbafec63bb64b98e213eea4de1bb1a81cb5f6f"
+      "sha256": "d5fb5abc92bd95cd341561a18d38937011585c70cbefbc5dbb604814be0a7a7f"
     },
     {
       "path": "ui\\guide\\dc_a_gear.png",
@@ -567,7 +575,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "13ef634f083fc191092b8f439fd477eab3653fb32aac0335b61f55ab073cfe0b"
+      "sha256": "0d6cc33ba0d8d9cdee9ece1caf6a9a5cd159c09958747d79e1c908d636617007"
     }
   ]
 }

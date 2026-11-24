@@ -163,6 +163,7 @@ function onSubShown(sub){
  if(sub==='automining')send('autominingstate');
  if(sub==='priority')send('prioritystate');
  if(sub==='buffcast')send('buffcaststate');
+ if(sub==='bosslock')send('bosslockstate');else if(window._blWatch)send('bosslockleave');window._blWatch=sub==='bosslock';
  if(sub==='settings')send('loginchars');
  if(sub==='invMain')requestInvStats();
  if(sub==='roleCards'&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats('',true);
@@ -1172,6 +1173,49 @@ function renderMnRelay(d){
 // v1.3.90.88 一鍵施法：每個角色一張卡、6 組，每組自己選觸發鍵（滑鼠側鍵 / Ctrl＋左鍵 / 鍵盤鍵），各自設技能欄、施放順序、等施法、切回
 let bcData=null;
 const BC_KEYS=[['XButton1','滑鼠：後退鍵'],['XButton2','滑鼠：前進鍵'],['^LButton','滑鼠：Ctrl＋左鍵'],...'abcdefghijklmnopqrstuvwxyz'.split('').map(k=>[k,'鍵盤：'+k.toUpperCase()]),...['`','-','=','[',']',',','.','/',"'",'\\'].map(k=>[k,'鍵盤：'+k]),...[0,1,2,3,4,5,6,7,8,9].map(n=>['Numpad'+n,'數字鍵盤 '+n])];
+// 清除紀錄：按兩下才清（3 秒內再按一次），避免誤按
+let _brClearAt=0;function confirmClear(){const n=Date.now();if(n-_brClearAt<3000){_brClearAt=0;return true;}_brClearAt=n;try{showToast('再按一次「清除紀錄」就會清掉最近幾輪的紀錄');}catch(e){}return false;}
+// 多開卡右鍵打王（v1.3.90.99）
+const BL_STATE_TEXT={idle:'',waiting:'⏳ 等滑鼠停 2 秒',running:'⚙ 卡右鍵中',locked:'🎯 卡住中'};
+function renderBossLock(d){
+ const t=document.getElementById('blText');if(t)t.textContent=[BL_STATE_TEXT[d.state]||'',d.text||''].filter(Boolean).join('｜');
+ const st=document.getElementById('blStart');if(st)st.disabled=d.state==='running'||d.state==='waiting';
+ const el=document.getElementById('blChars');if(!el)return;
+ if(el.contains(document.activeElement)&&document.activeElement.tagName==='SELECT')return;
+ const opt=(v,t,cur)=>`<option value="${v}" ${String(v)===String(cur)?'selected':''}>${esc(t)}</option>`;
+ const zl=(d.chars||[]).filter(x=>x.z).sort((a,b)=>a.z-b.z).map(x=>esc(x.name)+(x.z===1?'（畫面置頂）':''));
+ const zt=document.getElementById('blZ');if(zt)zt.innerHTML=zl.length?'視窗堆疊：'+zl.join(' ＞ '):'';
+ // 參加的角色視窗有沒有完全重疊（位置、大小差 4 像素以內）
+ const ov=document.getElementById('blOverlap');if(ov){const on=(d.chars||[]).filter(x=>x.on&&x.rect);let msg='';
+  if(on.length>=2){const r0=on[0].rect;const bad=on.filter(x=>x.rect.some((v,k)=>Math.abs(v-r0[k])>4)).map(x=>esc(x.name));
+   msg=bad.length?`<span class="mx-custom">⚠ 參加的角色視窗沒有完全重疊：${bad.join('、')} 跟 ${esc(on[0].name)} 的位置 / 大小不一樣（要同一個位置、同樣大小）</span>`:'✓ 參加的角色視窗完全重疊';}
+  ov.innerHTML=msg;}
+ el.innerHTML=(d.chars||[]).length?d.chars.map((x,i)=>{
+  const nm=k=>x.names&&x.names[x.bar-1]?x.names[x.bar-1][k-1]:'';
+  const slots=[1,2,3,4,5,6,7,8,9,10].map(k=>opt(k,(k===10?0:k)+'　'+(nm(k)||(x.alive?'（空）':'')),x.slot)).join('');
+  return `<div class="char-card ${x.on?'on':''}"><div class="cc-head"><label class="toggle"><input type="checkbox" id="blOn${i}" ${x.on?'checked':''} onchange="blSave(${i})"> <b>${esc(x.name)}</b></label>`
+   +(x.z?`<span class="dh-no" style="width:auto;padding:0 6px${x.z===1?';background:var(--accent,#2f7);color:#fff':''}" title="遊戲視窗由上到下的堆疊順序">${x.z===1?'畫面置頂':'第 '+x.z+' 層'}</span>`:(x.alive?'<span class="cc-meta">視窗縮小中</span>':''))
+   +(x.locked?'<span class="dh-no" style="width:auto;padding:0 6px">卡住中</span>':'')
+   +(x.alive?'':'<span class="cc-meta" style="margin-left:auto">沒有連接遊戲視窗</span>')+`</div>`
+   +`<div class="cc-row"><select id="blBar${i}" onchange="blSave(${i})" aria-label="技能欄">${[1,2,3,4].map(b=>opt(b,'F'+b,x.bar)).join('')}</select>`
+   +`<select id="blSlot${i}" onchange="blSave(${i})" aria-label="技能格">${slots}</select></div></div>`;
+ }).join(''):'<span class="hint">沒有啟用的角色</span>';
+ window.blData=d;
+ const br=d.br||{};const BR_ST={idle:'',entering:'🚪 進場中',fighting:'⚔ 打王中',leaving:'🏃 離開中',paused:'⏸ 暫停中'};
+ const bt=document.getElementById('brText');if(bt)bt.textContent=[BR_ST[br.state]||'',br.text||''].filter(Boolean).join('｜');
+ const bs=document.getElementById('brStart');if(bs)bs.disabled=!!br.state&&br.state!=='idle';
+ const tp=document.getElementById('brTop');if(tp&&document.activeElement!==tp)tp.innerHTML=opt('','最後進場的那隻',br.top||'')+(d.chars||[]).filter(x=>x.on).map(x=>opt(x.name,x.name,br.top||'')).join('');
+ const dur=x=>x>=60?Math.floor(x/60)+' 分 '+(x%60)+' 秒':x+' 秒';
+ const bc=document.getElementById('brCur');if(bc)bc.innerHTML=br.cur?`已經 ${dur(br.cur.elapsed)}｜`+((br.cur.bosses||[]).map((x,i)=>`${i+1}. ${esc(x.name)} ${dur(x.sec)}${x.live?'（打王中）':''}`).join('　')||'等王出現'):'還沒開始';
+ const br2=document.getElementById('brRuns');if(br2)br2.innerHTML=(br.runs||[]).length?`<table class="mini-table"><tr><th>時間</th><th>角色</th><th>王</th><th>進場</th><th>打王</th><th>離開</th><th>總時間</th><th>結果</th></tr>`+br.runs.map(r=>`<tr><td>${esc(r.when)}</td><td>${esc(r.chars)}</td><td>${(r.bosses||[]).map(x=>esc(x.name)+' '+dur(x.sec)).join('<br>')||'—'}</td><td>${dur(r.enter)}</td><td>${dur(r.fight)}</td><td>${dur(r.leave)}</td><td><b>${dur(r.total)}</b></td><td>${esc(r.why)}</td></tr>`).join('')+'</table>':'<span class="hint">還沒有紀錄</span>';
+ const lt=document.getElementById('brLooter');if(lt&&document.activeElement!==lt)lt.innerHTML=opt('','最前面的角色',br.looter||'')+(d.chars||[]).filter(x=>x.on).map(x=>opt(x.name,x.name,br.looter||'')).join('');
+ const lp=document.getElementById('brLoop');if(lp&&document.activeElement!==lp)lp.checked=!!br.loop;
+ const lm=document.getElementById('brLoopMax');if(lm&&document.activeElement!==lm)lm.value=br.loopMax||0;
+ const ba=document.getElementById('brAims');if(ba)ba.textContent=(br.aims||[]).length?'已記住的瞄準高度：'+br.aims.map(a=>a.boss+' '+a.h).join('、'):'還沒記住瞄準高度（先用預設 30）';
+}
+function brLoopSave(){const v=id=>document.getElementById(id);send('bossraidloop',{value:(v('brLoop').checked?1:0)+'~'+(parseInt(v('brLoopMax').value)||0)});}
+function blSave(i){const x=(window.blData?.chars||[])[i];if(!x)return;const v=id=>document.getElementById(id);
+ send('bosslockchar',{value:[x.name,v('blOn'+i).checked?1:0,v('blBar'+i).value,v('blSlot'+i).value].join('~')});}
 function renderBuffCast(d){
  bcData=d;const oa=document.getElementById('bcOnAll');if(oa&&document.activeElement!==oa)oa.checked=d.on!==false;
  const el=document.getElementById('bcChars');if(!el)return;
@@ -1489,6 +1533,6 @@ setTimeout(()=>send('updatestate'),2500);
 setTimeout(()=>send('licensestate'),2000);setInterval(()=>send('licensestate'),600000);
 setInterval(()=>{if(isShown('roleCards')){send('dailystate');if(!invStatsSelected||invStatsSelected===invStatsToday)requestInvStats('');}},30000);
 setInterval(()=>{if(isShown('invMain')&&(!invStatsSelected||invStatsSelected===invStatsToday))requestInvStats();},10000);
-if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='hoursum')renderHourSum(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='automining')renderAutoMining(m.data);if(m?.type==='priority')renderPriority(m.data);if(m?.type==='buffcast')renderBuffCast(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
+if(window.chrome?.webview){window.chrome.webview.addEventListener('message',e=>{let m=e.data;if(typeof m==='string'){try{m=JSON.parse(m)}catch{}}if(m?.type==='state')setState(m.data);if(m?.type==='event')addEvent(m.data);if(m?.type==='selfcheck')showSelfCheck(m.data);if(m?.type==='invstats')renderInvStats(m.data);if(m?.type==='recstats')renderRecStats(m.data);if(m?.type==='hoursum')renderHourSum(m.data);if(m?.type==='dropindex')renderDropIndex(m.data);if(m?.type==='update')renderUpdate(m.data);if(m?.type==='license')renderLicense(m.data);if(m?.type==='mbox')renderMBox(m.data);if(m?.type==='party')renderParty(m.data);if(m?.type==='companion')renderCompanion(m.data);if(m?.type==='dailyhunt')renderDailyHunt(m.data);if(m?.type==='automining')renderAutoMining(m.data);if(m?.type==='priority')renderPriority(m.data);if(m?.type==='buffcast')renderBuffCast(m.data);if(m?.type==='bosslock')renderBossLock(m.data);if(m?.type==='dropver')renderDropVer(m.data);if(m?.type==='daily')renderDaily(m.data);if(m?.type==='diag')renderDiag(m.data);if(m?.type==='lag')renderLag(m.data);if(m?.type==='lagfix')renderLagFix(m.data);if(m?.type==='loginchars')renderLoginChars(m.data);});}
 // 11/22：滑鼠停在數字框上滾輪會改到數字（挖礦「進礦場趟數」被改成 1，傳送卡到期後就不進圖）→ 數字框有焦點時滾輪先讓它失去焦點，不改值
 document.addEventListener('wheel',e=>{const t=e.target;if(t&&t.tagName==='INPUT'&&t.type==='number'&&document.activeElement===t)t.blur();},{passive:true});

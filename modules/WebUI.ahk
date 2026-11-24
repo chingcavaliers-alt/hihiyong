@@ -259,6 +259,36 @@ WebRunAction(action,value:=0,rawValue:="") {
         BuffCastCharOnSet(WebUrlDecode(rawValue))
         BuffCastApply()
         BuffCastPushWeb()
+    } else if action="bosslockstate" {
+        BossLockWatchZ(true)
+        BossLockPushWeb()
+    } else if action="bosslockleave" {
+        BossLockWatchZ(false)
+    } else if action="bosslockchar" {
+        BossLockCharSet(WebUrlDecode(rawValue))
+        BossLockPushWeb()
+    } else if action="bosslockstart" {
+        BossLockStart()
+    } else if action="bosslockstop" {
+        BossLockStop()
+    } else if action="bossraidstart" {
+        BossRaidStart()
+    } else if action="bossraidstop" {
+        BossRaidStop()
+    } else if action="bossraidaim" {
+        BossRaidLearnAim()
+    } else if action="bossraidlooter" {
+        BossRaidSetLooter(WebUrlDecode(rawValue))
+        BossLockPushWeb()
+    } else if action="bossraidclear" {
+        BossRaidClearRuns()
+        BossLockPushWeb()
+    } else if action="bossraidloop" {
+        BossRaidSetLoop(WebUrlDecode(rawValue))
+        BossLockPushWeb()
+    } else if action="bossraidtop" {
+        BossRaidSetTop(WebUrlDecode(rawValue))
+        BossLockPushWeb()
     } else if action="buffcastchar" {
         BuffCastCharSet(WebUrlDecode(rawValue))
         BuffCastPushWeb()

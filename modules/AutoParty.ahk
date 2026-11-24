@@ -236,8 +236,15 @@ ApBlockerRaw() {
         return "更換每日道具中"
     if invRunning
         return "背包清理中"
-    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion" && foregroundOwner != "dailyhunt" && foregroundOwner != "mining"
+    if foregroundOwner != "" && foregroundOwner != "party" && foregroundOwner != "companion" && foregroundOwner != "dailyhunt" && foregroundOwner != "mining" && foregroundOwner != "bossraid"
         return "其他功能正在操作遊戲視窗"
+    ; 多開打王卡右鍵中：其他會切視窗 / 按鍵的功能先暫停（會把卡住的右鍵弄掉）；自動進場打王自己的動作不算
+    blNm := "BlPauseReason"
+    try {
+        blf := %blNm%
+        if foregroundOwner != "bossraid" && (blWhy := blf()) != ""
+            return blWhy
+    }
     if IsObject(recorder)
         return "示範錄製中"
     swExcl := true, fpNm := "FpSwitcherExclusive"   ; 功能優先順序：視窗按鍵精靈排在其他功能前面才獨佔
@@ -769,7 +776,7 @@ ApGuardAny() {
         ApStop("角色死亡了，先停下來等復活")
     if ApUserActive() {
         ; 每日討伐：偶發的一下輸入（滑鼠輕碰、無線滑鼠雜訊、遠端軟體）不算「你開始操作」。等 0.45 秒再看：這段時間沒有新的輸入 = 偶發，繼續；還在動才停
-        if foregroundOwner = "dailyhunt" {
+        if foregroundOwner = "dailyhunt" || foregroundOwner = "bossraid" {   ; v1.3.90.113：自動進場打王也一樣
             Sleep 450
             if apIdleMs() >= 400 {
                 apLastOwn := A_TickCount

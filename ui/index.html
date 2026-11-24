@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HIHIYONG 多帳號管理器</title>
-<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.98">
+<link rel="stylesheet" id="v1318-ui" href="app.css?v=1.3.90.129">
 </head>
 <body><div class="app">
 <aside class="side"><div class="brand"><img class="logo" id="appLogo" alt="" src="../HiHiyong.ico" onerror="if(!this.dataset.fb){this.dataset.fb='1';this.src='../HiHiyong_default.ico';}"><div>HIHIYONG<small>多帳號管理器</small></div></div>
 <nav class="nav" id="nav">
 <button class="active" data-page="home"><span class="ni" data-icon="home"></span>首頁</button><button data-page="roles"><span class="ni" data-icon="people"></span>角色</button><button data-page="invstats"><span class="ni" data-icon="invstats"></span>收益統計</button>
 <button data-page="tools"><span class="ni" data-icon="logs"></span>功能</button></nav>
-<div class="foot">v1.3.90.98· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
+<div class="foot">v1.3.90.129· Game Data<div><a href="#" id="updateLink" onclick="send('updatecheck');return false" style="color:inherit">檢查更新</a></div></div>
 <nav class="nav" id="navBottom"><button data-page="guide"><span class="ni" data-icon="guide"></span>操作教學</button><button data-page="setup"><span class="ni" data-icon="settings"></span>設定</button></nav></aside>
 <main class="main"><header class="top"><div class="title" id="pageTitle">首頁</div><div class="sub" id="pageSub">日常操作與帳號總覽</div><div id="updateBadge" class="status-pill" style="display:none;cursor:pointer;background:var(--accent-soft);color:var(--accent-ink)" onclick="askUpdate()" title="按這裡看更新內容">🆕 有新版</div><div id="licenseBadge" class="status-pill" style="display:none;background:#fff3cd;color:#7a5b00" onclick="goTo('setup')" title="授權即將到期">⚠️ 授權即將到期</div><div class="badge" id="runBadge">● 系統待命</div><div id="dirtyBadge" class="status-pill" style="display:none">● 有尚未儲存的變更</div></header>
 <div class="content">
@@ -161,7 +161,7 @@
 </div>
 </section>
 <section class="page" id="tools">
-<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="automining">⛏ 自動採礦</button><button data-sub="buffcast">✨ 一鍵施法</button><button data-sub="priority">⚖️ 功能優先順序</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
+<div class="subtabs"><button data-sub="mbox" class="active">🎁 命運箱子</button><button data-sub="party">🤝 自動組隊</button><button data-sub="dailyhunt">🎯 每日討伐</button><button data-sub="automining">⛏ 自動採礦</button><button data-sub="buffcast">✨ 一鍵施法</button><button data-sub="bosslock">🎯 多開打王</button><button data-sub="priority">⚖️ 功能優先順序</button><button data-sub="switcher">⌨️ 視窗按鍵精靈</button><button data-sub="layout">🗂️ 視窗位置</button><button data-sub="devzone">🚧 開發中</button></div>
 <div class="subpage" id="mbox">
 <div class="card">
  <div class="section-title"><span class="ni"><span class="emo">🎁</span></span>命運箱子自動開啟 <span class="pill" id="mboxPill">—</span></div>
@@ -319,6 +319,34 @@
  <div class="hint" style="margin-top:6px">每組選一個<b>觸發鍵</b>（滑鼠後退 / 前進鍵、Ctrl＋左鍵、或鍵盤 A～Z 等）、<b>技能欄</b>，再<b>依序點下面的技能格子</b>加入施放順序（格子上的數字＝第幾個放，再點一下拿掉；施法久的最後點）。要更多組按「＋ 新增一組」，最多 6 組。被選成觸發鍵的鍵在遊戲視窗裡<b>不會再送給遊戲</b>，請挑遊戲沒在用的鍵；數字 1～0、F1～F10 不能選。</div>
  <div class="dh-run" style="margin-top:10px"><label class="toggle"><input type="checkbox" id="bcOnAll" onchange="send('buffcastset',{value:this.checked?'1':'0'})"> <b>一鍵施法總開關（所有角色）</b></label><span class="cc-meta">關掉時所有觸發鍵都照常交給遊戲（要打字前先關）；小窗第 3 頁也可以開關。每個角色卡右上角還有自己的開關。</span></div>
  <div class="dh-block"><div class="dh-label">每個角色的技能組（技能名稱要角色在遊戲裡才讀得到）</div><div id="bcChars" class="char-cards"></div></div>
+</div>
+</div>
+<div class="subpage" id="bosslock">
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🐉</span></span>自動進場打王（冒險小隊／披風）</div>
+ <div class="hint" style="border-left:3px solid var(--warn,#e0a000);padding-left:10px"><b>開始前的準備（很重要）</b><br>
+ ① <b>參加的角色視窗要完全重疊</b>（同一個位置、同樣大小）。按「▶ 自動進場打王」或「▶ 開始卡右鍵」時，程式會<b>自動把參加的角色視窗疊在「最前面的角色」上</b>；重新登入後也會再疊一次。下面「多開打王（卡右鍵）」會顯示目前有沒有完全重疊。<br>
+ ② 每隻在下面「多開打王（卡右鍵）」勾<b>參加</b>，選 F1～F4 的一格 <b>0 CD 技能</b>。<br>
+ ③ 背包要有<b>波斯貓傳送卡</b>（可重複使用；沒有的角色會略過）、快捷欄要有寵物卡和雇傭兵。<br>
+ ④ 命運箱子請在命運箱子頁設成「最前面的角色」開。<br>
+ ⑤ 進場、換王重卡、離場時程式會切視窗、移游標，<b>這時不要動滑鼠鍵盤</b>；要自己操作先按「■ 停止」。遠端觀看請用 AnyDesk 這類看同一個畫面的軟體，不要用 Windows 遠端桌面連線。</div>
+ <div class="hint" style="margin-top:6px"><b>一輪的流程</b>：勾參加的角色一隻一隻進場（背包右鍵波斯貓傳送卡 → 走到法陣按空白鍵 → 走到王旁邊、叫寵物和雇傭兵、鏡頭拉到最遠並轉到固定方向）→ 每隻在自己的視窗把游標放到<b>王的血條</b>上卡右鍵，確認有在施法（沒有就自動換高度再試）→ 每出現一隻新王就放開、重新瞄準、再卡 → 最後一隻<b>路西法</b>打完 → 全部放開 → 「撿掉落物」那隻按空白鍵撿 5 個 → 每隻走回出發點點「確認」回學院廣場。勾「打完自動接下一輪」：等地圖空 66 秒（王重生）再進場。<br>
+ 打王中：組隊、寵物 / 雇傭兵、每日討伐、採礦暫停；命運箱子照常開（開完那隻自動重卡）。掛網的其他角色要換每日道具 → 打王先暫停、換完回來接著打；打王的角色自己要換 → 等這一輪打完回到廣場再換。有角色在重新登入 → 先暫停，重登完把它帶回王的地圖。卡住時按「■ 停止」，15 秒還沒停會強制停。</div>
+ <div class="dh-run" style="margin-top:10px"><label class="toggle">最前面的角色 <select id="brTop" onchange="send('bossraidtop',{value:this.value})"></select></label>
+ <label class="toggle">撿掉落物 <select id="brLooter" onchange="send('bossraidlooter',{value:this.value})"></select></label>
+ <label class="toggle" title="一輪打完、回到學院廣場後等地圖空 66 秒（王重生）自動再進場；按停止、有角色沒離開、連續 3 輪沒等到王就不再接"><input type="checkbox" id="brLoop" onchange="brLoopSave()"> 打完自動接下一輪</label>
+ <label class="toggle">最多 <input type="number" id="brLoopMax" min="0" max="99" style="width:52px" onchange="brLoopSave()"> 輪（0 = 不限）</label>
+ <button class="btn" id="brStart" onclick="send('bossraidstart')">▶ 自動進場打王</button><button class="btn" onclick="send('bossraidstop')">■ 停止</button>
+ <button class="btn" onclick="send('bossraidaim')" title="打王時游標放在王的血條上停 2 秒，記住這隻王的血條高度">🎯 記住瞄準高度</button><span class="cc-meta" id="brText"></span></div>
+ <div class="cc-meta" id="brAims" style="margin-top:6px"></div>
+ <div class="dh-block"><div class="dh-label">這一輪</div><div id="brCur" class="cc-meta">還沒開始</div></div>
+ <div class="dh-block"><div class="dh-label">最近幾輪（每隻王從出現到打死的時間、一輪總時間）<button class="rp-reset" style="margin-left:8px" onclick="if(confirmClear())send('bossraidclear')">清除紀錄</button></div><div id="brRuns" style="overflow-x:auto"></div></div>
+</div>
+<div class="card" style="margin-top:14px"><div class="section-title"><span class="ni"><span class="emo">🎯</span></span>多開打王（卡右鍵）</div>
+ <div class="hint"><b>參加的角色視窗要完全重疊（同一個位置、同樣大小；按開始時程式會自動疊好）</b>，每隻都<b>卡住右鍵</b>連續放同一個技能（選 0 CD 的），游標放在王身上就一起打（視窗沒重疊，游標只會在最上面那隻的位置，其他隻打不到）。按「開始」後把游標移到王身上，<b>滑鼠停 2 秒</b>就會一隻一隻：叫到前面 → 切 F 欄選技能 → 卡住右鍵；做完叫回原本最前面的視窗、游標放回原位。要停按「全部放開」（每隻把游標拉到視窗外按一下左鍵解除）。</div>
+ <div class="dh-run" style="margin-top:10px"><button class="btn" id="blStart" onclick="send('bosslockstart')">▶ 開始卡右鍵</button><button class="btn" id="blStop" onclick="send('bosslockstop')">■ 全部放開</button><span class="cc-meta" id="blText"></span></div>
+ <div class="cc-meta" id="blZ" style="margin-top:8px"></div>
+ <div class="cc-meta" id="blOverlap" style="margin-top:4px"></div>
+ <div class="dh-block"><div class="dh-label">參加的角色和技能（F1～F4 選一格；技能名稱要角色在遊戲裡才讀得到）</div><div id="blChars" class="char-cards"></div></div>
 </div>
 </div>
 <div class="subpage" id="devzone">
@@ -768,4 +796,4 @@
  <div class="actions"><button class="btn soft" onclick="send('shortcuticon');showToast('請選擇要當圖示的圖片')">🖼️ 更換桌面圖示…</button><button class="btn soft" onclick="send('shortcuticonreset')">↺ 還原預設圖示</button><button class="btn soft" onclick="send('shortcutcreate')">重新建立桌面捷徑</button></div></div></div>
 </section>
 </div></main></div>
-<script src="app.js?v=1.3.90.98"></script><div id="toast"></div></body></html>
+<script src="app.js?v=1.3.90.129"></script><div id="toast"></div></body></html>

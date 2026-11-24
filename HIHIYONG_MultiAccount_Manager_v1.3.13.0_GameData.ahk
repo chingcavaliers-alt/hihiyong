@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.98"
+global APP_VERSION := "v1.3.90.129"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -141,6 +141,8 @@ global MEMORY_HP_BUILD:=IniRead(INI,"MemoryHP","BuildStamp","")
 #Include modules\LagFix.ahk
 #Include modules\LoginUi.ahk
 #Include modules\BuffCast.ahk
+#Include modules\BossLock.ahk
+#Include modules\BossRaid.ahk
 ; 縮小小窗：主視窗縮小時顯示監控狀態與功能開關（設定頁勾選才啟用）。
 #Include modules\MiniWindow.ahk
 #Include modules\NetGuard.ahk

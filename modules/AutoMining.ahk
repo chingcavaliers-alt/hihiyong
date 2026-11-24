@@ -101,6 +101,7 @@ MnParseChars(text) {
             out[n] := 1
     return out
 }
+MnCharsHas(name) => MN_CHARS.Has(name)   ; 這個角色有沒有勾自動採礦（自動攻擊提醒用）
 MnParseOrderList(text) {
     out := [], seen := Map()
     for part in StrSplit(text, "|")

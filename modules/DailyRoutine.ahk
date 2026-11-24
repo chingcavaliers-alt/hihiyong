@@ -155,6 +155,14 @@ DailyRunNext() {
             fpf:=%fpNm%
             fpWhy:=fpf("daily",pq)
         }
+        ; 冒險小隊 Boss 打王中：每日更換道具排在它前面 → 請它先暫停（放開右鍵）再換；排在它後面 → 等這一輪打完（v1.3.90.126）
+        if fpWhy="" {
+            brNm:="BrYieldForDaily"
+            try {
+                brf:=%brNm%
+                fpWhy:=brf(pq)
+            }
+        }
         if fpWhy!="" {
             if !pq.HasOwnProp("dailyWaitWhy") || pq.dailyWaitWhy!=fpWhy
                 pq.dailyWaitWhy:=fpWhy,EventLog(pq.name,"DAILY_WAIT","更換每日道具先等：" fpWhy)
