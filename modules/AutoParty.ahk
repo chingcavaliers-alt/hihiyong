@@ -2069,8 +2069,22 @@ ApInviteOne(L, M, &opened, &minimized) {
             return "skiplong|" name " 在好友名單的下方，要捲動才看得到，但捲動後還是看不到那一列（先不一直試）"
     }
     ApClick(L, row.x, row.y)
-    if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.selId = f.id))
-        return "fail|點選後選到的不是 " name
+    if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.selId = f.id)) {
+        ; v1.3.90.170：上一個人剛加入，好友名單會重新排 / 更新位置，第二個人常點到別列（11/19～11/25 兩台電腦都有「點選後選到的不是」）。
+        ; 重讀名單位置、游標先停在那一列再點一次
+        Sleep 300
+        ui := ApUi(L.pid)
+        row := IsObject(ui) ? ApFindRow(ui, f.id) : 0
+        if IsObject(row) && !row.vis
+            row := ApScrollToRow(L, f.id, &ui)
+        if !IsObject(row) || !row.vis
+            return "fail|點選後選到的不是 " name
+        ApHover(L, row.x, row.y)
+        Sleep 150
+        ApClick(L, row.x, row.y)
+        if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.selId = f.id))
+            return "fail|點選後選到的不是 " name "（重讀位置再點一次也一樣）"
+    }
     ui := ApUi(L.pid)
     if !IsObject(ui.partyBtn)
         return "fail|讀不到「組隊」按鈕的位置"

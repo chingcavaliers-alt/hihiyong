@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.167"
+global APP_VERSION := "v1.3.90.170"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -2455,6 +2455,14 @@ EvaluateMultiWindowFakeOnline() {
         return
     if !fellowWindow
         softMultiConfirmTick:=A_TickCount
+    ; v1.3.90.170：都已經通報過（沒開自動恢復的角色會一直留在監控中）就不要每次都再寫一行：
+    ; 11/25 22:47～22:51 另一台電腦 5 分鐘寫了 3772 行 SOFT_MULTI_CONFIRMED（每秒十幾行）
+    fresh:=false
+    for idx in candidates
+        if !profiles[idx].memSoftAlerted
+            fresh:=true
+    if !fresh
+        return
     names:=""
     for idx in candidates
         names.=(names="" ? "" : "、") profiles[idx].name

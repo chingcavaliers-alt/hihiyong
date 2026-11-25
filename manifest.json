@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.167",
+    "version":  "v1.3.90.170",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "704a79f03ffee3c1598488e1cfcfa6db500c55eef744325fad8a6c4fb777adbb"
+                      "sha256":  "4524a4a1a84734c1dc1448c025246c628ac679a600fb2adb9c6d0754643fc2ec"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "ce6fb119bffe43fb454f063aa6c9e4ca611f86f753d0727b436f902444144ac3"
+                      "sha256":  "8f02542e1e44c7368f322563aa07949e463fc2d3b04129888a5171a643c830fc"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -147,7 +147,7 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "09608f7f609dc33112498a6b1c1731b120441dcd678ec068f332d9726bd26c7f"
+                      "sha256":  "2ee70e66ddc37a83e3269235ad443b7b01c950231efbb54f6d8d9bd763a1e24b"
                   },
                   {
                       "path":  "modules\\BossLock.ahk",
@@ -571,7 +571,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "b86db776ec50953e7780f53835f8f623183afdc3a1fe9255bae1dd3a39047b4d"
+                      "sha256":  "6fd902149818c06333e78184f30c52796e982c70fd94e32be7d2da9c4831ceee"
                   },
                   {
                       "path":  "登入測試.bat",
