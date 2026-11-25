@@ -119,7 +119,9 @@ FpBusy(key, p := 0, asker := "") {
             f := %fnm%
             st := f()
         }
-        return st != "idle" && st != "paused" ? "冒險小隊打王中" : ""
+        ; v1.3.90.133：只有進場 / 離場（正在切視窗走路）才算忙。打王中（卡著右鍵）不擋：
+        ; 11/24 19:21 起命運箱子整輪都在等「冒險小隊打王中」沒開（組隊 / 寵物監測等另外由「卡右鍵中」暫停）
+        return st = "entering" || st = "leaving" ? "冒險小隊進場 / 離場中" : ""
     }
     if key = "party"
         return apBusy && foregroundOwner = "party" ? "自動組隊進行中" : ""

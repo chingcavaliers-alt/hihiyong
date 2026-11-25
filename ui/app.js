@@ -1181,7 +1181,7 @@ function renderBossLock(d){
  const t=document.getElementById('blText');if(t)t.textContent=[BL_STATE_TEXT[d.state]||'',d.text||''].filter(Boolean).join('｜');
  const st=document.getElementById('blStart');if(st)st.disabled=d.state==='running'||d.state==='waiting';
  const el=document.getElementById('blChars');if(!el)return;
- if(el.contains(document.activeElement)&&document.activeElement.tagName==='SELECT')return;
+ if(el.contains(document.activeElement)&&(document.activeElement.tagName==='SELECT'||document.activeElement.tagName==='INPUT'&&document.activeElement.type==='text'))return;
  const opt=(v,t,cur)=>`<option value="${v}" ${String(v)===String(cur)?'selected':''}>${esc(t)}</option>`;
  const zl=(d.chars||[]).filter(x=>x.z).sort((a,b)=>a.z-b.z).map(x=>esc(x.name)+(x.z===1?'（畫面置頂）':''));
  const zt=document.getElementById('blZ');if(zt)zt.innerHTML=zl.length?'視窗堆疊：'+zl.join(' ＞ '):'';
@@ -1198,7 +1198,8 @@ function renderBossLock(d){
    +(x.locked?'<span class="dh-no" style="width:auto;padding:0 6px">卡住中</span>':'')
    +(x.alive?'':'<span class="cc-meta" style="margin-left:auto">沒有連接遊戲視窗</span>')+`</div>`
    +`<div class="cc-row"><select id="blBar${i}" onchange="blSave(${i})" aria-label="技能欄">${[1,2,3,4].map(b=>opt(b,'F'+b,x.bar)).join('')}</select>`
-   +`<select id="blSlot${i}" onchange="blSave(${i})" aria-label="技能格">${slots}</select></div></div>`;
+   +`<select id="blSlot${i}" onchange="blSave(${i})" aria-label="技能格">${slots}</select></div>`
+   +`<div class="cc-row"><input type="text" id="blCard${i}" value="${esc(x.card||'')}" placeholder="傳送卡名稱（空白 = 波斯貓傳送卡）" maxlength="30" onchange="blSave(${i})" aria-label="傳送卡名稱" title="自動進場打王用的傳送卡名稱（跟著冒險小隊名稱變）" style="flex:1;min-width:0"></div></div>`;
  }).join(''):'<span class="hint">沒有啟用的角色</span>';
  window.blData=d;
  const br=d.br||{};const BR_ST={idle:'',entering:'🚪 進場中',fighting:'⚔ 打王中',leaving:'🏃 離開中',paused:'⏸ 暫停中'};
@@ -1211,11 +1212,13 @@ function renderBossLock(d){
  const lt=document.getElementById('brLooter');if(lt&&document.activeElement!==lt)lt.innerHTML=opt('','最前面的角色',br.looter||'')+(d.chars||[]).filter(x=>x.on).map(x=>opt(x.name,x.name,br.looter||'')).join('');
  const lp=document.getElementById('brLoop');if(lp&&document.activeElement!==lp)lp.checked=!!br.loop;
  const lm=document.getElementById('brLoopMax');if(lm&&document.activeElement!==lm)lm.value=br.loopMax||0;
+ const bl=document.getElementById('brLoot');if(bl)bl.textContent=br.loot?'背包裡的帝王披風轉盤：'+br.loot+' 個':'';
  const ba=document.getElementById('brAims');if(ba)ba.textContent=(br.aims||[]).length?'已記住的瞄準高度：'+br.aims.map(a=>a.boss+' '+a.h).join('、'):'還沒記住瞄準高度（先用預設 30）';
 }
 function brLoopSave(){const v=id=>document.getElementById(id);send('bossraidloop',{value:(v('brLoop').checked?1:0)+'~'+(parseInt(v('brLoopMax').value)||0)});}
 function blSave(i){const x=(window.blData?.chars||[])[i];if(!x)return;const v=id=>document.getElementById(id);
- send('bosslockchar',{value:[x.name,v('blOn'+i).checked?1:0,v('blBar'+i).value,v('blSlot'+i).value].join('~')});}
+ const card=(v('blCard'+i)?.value||'').replace(/[~|=\[\]\r\n\t]/g,'').trim().slice(0,30);
+ send('bosslockchar',{value:[x.name,v('blOn'+i).checked?1:0,v('blBar'+i).value,v('blSlot'+i).value,card].join('~')});}
 function renderBuffCast(d){
  bcData=d;const oa=document.getElementById('bcOnAll');if(oa&&document.activeElement!==oa)oa.checked=d.on!==false;
  const el=document.getElementById('bcChars');if(!el)return;

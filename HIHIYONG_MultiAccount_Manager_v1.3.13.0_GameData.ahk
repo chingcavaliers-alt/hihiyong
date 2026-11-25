@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.129"
+global APP_VERSION := "v1.3.90.167"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -1586,6 +1586,8 @@ EmergencyStopAll() {
         p.memSoftState:="已停止"   ; 停止後假在線判斷不再更新：不要卡在停止前的「Recovery 保護」等狀態
     }
     EventLog("GLOBAL","EMERGENCY_STOP","F10 手動終止｜停止監控 / Recovery / 自動鍵鼠；保留 game.exe 與綁定")
+    brNm:="BossRaidEmergency"   ; v1.3.90.141：自動進場打王 / 多開打王也一起停（不再移游標、不再重卡、不接下一輪）
+    try %brNm%()
     AddRecentEvent("F10 緊急停止｜等待人工操作")
     Status.Text:="狀態：已強制停止自動化－等待人工操作"
     RefreshProfileLV()
@@ -2412,6 +2414,13 @@ EvaluateMultiWindowFakeOnline() {
             continue
         if p.HasOwnProp("memHpGraceUntil") && A_TickCount<p.memHpGraceUntil
             continue
+        ; v1.3.90.130：冒險小隊打王的角色站在王旁邊卡右鍵，王打不痛、血量本來就不會變：不投票
+        ; （11/24 19:08 欸等、欸等等、小白貓三隻一起被判「60 秒無血量變化」→ 全部被關掉重登）
+        brNm:="BrSoftExempt"
+        try {
+            if %brNm%(p)
+                continue
+        }
         voters+=1   ; 活著、在監控中、能投票的角色（死亡中的不算：死掉本來就不會動）
         staticMs:=A_TickCount-p.memHpLastChangeTick
         if staticMs<60000
@@ -2830,6 +2839,11 @@ SoftDisconnectConsensus() {
             continue
         if !ProfileGameAlive(p) || WinGetMinMax("ahk_id " p.hwnd)=-1
             continue
+        brNm:="BrSoftExempt"   ; 冒險小隊打王中的角色不投票（血量本來就不會變）
+        try {
+            if %brNm%(p)
+                continue
+        }
 
         ; v0.7.5.7: HP ROI 必須此刻可讀才有資格投票。
         ; 被遮蔽/不可讀帳號不只排除，HPAndSoftMonitorTick 也會重設其 idle baseline。

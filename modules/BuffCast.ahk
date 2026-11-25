@@ -410,7 +410,9 @@ BuffCastNow(src := "", key := "") {
     MouseGetPos(&mx, &my)
     try {
         skills := BcBarSkills(p.pid, c.bar)
-        first := true
+        ; v1.3.90.145：一開始不再先按 F<欄>（多按一個鍵會讓技能放得比較慢；欄位你自己切）。
+        ; 只有按了數字卻讀回不是這個技能（現在不在這一欄）時，才補按 F<欄> 再選一次
+        first := false
         for n in c.order {
             if bcCancel {
                 cancelled := true

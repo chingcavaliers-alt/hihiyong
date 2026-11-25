@@ -237,6 +237,14 @@ RecoveryGuardPostCheck(p) {
         p.rgDue:=0
         return
     }
+    ; 冒險小隊打王的角色：不開 F6（11/24 19:07 小白貓重登後被補開 F6，在王的地圖裡自動打怪）
+    brNm:="BrIsRaiding", raiding:=false
+    try raiding:=%brNm%(p)
+    if raiding {
+        EventLog(p.name,"RECOVERY_CHECK_OK","重新登入後檢查略過：冒險小隊打王的角色（不開 F6，打王會帶它回王的地圖）")
+        p.rgDue:=0
+        return
+    }
     ; 死亡中 / 換地圖中：交給死亡監控與復活輔助，下一輪再看。
     if p.hpEventOpen || !GameInWorld(p.pid) || RecoveryGuardBusy()
         return

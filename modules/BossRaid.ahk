@@ -21,7 +21,11 @@ global brLoopN := 0, brNoBossN := 0
 global brLastLeaveAt := 0, brEmptySec := -1
 ; 暫停（v1.3.90.126）：別的角色要更換每日道具（功能優先順序排在冒險小隊 Boss 前面）、或有角色在重新登入 → 放開右鍵讓出視窗；
 ; 都做完了 → 不在王地圖的角色重新進場（換完道具 / 重登後會在城裡或掛機點）→ 重新卡右鍵接著打（這一輪的統計照算）
-global brPauseReq := "", brPauseWhy := "", brPausedAt := 0   ; 舊版用的離場時間（現在存設定檔 LastLeaveUTC）/ 這一輪地圖空了幾秒
+global brPauseReq := "", brPauseWhy := "", brPausedAt := 0
+global brDhYieldAt := 0   ; 每日討伐請打王暫停的時間（換完圖清掉）
+; 施法監看（v1.3.90.134）：打王中每 0.5 秒看每隻的人物動作，記「施法中」的比例（每隻王結束時寫日誌）；
+; 某一隻連續 8 秒都沒在施法（卡住的右鍵掉了 / 游標跑掉）→ 自動幫它重卡
+global brCast := Map()   ; 角色名 → {n, cast, idleSince}   ; 舊版用的離場時間（現在存設定檔 LastLeaveUTC）/ 這一輪地圖空了幾秒
 global BR_LOOT_COUNT := 5   ; 路西法打完地上要撿的道具數（每隻角色）
 global BR_CARD := "波斯貓傳送卡"
 global BR_MAP_GATHER := 179, BR_MAP_BOSS := 201
@@ -32,6 +36,57 @@ global BR_AIM_H_DEF := 13   ; v1.3.90.119：11/24 13:49 手動對準闇獄蜂后
 global brTestDriver := 0
 
 BrStateNow() => BR_STATE
+; 這隻角色用的傳送卡名稱：多開打王角色欄位自己填的，沒填就是「波斯貓傳送卡」（卡名跟著冒險小隊名稱變）
+BrCardOf(p) {
+    global BR_CARD
+    c := ""
+    try c := BlCfg(p.name).card
+    return c != "" ? c : BR_CARD
+}
+; 這個角色現在在冒險小隊打王（在王的地圖裡、或這一輪有參加）：站著不掉血、不開 F6 都是正常的（假在線判定、重登後檢查要略過）
+; 這隻角色由冒險小隊打王管（勾了參加、打完自動接下一輪開著）：每日道具換完不用送去怪區、不用開 F6
+BrRaidOwnsChar(name) {
+    try return BlCfg(name).on && BrIni("Loop", "0") = "1"
+    return false
+}
+; 這隻角色每日討伐正在跑（還沒打完）
+BrInDailyHunt(p) {
+    try {
+        global DH_RUNNING, DH_CHARS
+        if !DH_RUNNING || !DH_CHARS.Has(p.name)
+            return false
+        ; v1.3.90.165：今天已經做完收尾過（重開管理程式後記憶體裡的「做完」還沒讀回來）：不算在跑
+        ; （11/25 10:58 重開後欸等明明 10:29 就做完了，還是被當成「正在跑每日討伐」不帶）
+        fdNm := "DhFinishedDay"
+        if %fdNm%(p) = DateDiff(A_Now, "19700101", "Days")
+            return false
+        return !(p.HasOwnProp("dh") && IsObject(p.dh) && p.dh.done)
+    }
+    return false
+}
+BrIsRaiding(p) {
+    global BR_STATE, brEntered, BR_MAP_BOSS
+    try {
+        if p.pid && BrMap(p.pid) = BR_MAP_BOSS
+            return true
+    }
+    if BR_STATE != "idle"
+        for q in brEntered
+            if q.name = p.name
+                return true
+    return false
+}
+; 假在線投票要略過：在打王、或勾了參加打王而且沒開自動攻擊（兩輪之間站在學院廣場等王重生，血量本來就不會變）
+; 11/24 19:10 打王結束後欸等、小白貓站在廣場不動，又被判假在線重登
+BrSoftExempt(p) {
+    if BrIsRaiding(p)
+        return true
+    try {
+        if BlCfg(p.name).on && !(p.HasOwnProp("autoAtk") && p.autoAtk = 1)
+            return true
+    }
+    return false
+}
 BrIni(k, d := "") {
     global INI
     return IniRead(INI, "BossRaid", k, d)
@@ -61,11 +116,24 @@ BrSay(text) {
     BrSetState(BR_STATE, text)
 }
 
-; 地圖主編號
+; 地圖代碼：王的地圖回傳 201（BR_MAP_BOSS）；其他地圖回傳主編號；學院廣場回傳 2010。
+; 學院廣場和王的地圖主編號都是 201。v1.3.90.143 只認子編號 6，20:41 欸等在王的地圖裡（子編號不是 6）被判成不在、用傳送卡傳出去了。
+; v1.3.90.144：主編號 201 時看「是不是安全區」（學院廣場是安全區、王的地圖不是）；讀不到地圖資料時，看附近有沒有王
 BrMap(pid) {
-    v := 0
-    try v := DhMapMain(pid)
-    return v
+    id := ""
+    try id := ReadGameMapId(pid)
+    if id = "" || !RegExMatch(id, "^(\d+)-(\d+)$", &m)
+        return 0
+    main := Integer(m[1])
+    if main != 201
+        return main
+    if IsObject(BrFindBoss(pid))   ; 附近有王 = 一定在王的地圖
+        return 201
+    info := 0
+    try info := GameMapInfo(pid, id)
+    if IsObject(info)
+        return info.peace ? 2010 : 201
+    return 201   ; 讀不到：當作在王的地圖（寧可不要用傳送卡把人傳出去）
 }
 ; 王的地圖裡的王（不是 NPC、不是礦；讀得到種類時只算種類 2）。回傳最近的那隻
 BrFindBoss(pid) {
@@ -101,6 +169,17 @@ BrBossScreen(p, b) {
 
 ; 這隻角色自己的視窗裡，王血條的螢幕位置（v1.3.90.116：11/24 14:30 兩個遊戲視窗沒疊在一起，只算一個位置，另一隻卡在畫面中間打不到王）
 BrAimChar(p) {
+    ; v1.3.90.151：視窗疊在一起共用一個游標 → 大家都用最前面那隻視窗算的位置（大家站同一個站位、鏡頭同方向，王在每個視窗的位置一樣）。
+    ; 11/24 23:08 王在 (-148,72)，每隻各自算的位置差一點，重卡 A 游標一移、B C 就碰不到，輪流把對方打斷
+    t := BrTop()
+    tb := BrFindBoss(t.pid)
+    if IsObject(tb) && tb.hp > 0 {
+        h := BrAimH(tb.name)
+        sp := MnScreenPt(t.pid, tb.x, tb.y + h, tb.z)
+        r := BlClientRect(t)
+        if sp.x >= 0 && IsObject(r)
+            return {x: r.x + Round(sp.x * r.w / 1024), y: r.y + Round(sp.y * r.h / 768)}
+    }
     b := BrFindBoss(p.pid)
     if !IsObject(b) || b.hp <= 0
         return 0
@@ -123,10 +202,16 @@ BrLockAll(list, b) {
             pb := BrFindBoss(p.pid)
             if !IsObject(pb)
                 pb := b
-            sp := MnScreenPt(p.pid, pb.x, pb.y + h, pb.z)
-            r := BlClientRect(p)
-            if sp.x < 0 || !IsObject(r)
-                continue
+            ; 共用最前面那隻視窗算的位置（v1.3.90.151）
+            ap := BrTop(), ab := BrFindBoss(ap.pid)
+            if !IsObject(ab)
+                ap := p, ab := pb
+            sp := MnScreenPt(ap.pid, ab.x, ab.y + h, ab.z), r := BlClientRect(ap)
+            if sp.x < 0 || !IsObject(r) {
+                sp := MnScreenPt(p.pid, pb.x, pb.y + h, pb.z), r := BlClientRect(p)
+                if sp.x < 0 || !IsObject(r)
+                    continue
+            }
             pt := {x: r.x + Round(sp.x * r.w / 1024), y: r.y + Round(sp.y * r.h / 768)}
             err := BlRelockOne(p, pt)
             if err != "" {
@@ -194,6 +279,14 @@ BrLearnAt(p, b, c) {
 }
 ; ---- 進場 ----
 BrEnter(p) {
+    global dhMapPatient
+    dhMapPatient := true   ; 走路點一下就等它走到（不一直補點，走起來比較順）
+    try
+        return BrEnterCore(p)
+    finally
+        dhMapPatient := false
+}
+BrEnterCore(p) {
     global BR_CARD, BR_MAP_GATHER, BR_MAP_BOSS, BR_CIRCLE, BR_STAND, apRunStart, apLastOwn
     pid := p.pid
     apRunStart := A_TickCount
@@ -211,15 +304,16 @@ BrEnter(p) {
         if BrMap(pid) != BR_MAP_GATHER {
             ctx := MnCtx(p)
             MnEnsureInventory(p, ctx)
-            card := MnFindIn(pid, "InvenOffset", (n) => InStr(n, BR_CARD))
+            cardName := BrCardOf(p)
+            card := MnFindIn(pid, "InvenOffset", (n) => InStr(n, cardName))
             if !card {
                 try MnCloseWindows(p)
                 return "skip"
             }
-            DailyStep(ctx, "右鍵 " BR_CARD)
+            DailyStep(ctx, "右鍵 " cardName)
             DailyClickCell(ctx, card, "Right")
             MnOwnAct()
-            DailyWaitUntil(ctx, "右鍵" BR_CARD "後 30 秒還沒到波斯貓集結區", () => BrMap(pid) = BR_MAP_GATHER && GameCharacterLoaded(pid), 30000)
+            DailyWaitUntil(ctx, "右鍵" cardName "後 30 秒還沒到波斯貓集結區", () => BrMap(pid) = BR_MAP_GATHER && GameCharacterLoaded(pid), 30000)
             MnCloseWindows(p)
             ApWait(() => (ApGuardAny(), false), 1500)
         }
@@ -249,7 +343,7 @@ BrEnter(p) {
     apRunStart := A_TickCount
     if !ApIsActive(p)
         ApActivate(p)
-    DhMoveTo(p, BR_STAND.x, BR_STAND.z, 4)   ; v1.3.90.108：站得更準（8 → 4），每隻看王的角度才會一樣
+    BrGoNearBoss(p)   ; v1.3.90.142：走到「現在的王」旁邊（離王 14 以內就好），不再硬走固定站位
     try MnEnsurePet(p, "進場打王")
     try BrEnsureMerc(p)
     try BrAlignCamera(p)
@@ -261,6 +355,32 @@ BrEnter(p) {
     return "ok"
 }
 
+; 走到王旁邊（v1.3.90.142）：11/24 20:33 王跑到 (-119,62)，固定站位 (-136,60) 一帶被擋住，欸等來回走了 2 分多鐘、欸等等「路被擋住」進場失敗。
+; 改成：王在哪就走到王旁邊（王和人物之間、離王 8），離王 14 以內就算到；走不到也不算失敗（照樣卡右鍵，施法監看會再補救）
+BrGoNearBoss(p) {
+    ; v1.3.90.149：改回 v1.3.90.141 的做法（那版三隻施法 94～100%）：大家走到固定站位 (-136,60)，用大地圖點一下等它走到、
+    ; 點不到就改點地面；差 6 以內就好，走不到也不算失敗。v1.3.90.142～148 改成「走到王旁邊 / 站位候選點」反而讓欸等等卡在走不出去的地方
+    global BR_STAND
+    me := MiningCharState(p.pid)
+    if IsObject(me) && Sqrt((me.x - BR_STAND.x) ** 2 + (me.z - BR_STAND.z) ** 2) <= 6
+        return
+    try DhMoveTo(p, BR_STAND.x, BR_STAND.z, 6)
+    catch as e {
+        if e.Extra = "stop"
+            throw e
+        me := MiningCharState(p.pid)
+        EventLog(p.name, "BR_MOVE", "走到站位沒走到（" e.Message "）｜離站位 " (IsObject(me) ? Round(Sqrt((me.x - BR_STAND.x) ** 2 + (me.z - BR_STAND.z) ** 2)) : "?") "，照樣開始")
+    }
+}
+; 大家都站的那一點（v1.3.90.148）：先試王的正南邊 10（以前固定站位的相對位置）；走不到（22:11 王在 (-130,77)，南邊被擋住）
+; 就依序試西南、西、東南、東、北。第一隻走到哪一點，這一輪其他隻都站同一點（王換位置就重找）
+global brStand := 0   ; {dx, dz}：站位相對王的位置
+global BR_STAND_CANDS := [[-1, -10], [-8, -7], [-10, 0], [7, -7], [10, 0], [0, 10]]
+BrStandFor(bx, bz) {
+    global brStand
+    o := IsObject(brStand) ? brStand : {dx: -1, dz: -10}
+    return {x: bx + o.dx, z: bz + o.dz}
+}
 ; 雇傭兵不在外面就按快捷欄的雇傭兵叫出來
 BrEnsureMerc(p) {
     if CwRead(p, "merc") != 0
@@ -373,12 +493,48 @@ BossRaidStart() {
     why := ""
     try why := ApBlockerRaw()
     if why != "" || foregroundOwner != "" {
-        BrSetState("idle", "現在不能開始：" (why != "" ? why : "其他功能正在操作遊戲視窗（" foregroundOwner "）"))
+        msg := why != "" ? why : "其他功能正在操作遊戲視窗（" foregroundOwner "）"
+        ; v1.3.90.157：11/25 06:12 重開後接續剛好碰上每日討伐在用視窗，打王就沒開始、也沒再試。「打完自動接下一輪」開著就 30 秒後再試
+        if BrIni("Loop", "0") = "1" {
+            BrSetState("idle", "現在不能開始：" msg "（30 秒後再試）")
+            EventLog("GLOBAL", "BR_WAIT", "現在不能開始：" msg "｜30 秒後再試")
+            SetTimer BrLoopStart, -30000
+        } else
+            BrSetState("idle", "現在不能開始：" msg)
         return
     }
     chars := BlChars()
+    ; v1.3.90.155：正在跑每日討伐的角色這一輪先不帶（11/25 06:00 欸等的每日討伐定時啟動，剛好在兩輪之間把欸等帶走）；
+    ; 每日討伐跑完，下一輪自動把它帶回來
+    dhSkip := []
+    for i, p in chars.Clone()
+        if BrInDailyHunt(p)
+            dhSkip.Push(p.name)
+    if dhSkip.Length {
+        keep := []
+        for p in chars {
+            skip := false
+            for nm in dhSkip
+                if nm = p.name
+                    skip := true
+            if !skip
+                keep.Push(p)
+        }
+        chars := keep
+        EventLog("GLOBAL", "BR_SKIP", "正在跑每日討伐，這一輪先不帶：" BcJoin(dhSkip))
+        ; v1.3.90.159：不帶的角色視窗搬回它記錄的位置（不要疊在打王的視窗上面）。
+        ; 11/25 06:52～07:15 欸等的視窗還疊在一起，每日討伐每次切到欸等、移游標，打王的兩隻就打不到（施法 65～83%，4 隻王 22 分半）
+        global profiles
+        for i, q in profiles {
+            for nm in dhSkip
+                if nm = q.name && q.hwnd {
+                    fn := "RestoreProfileWindowPosition"
+                    try %fn%(i, q.hwnd)
+                }
+        }
+    }
     if !chars.Length {
-        BrSetState("idle", "沒有勾選參加的角色（或遊戲視窗沒開）")
+        BrSetState("idle", "沒有勾選參加的角色（或遊戲視窗沒開 / 都在跑每日討伐）")
         return
     }
     ; 置頂角色最後進場（它的視窗最後在最前面）
@@ -388,8 +544,8 @@ BossRaidStart() {
             chars.Push(chars.RemoveAt(i))
             break
         }
-    global brYaw, brEmptySec
-    brStop := false, brEntered := [], brYaw := "", brEmptySec := -1
+    global brYaw, brEmptySec, brStand
+    brStop := false, brEntered := [], brYaw := "", brEmptySec := -1, brStand := 0
     ; v1.3.90.129：參加的角色視窗先疊在一起（疊在「最前面的角色」上）
     anchor := chars[chars.Length]
     try BlStackWindows(chars, anchor)
@@ -424,9 +580,10 @@ BrEnterAll(chars) {
                 } catch as e {
                     err := e
                     ; 可以再試的：你在操作、視窗被別的功能 / 監控切走、中途有其他動作（v1.3.90.118）；按停止才真的停
-                    retry := InStr(e.Message, "你開始操作電腦") || InStr(e.Message, "視窗不在前面") || InStr(e.Message, "中途有其他動作") || InStr(e.Message, "叫不到前面")
-                    if brStop || !retry || A_Index = 4
+                    ; v1.3.90.131：11/24 19:18 欸等等「道具視窗被蓋住，無法叫回最上層」就直接略過。現在除了按停止，什麼錯誤都先關掉遊戲裡開著的視窗再試（最多 3 次）
+                    if brStop || InStr(e.Message, "已按停止") || A_Index = 4
                         break
+                    try MnCloseWindows(p)
                     EventLog(p.name, "BR_PAUSE", e.Message "｜等 3 秒再繼續這隻（第 " A_Index " 次）")
                     BrSay("等一下再繼續…（" p.name "：" e.Message "）")
                     t0 := A_TickCount
@@ -446,9 +603,34 @@ BrEnterAll(chars) {
             }
             if r = "skip" {
                 skipped.Push(p.name)
-                EventLog(p.name, "BR_SKIP", "背包找不到「" BR_CARD "」，略過")
+                EventLog(p.name, "BR_SKIP", "背包找不到「" BrCardOf(p) "」，略過")
             } else
                 brEntered.Push(p)
+        }
+        ; 其他角色都進完了，失敗的再補一次（關掉遊戲裡的視窗再進）
+        if !brStop && failed.Length {
+            retryNames := failed.Clone(), failed := []
+            for nm in retryNames {
+                p := 0
+                for q in chars
+                    if q.name = nm
+                        p := q
+                if !IsObject(p) || brStop
+                    continue
+                EventLog(p.name, "BR_RETRY", "其他角色進完了，再補進場一次")
+                r := ""
+                try {
+                    try MnCloseWindows(p)
+                    apLastOwn := A_TickCount, apRunStart := A_TickCount
+                    r := BrEnter(p)
+                } catch as e {
+                    EventLog(p.name, "BR_FAIL", "補進場也失敗｜" e.Message)
+                }
+                if r = "ok"
+                    brEntered.Push(p)
+                else
+                    failed.Push(p.name)
+            }
         }
     } finally {
         try MnCloseWindows(chars[1])
@@ -515,6 +697,8 @@ BrBeginFightSafe(note := "") {
 BrBeginFight(note := "") {
     global brBoss, brSeen, brLastBossAt, brFightStart, brSawLast, BR_STATE, brEntered
     global brInv, brRelockAt
+    global brCast
+    brCast := Map()
     brBoss := 0, brSeen := [], brLastBossAt := A_TickCount, brFightStart := A_TickCount, brSawLast := false, brRelockAt := 0
     global brUserPt
     brUserPt := 0
@@ -550,8 +734,13 @@ BrBeginFight(note := "") {
 }
 ; 打王中：王換了 / 移動了就把游標移到新的位置（你 1.5 秒內有動滑鼠就不搶）；最後一隻打完 → 結束
 BrFightTick() {
-    global BR_STATE, brBoss, brSeen, brLastBossAt, brFightStart, brSawLast, brStop, BR_LAST_BOSS, BR_MAP_BOSS, brRelockAt, brEntered, brAimPt, brUserPt, brLockTick, BL_STATE, blLocked, mboxLastOwn, mboxBusy, foregroundOwner
+    global BR_STATE, brBoss, brSeen, brLastBossAt, brFightStart, brSawLast, brStop, BR_LAST_BOSS, BR_MAP_BOSS, brRelockAt, brEntered, brAimPt, brUserPt, brLockTick, BL_STATE, blLocked, mboxLastOwn, mboxBusy, foregroundOwner, brCast
     if BR_STATE != "fighting" {
+        SetTimer BrFightTick, 0
+        return
+    }
+    global emergencyStop
+    if emergencyStop {   ; F10
         SetTimer BrFightTick, 0
         return
     }
@@ -578,7 +767,25 @@ BrFightTick() {
     now := A_TickCount
     if IsObject(b) && b.hp > 0 {
         brLastBossAt := now
+        if BL_STATE = "locked" && !brRelockAt {
+            stuck := BrCastSample(now)
+            BrCircle(top, b, now)   ; 有角色 2 秒以上沒施法：游標在王周圍繞圈（疊在一起的視窗都吃得到游標位置）
+            if IsObject(stuck) {   ; 有一隻 8 秒沒施法：重卡（離站位太遠先走回去）
+                ; v1.3.90.152：重卡時游標會拖到視窗外放開，疊在一起的其他隻那一下也碰不到王 → 會被判沒施法、又去重卡，一隻接一隻停不下來
+                ; （23:11～23:15 重卡 39 次）。同一隻 25 秒內不重卡第二次；重卡完所有角色都重新計 8 秒
+                c := brCast[stuck.name]
+                if !c.HasOwnProp("fixAt") || A_TickCount - c.fixAt >= 25000 {
+                    c.fixAt := A_TickCount
+                    BrCastFix(stuck, b)
+                    for nm, cc in brCast
+                        cc.idleSince := A_TickCount
+                    brLockTick := A_TickCount
+                    return
+                }
+            }
+        }
         if !IsObject(brBoss) || brBoss.glob != b.glob {
+            BrCastReport(IsObject(brBoss) ? brBoss.name : "")
             seenText := brSeen.Length ? "（第 " (brSeen.Length + 1) " 隻）" : ""
             brSeen.Push(b.name)
             BrBossEnd(now)   ; 上一隻沒等到「不見了」就換成這隻：上一隻算到現在
@@ -628,13 +835,26 @@ BrFightTick() {
                 err := BlRelockOne(p, aim)
                 EventLog(p.name, "BR_MBOX_RELOCK", "命運箱子開完，重新卡右鍵" (err = "" ? "" : "｜失敗：" err))
             }
+            ; v1.3.90.135：11/24 19:29～19:38 每次欸等等開完箱子，疊在最上面的小白貓 5 秒後就停止施法（8 秒後才被自動重卡）。
+            ; 開完箱子順便檢查其他隻，沒在施法的馬上重卡
+            for p in brEntered {
+                if !blLocked.Has(p.name) || BrCasting(p, 1200)
+                    continue
+                aim := BrAimChar(p)
+                if !IsObject(aim)
+                    continue
+                err := BlRelockOne(p, aim)
+                EventLog(p.name, "BR_MBOX_RELOCK", "命運箱子開完後這隻沒在施法，重新卡右鍵" (err = "" ? "" : "｜失敗：" err))
+                try brCast[p.name].idleSince := A_TickCount
+            }
             brLockTick := A_TickCount
             return
         }
         ; v1.3.90.107：不再一直把游標拉回算出來的位置（11/24 13:34 實測算的位置不準、你調了又被拉回去）。
         ; 你手動把游標移到別的地方、停 2 秒 → 記住這個位置（換王重卡時直接用），也記住這隻王的血條高度
+        ; v1.3.90.140：停用（游標會自己繞王畫圈，而且 11/24 18:48、18:59 你移游標時被誤記成高度 11、6）；要記高度請按「🎯 記住瞄準高度」
         c := BlCursor()
-        if IsObject(brAimPt) && Abs(c.x - brAimPt.x) + Abs(c.y - brAimPt.y) > 6 && BlIdle() >= 2000 {
+        if false && IsObject(brAimPt) && Abs(c.x - brAimPt.x) + Abs(c.y - brAimPt.y) > 6 && BlIdle() >= 2000 {
             brAimPt := c, brUserPt := c
             h := BrLearnAt(top, b, c)
             EventLog(top.name, "BR_AIM_USER", "你調了游標位置｜" b.name (h >= 0 ? "｜血條離地 " h "（已記住），每隻照這個高度重新卡右鍵" : "（算不出高度，換王重卡時用這個位置）"))
@@ -644,6 +864,7 @@ BrFightTick() {
         return
     }
     if IsObject(brBoss) {
+        BrCastReport(brBoss.name)
         sec := BrBossEnd(now)
         EventLog(top.name, "BR_BOSS_DOWN", brBoss.name " 不見了（打死了）｜已經打 " brSeen.Length " 隻" (sec > 0 ? "｜這隻打了 " BrDur(sec) : ""))
         try BossLockPushWeb()
@@ -728,6 +949,19 @@ BrYieldForDaily(p := 0) {
     brPauseReq := "更換每日道具"   ; 打王中 → 下一次檢查就暫停；進場 / 離場中 → 做完那段再暫停
     return "等冒險小隊打王先暫停（放開右鍵）"
 }
+; 每日討伐（沒在打王的角色）要換圖 / 點 NPC：打王先暫停，每日討伐那一步做完（或 3 分鐘）再回來（v1.3.90.161）
+BrDhYield(p) {
+    global BR_STATE, brPauseReq, brDhYieldAt
+    if BR_STATE = "idle"   ; 不是自動打王（手動多開打王卡右鍵）：照樣等
+        return "多開打王卡右鍵中"
+    if BR_STATE = "paused"
+        return ""
+    if brDhYieldAt = 0 {
+        brDhYieldAt := A_TickCount
+        brPauseReq := "每日討伐換圖（" p.name "）"
+    }
+    return "等冒險小隊打王先暫停（放開右鍵）"
+}
 ; 打王中要不要暫停：每日更換道具要做了、或有角色在重新登入 / 載入
 BrPauseNeeded() {
     global brPauseReq, processingQueue, activeRecoveryHwnd, fastLoginCritical, recoveryQueue, asyncLoadingEntries, dailyRunning, profiles
@@ -768,6 +1002,11 @@ BrPauseTick() {
     }
     busy := BrPauseNeeded() != ""
     try busy := busy || dailyRunQueue.Length > 0 || dailyRunning != ""
+    global brDhYieldAt
+    if brDhYieldAt && A_TickCount - brDhYieldAt < 180000   ; 每日討伐還沒做完那一步（最多等 3 分鐘）
+        busy := true
+    else
+        brDhYieldAt := 0
     why := ""
     try why := ApBlockerRaw()
     if busy || why != "" {
@@ -822,6 +1061,98 @@ BrResumeFight() {
     brRelockAt := 1, brLastBossAt := A_TickCount   ; 看到王就馬上重新卡右鍵
     BrSetState("fighting", "接著打（暫停後回來）")
     SetTimer BrFightTick, 500
+}
+; v1.3.90.140 游標繞王畫圈：卡著右鍵但游標沒碰到王（王移動 / 盲區）時，游標在王血條周圍繞小圈（橢圓，左右 28、上下 36 像素，
+; 每 0.5 秒換一個點），疊在一起的視窗都會碰到王。只在有角色 2 秒以上沒施法、而且你沒在動滑鼠（3 秒）時繞；都在施法了就放回中心
+global brCircleIdx := 0, brCircling := false
+BrCircle(top, b, now) {
+    global brCast, brCircleIdx, brCircling, foregroundOwner, brAimPt
+    weak := false
+    for nm, c in brCast
+        if c.n && now - c.idleSince >= 2000
+            weak := true
+    center := BrBossScreen(top, b)
+    if !IsObject(center)
+        return
+    if !weak || foregroundOwner != "" || BlIdle() < 3000 {
+        if brCircling && !weak {
+            brCircling := false
+            BlSetCursor(center.x, center.y), brAimPt := center
+        }
+        return
+    }
+    static offs := [[0, -36], [20, -25], [28, 0], [20, 25], [0, 36], [-20, 25], [-28, 0], [-20, -25]]
+    if !brCircling {
+        brCircling := true
+        txt := ""
+        for nm, c in brCast
+            if c.n && now - c.idleSince >= 2000
+                txt .= (txt = "" ? "" : "、") nm
+        EventLog("GLOBAL", "BR_CIRCLE", "沒在施法：" txt "｜游標在 " b.name " 周圍繞圈")
+    }
+    brCircleIdx := Mod(brCircleIdx, offs.Length) + 1
+    o := offs[brCircleIdx]
+    BlSetCursor(center.x + o[1], center.y + o[2])
+    brAimPt := {x: center.x + o[1], y: center.y + o[2]}
+}
+; 取樣一次每隻的動作；回傳「連續 8 秒沒施法」的那隻（沒有回傳 0）
+BrCastSample(now) {
+    global brCast, brEntered
+    stuck := 0
+    for p in brEntered {
+        if !brCast.Has(p.name)
+            brCast[p.name] := {n: 0, cast: 0, idleSince: now}
+        c := brCast[p.name]
+        me := 0
+        try me := MiningCharState(p.pid)
+        if !IsObject(me) || !me.HasOwnProp("action")
+            continue
+        c.n += 1
+        if me.action = 3
+            c.cast += 1, c.idleSince := now
+        else if now - c.idleSince >= 8000 && !IsObject(stuck)
+            stuck := p
+    }
+    return stuck
+}
+; v1.3.90.138：8 秒沒施法的處理。11/24 20:12 王跑到 (-118,62)（平常在 (-135,70)），欸等的技能距離短，站在原位一直重卡、一直打不到（施法 6%）。
+; 離王超過 12 → 放開、走到王旁邊（王和人物之間、離王 8）→ 用「換高度試」的方式重卡（BrLockAll）
+BrCastFix(p, b) {
+    ; v1.3.90.149：離固定站位太遠（> 10，被擠走 / 走偏 / 進場沒走到）才走回站位；其他直接用這隻王的高度重卡（不再每次試 8 個高度，那樣每輪卡 30 秒）
+    global foregroundOwner, apBusy, apRunStart, apLastOwn, BR_STAND
+    me := 0
+    try me := MiningCharState(p.pid)
+    ds := IsObject(me) ? Sqrt((me.x - BR_STAND.x) ** 2 + (me.z - BR_STAND.z) ** 2) : 0
+    if ds > 10 && foregroundOwner = "" {   ; v1.3.90.150：20 → 10（22:40 欸等等停在離站位 15，整輪施法 14%）
+        EventLog(p.name, "BR_CAST_MOVE", "連續 8 秒沒有施法，離站位 " Round(ds) "：走回站位再卡")
+        try BlReleaseOne(p)
+        apBusy := true, foregroundOwner := "bossraid", apRunStart := A_TickCount, apLastOwn := A_TickCount
+        try {
+            if ApActivate(p)
+                BrGoNearBoss(p)
+        } catch as e {
+            EventLog(p.name, "BR_CAST_MOVE", "走回站位失敗：" e.Message)
+        } finally {
+            foregroundOwner := "", apBusy := false, apRunStart := 0
+        }
+    }
+    aim := BrAimChar(p)
+    if !IsObject(aim)
+        return
+    err := BlRelockOne(p, aim)
+    EventLog(p.name, "BR_CAST_RELOCK", "連續 8 秒沒有施法，重新卡右鍵" (err = "" ? "" : "｜失敗：" err))
+}
+; 這隻王的施法比例寫日誌，然後歸零
+BrCastReport(bossName) {
+    global brCast
+    if !brCast.Count
+        return
+    txt := ""
+    for nm, c in brCast
+        txt .= (txt = "" ? "" : "｜") nm " " (c.n ? Round(c.cast * 100 / c.n) "%" : "?")
+    EventLog("GLOBAL", "BR_CAST_RATE", (bossName != "" ? bossName "：" : "") "施法中比例（每 0.5 秒看一次人物動作）｜" txt)
+    for nm, c in brCast
+        c.n := 0, c.cast := 0
 }
 ; 一輪結束：要不要接下一輪。回傳給人看的說明（不接回傳空字串）
 BrLoopNext(why, failedN) {
@@ -928,6 +1259,25 @@ BrRoundSave(why) {
     brRound := 0
     return stats
 }
+; 背包裡打王掉的道具（帝王披風轉盤）有幾個（v1.3.90.153）；讀不到回傳 -1
+global BR_LOOT_ITEM := "帝王披風轉盤"
+BrLootHave(p) {
+    global BR_LOOT_ITEM
+    if !IsObject(p) || !p.pid
+        return -1
+    slots := 0
+    try slots := ReadGameInventorySlots(p.pid, "InvenOffset")
+    if !IsObject(slots)
+        return -1
+    n := 0
+    for sl in slots {
+        nm := ""
+        try nm := GameItemName(sl.key, p.pid)
+        if InStr(nm, BR_LOOT_ITEM)
+            n += sl.count
+    }
+    return n
+}
 ; 頁面：清除紀錄（最近幾輪的表格）
 BossRaidClearRuns() {
     global INI
@@ -974,17 +1324,34 @@ BrFinish(why) {
         for p in order {
             if brStop && why != "已停止"
                 break
-            try {
-                if lastDone && p = looter
-                    BrPickLoot(p)
-                BrLeave(p)
-                left.Push(p.name)
-            } catch as e {
-                failed.Push(p.name)
-                EventLog(p.name, "BR_FAIL", "離開失敗｜" e.Message)
-                if e.Extra = "stop"
+            ; v1.3.90.167：你動到鍵盤滑鼠被叫停 → 等你停手 5 秒再重做這隻（最多 3 次、每次最多等 5 分鐘），不要整輪放棄
+            ; （11/25 20:57 欸等撿掉落物時偵測到操作，四隻都沒離開、也沒接下一輪）
+            tries := 0
+            loop {
+                try {
+                    if lastDone && p = looter
+                        BrPickLoot(p)
+                    BrLeave(p)
+                    left.Push(p.name)
                     break
+                } catch as e {
+                    if e.Extra = "stop" && !brStop && tries < 3 {
+                        tries += 1
+                        EventLog(p.name, "BR_WAIT", "離開被打斷（" e.Message "）｜等你停手 5 秒再重做（第 " tries " 次）")
+                        foregroundOwner := "", apBusy := false
+                        t0 := A_TickCount
+                        while A_TimeIdlePhysical < 5000 && A_TickCount - t0 < 300000 && !brStop
+                            Sleep 500
+                        apBusy := true, foregroundOwner := "bossraid", apLastOwn := A_TickCount
+                        continue
+                    }
+                    failed.Push(p.name)
+                    EventLog(p.name, "BR_FAIL", "離開失敗｜" e.Message)
+                    break
+                }
             }
+            if brStop && why != "已停止"
+                break
         }
     } finally {
         foregroundOwner := "", apBusy := false, apRunStart := 0
@@ -1003,7 +1370,7 @@ BrFinish(why) {
 }
 ; 路西法打完：地上的掉落物寵物不會撿 → 按空白鍵撿，等背包比進場時多出 5 個（最多 25 秒，每 2.5 秒再按一次）
 BrPickLoot(p) {
-    global brInv, BR_LOOT_COUNT, BR_MAP_BOSS, apRunStart
+    global brInv, BR_LOOT_COUNT, BR_MAP_BOSS, apRunStart, BR_LOOT_ITEM
     pid := p.pid
     if BrMap(pid) != BR_MAP_BOSS
         return
@@ -1033,10 +1400,19 @@ BrPickLoot(p) {
     txt := ""
     for k, d in items
         txt .= (txt = "" ? "" : "、") d.name " ×" d.count
-    EventLog(p.name, "BR_LOOT", "撿掉落物｜背包多了 " n " 個" (n < BR_LOOT_COUNT ? "（不到 " BR_LOOT_COUNT " 個）" : "") (txt != "" ? "：" txt : ""))
+    have := BrLootHave(p)
+    EventLog(p.name, "BR_LOOT", "撿掉落物｜背包多了 " n " 個" (n < BR_LOOT_COUNT ? "（不到 " BR_LOOT_COUNT " 個）" : "") (txt != "" ? "：" txt : "") (have >= 0 ? "｜背包現在共 " have " 個" BR_LOOT_ITEM : ""))
     return n
 }
 BrLeave(p) {
+    global dhMapPatient
+    dhMapPatient := true
+    try
+        return BrLeaveCore(p)
+    finally
+        dhMapPatient := false
+}
+BrLeaveCore(p) {
     global BR_MAP_BOSS, BR_EXIT, BR_EXIT_OK, apRunStart
     pid := p.pid
     if BrMap(pid) != BR_MAP_BOSS
@@ -1200,7 +1576,30 @@ BrWebJson() {
             cur := ',"cur":{"elapsed":' Round((now - brRound.t0) / 1000) ',"bosses":[' bl ']}'
         }
     }
-    return ',"br":{"state":"' BR_STATE '","text":"' JsonEscapeWeb(BR_TEXT) '","top":"' JsonEscapeWeb(BrTopName()) '","looter":"' JsonEscapeWeb(Trim(BrIni("Looter", ""))) '","loop":' (BrIni("Loop", "0") = "1" ? "true" : "false") ',"loopMax":' (IsInteger(BrIni("LoopMax", "0")) ? BrIni("LoopMax", "0") : 0) ',"loopN":' brLoopN ',"aims":[' aims ']' cur ',"runs":[' BrRunsJson() ']}'
+    lootTxt := ""
+    try {
+        for p in BlChars() {
+            n := BrLootHave(p)
+            if n > 0
+                lootTxt .= (lootTxt = "" ? "" : "、") p.name " " n
+        }
+    }
+    return ',"br":{"loot":"' JsonEscapeWeb(lootTxt) '","state":"' BR_STATE '","text":"' JsonEscapeWeb(BR_TEXT) '","top":"' JsonEscapeWeb(BrTopName()) '","looter":"' JsonEscapeWeb(Trim(BrIni("Looter", ""))) '","loop":' (BrIni("Loop", "0") = "1" ? "true" : "false") ',"loopMax":' (IsInteger(BrIni("LoopMax", "0")) ? BrIni("LoopMax", "0") : 0) ',"loopN":' brLoopN ',"aims":[' aims ']' cur ',"runs":[' BrRunsJson() ']}'
+}
+; F10 緊急停止：打王相關的計時器全部停掉，不再送任何鍵鼠（卡著的右鍵不動它，你手動處理；要放開按「■ 全部放開」）
+BossRaidEmergency() {
+    global brStop, BL_STATE, brLearnSince, brLoopN
+    brStop := true, brLearnSince := 0, brLoopN := 0
+    for f in [BrFightTick, BrPauseTick, BrLoopStart, BrResumeCheck, BrLearnTick, BlWaitTick]
+        try SetTimer f, 0
+    try {
+        global INI
+        IniWrite "0", INI, "BossRaid", "ResumeOnStart"
+    }
+    if BL_STATE = "waiting" || BL_STATE = "running"
+        try BlSetState("locked", "")
+    EventLog("GLOBAL", "BR_EMERGENCY", "F10 緊急停止：自動進場打王 / 多開打王全部停止（卡著的右鍵沒有放開，要放開按「■ 全部放開」）")
+    BrSetState("idle", "F10 緊急停止（卡著的右鍵沒有放開）")
 }
 ; 卡右鍵期間暫停其他會切視窗 / 按鍵的自動功能（ApBlockerRaw 用）
 BlPauseReason() {

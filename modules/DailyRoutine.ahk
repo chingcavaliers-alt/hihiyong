@@ -400,6 +400,16 @@ DailyRoutineSteps(ctx) {
     }
 
     DailyCloseWindows(ctx)
+    ; v1.3.90.154：冒險小隊打王的角色（多開打王勾「參加」、打完自動接下一輪開著）：換完就留在原地，下一輪打王會自己用傳送卡進場。
+    ; 11/25 03:23 欸等等在學院廣場換完按 W 沒反應，被當成「失敗」通知
+    brNm:="BrRaidOwnsChar"
+    try {
+        if %brNm%(ctx.name) {
+            DailyStep(ctx,"冒險小隊打王的角色：換完留在原地（不按 W / F6，下一輪打王會自己進場）")
+            DailySetInProgress(ctx.name,false)
+            return
+        }
+    }
     ; v1.3.24.0：結束時一律「在怪物地圖＋自動攻擊確認已開啟」（使用者要求：開始時就在城裡的角色也送去怪區）；
     ; 任何一項沒做到就停止並通知，下次接續會從這一步再做。
     try {

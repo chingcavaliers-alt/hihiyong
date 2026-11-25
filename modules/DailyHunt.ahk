@@ -480,6 +480,34 @@ global DH_REFRESH_MS := 45000, DH_STALL_MS := 180000, DH_TICK_MS := 3000
 global dhBusy := false
 ; 下一步做什麼（不碰遊戲，方便測試）。
 ; st：{tasks, selected, skip, curMap, autoHunt, huntedMap, now, refreshedAt}
+; 進度多久沒增加算卡住：自動打王中 5 分鐘才讀一次進度，放寬到 11 分鐘（v1.3.90.163）
+DhStallMs() {
+    global DH_STALL_MS
+    fighting := false, brNm := "BrStateNow"
+    try fighting := %brNm%() = "fighting"
+    return fighting ? 660000 : DH_STALL_MS
+}
+; 多久開一次 T 讀進度。自動打王中（開 T 要請打王暫停）：用上兩次讀到的進度推算還要多久打滿，快滿了才讀（v1.3.90.162）
+DhRefreshMs(st, goal) {
+    global DH_REFRESH_MS
+    fighting := false, brNm := "BrStateNow"
+    try fighting := %brNm%() = "fighting"
+    if !st.HasOwnProp("rfSeen") || st.rfSeen != st.refreshedAt {   ; 剛讀過一次進度：記下來算速度
+        if st.HasOwnProp("rfMap") && st.rfMap = goal.map && st.refreshedAt > st.rfAt && goal.done > st.rfDone
+            st.rfRate := (goal.done - st.rfDone) / (st.refreshedAt - st.rfAt)
+        else if !st.HasOwnProp("rfMap") || st.rfMap != goal.map
+            st.rfRate := 0
+        st.rfMap := goal.map, st.rfDone := goal.done, st.rfAt := st.refreshedAt, st.rfSeen := st.refreshedAt
+    }
+    if !fighting
+        return DH_REFRESH_MS
+    ; v1.3.90.163：08:28～09:05 速度一直算不出來（打王中讀到的進度常常不動），變成每 2 分鐘就請打王暫停一次（那輪 37 分鐘）。
+    ; 算不出來就 5 分鐘讀一次
+    rate := st.HasOwnProp("rfRate") ? st.rfRate : 0
+    if rate <= 0
+        return 300000
+    return Max(180000, Min(600000, Round((goal.target - goal.done) / rate) + 10000))
+}
 ; 回傳 {action: "refresh"/"travel"/"starthunt"/"monitor"/"done", goal}
 DhDecide(st) {
     global DH_REFRESH_MS
@@ -516,7 +544,7 @@ DhDecide(st) {
         return {action: "travel", goal: goal}
     if st.huntedMap != goal.map || st.autoHunt = 0
         return {action: "starthunt", goal: goal}
-    if st.now - st.refreshedAt >= DH_REFRESH_MS
+    if st.now - st.refreshedAt >= DhRefreshMs(st, goal)
         return {action: "refresh", goal: goal}
     return {action: "monitor", goal: goal}
 }
@@ -547,6 +575,16 @@ DailyHuntTick() {
         return
     }
     why := ApBlockerRaw()
+    ; （v1.3.90.156～158 曾讓沒在打王的角色不用等；v1.3.90.160 改回：每日討伐換圖要用滑鼠，打王的視窗共用游標，07:18 小白貓施法掉到 15%）
+    ; v1.3.90.161：多開打王卡右鍵中，沒在打王的角色照樣看進度（只讀資料）；要動手（換圖、點 NPC）時下面先請打王暫停。
+    ; （11/25 07:50 欸等在魔術區打到 1000 隻之後，一直等到 08:21 打王這一輪結束才換圖；每張圖多等 20 分鐘）
+    if why = "多開打王卡右鍵中" {
+        raiding := false, brNm := "BrIsRaiding"
+        for p in DhSelectedAlive()
+            try raiding := raiding || %brNm%(p)
+        if !raiding
+            why := ""
+    }
     if why != "" {
         for p in DhSelectedAlive() {
             DhSt(p).text := "等待中：" why
@@ -596,6 +634,12 @@ DailyHuntTick() {
     }
     if todo {
         busy := ApBlocker(DH_START_IDLE_MS)   ; 含「等你停止操作鍵盤滑鼠」：每日討伐只等 2 秒（不跟自動組隊共用 5 秒）
+        if busy = "多開打王卡右鍵中" {   ; 這隻沒在打王：請打王暫停（放開右鍵、約 1 分鐘），換完圖再回去打（v1.3.90.161）
+            raiding := false, brNm := "BrIsRaiding", yNm := "BrDhYield"
+            try raiding := %brNm%(todo.p)
+            if !raiding
+                try busy := %yNm%(todo.p)
+        }
         if busy != "" {
             DhSt(todo.p).text := "等待中：" busy
             DhWaitNote(todo.p, busy)
@@ -706,7 +750,13 @@ DhPlan(p) {
     d := DhDecide({test: DH_TEST, testDone: st.testDone, tasks: tasks, selected: DH_MAPS_ON, skip: st.skip, curMap: DhMapMain(pid), autoHunt: ReadGameAutoHunt(pid)
         , huntedMap: st.hunted, now: A_TickCount, refreshedAt: st.refreshedAt, lockMap: st.lock})
     ; 今天已經收尾過（回起點 / 去掛機），程式重開後記憶體裡的「做完」不見了：不要再收尾一次（11/19 重開管理器把欸等從掛機點拉回起點）
-    if d.action = "finish" && !DH_TEST && IsObject(tasks) && DhFinishedDay(p) = tasks.today {
+    ; v1.3.90.166：有參加自動進場打王的角色，今天收尾過就不再撿回略過的圖（11/25 11:01 重開後欸等又跑回波斯宮，跟打王搶角色）
+    inRaid := false
+    try {
+        blNm := "BlCfg"
+        inRaid := %blNm%(p.name).on
+    }
+    if (d.action = "finish" || inRaid) && !DH_TEST && IsObject(tasks) && DhFinishedDay(p) = tasks.today {
         st.done := true, st.text := "✅ 今天的指定任務已完成（重開程式前已收尾，不再回起點）"
         EventLog(p.name, "DH_ALREADY_DONE", "今天（第 " tasks.today " 天）已經收尾過，程式重開後不再回起點")
         return {action: "done", goal: 0}
@@ -731,9 +781,9 @@ DhMonitor(p, g) {
     pr := st.prog.Get(g.map, 0)
     if !IsObject(pr) || pr.done != g.done {
         st.prog[g.map] := {done: g.done, since: A_TickCount}
-    } else if A_TickCount - pr.since >= DH_STALL_MS {
+    } else if A_TickCount - pr.since >= DhStallMs() {
         st.stalls += 1
-        EventLog(p.name, "DH_STALL", g.name "｜進度 " g.done " 已超過 " Round(DH_STALL_MS / 1000) " 秒沒增加｜重新跑去怪那邊（第 " st.stalls " 次）")
+        EventLog(p.name, "DH_STALL", g.name "｜進度 " g.done " 已超過 " Round(DhStallMs() / 1000) " 秒沒增加｜重新跑去怪那邊（第 " st.stalls " 次）")
         st.prog.Delete(g.map)
         if st.stalls >= 3 {
             st.skip[g.map] := 1, st.stalls := 0
@@ -862,6 +912,10 @@ DhRun(p, d) {
         ApCleanup(p, false, minimized, prev, cursor, stopped)
         try DhStatRunEnd(p, A_TickCount - runT0)
         foregroundOwner := "", apBusy := false, apRunStart := 0, dhBusy := false, dhCurProfile := 0
+        try {
+            global brDhYieldAt
+            brDhYieldAt := 0   ; 換完圖了：暫停中的打王可以回去了
+        }
     }
 }
 ; 做完（或中途出錯）時，遊戲裡不要留著對話框 / 公車視窗
@@ -1288,9 +1342,29 @@ DhActTestWalk(p, g) {
 ; 全部做完：關自動打怪、用起點傳送卡回起點（復活點）、通報 Discord；這個角色之後不再動作（隔天 00:00 任務換了才重來）。
 ; 有設定「完成後去掛機」：不停在起點，改搭公車到那張圖、走到記下的座標開自動打怪（失敗就留在原地並通知，不重試，避免一直來回）。
 DhActFinish(p) {
-    global DH_NPC_NAME, DH_AFTER_ON
+    global DH_NPC_NAME, DH_AFTER_ON, INI
     st := DhSt(p)
     finT0 := A_TickCount
+    ; v1.3.90.164：這隻有參加自動進場打王、打王也開著（打王中 / 自動接下一輪）：不去掛機點、不回起點，留在原地等下一輪打王帶走
+    ; （11/25 10:29 欸等打完每日討伐跑去重力迴廊掛機，你以為它不回去打冒險小隊王）
+    raidNext := false
+    try {
+        brNm := "BrState" "Now"
+        blNm := "BlCfg"
+        if %blNm%(p.name).on && (%brNm%() != "idle" || IniRead(INI, "BossRaid", "Loop", "0") = "1")
+            raidNext := true
+    }
+    if raidNext {
+        st.done := true
+        try DhEnsureAutoHuntOff(p)
+        st.text := "✅ 指定任務全部完成，等下一輪冒險小隊打王帶走"
+        EventLog(p.name, "DH_AFTER", "全部完成，有參加自動進場打王：不去掛機點，等下一輪打王帶走")
+        DhNotify("🎉 每日討伐｜" p.name "｜指定任務全部完成，接著回去打冒險小隊 Boss（下一輪自動帶走）")
+        DhSetFinishedDay(p, st.lastDay)
+        try DhStatFinish(p, A_TickCount - finT0)
+        try DhSchedFinish(p)
+        return
+    }
     after := DhAfterGoal()
     if IsObject(after) {
         st.done := true   ; 任務已經打完：去掛機途中出錯也不再回頭跑任務
@@ -1651,6 +1725,7 @@ DhMapTargetChanged(pid, before) {
 ; 走不動但離目標只差 stopDist 的 2.2 倍內，當作到了。
 ; maxStill：連續幾次點了地圖人物沒動就放棄（預設 12；自動採礦用 3：目的地在地圖框外時點框邊常常不被收到，不要白等 40 秒）
 ; nearGive：離目標只剩這麼近（單位）時，點了人物沒動 1 次就當作到了（遊戲不收離人物太近的地圖點擊，再點只是白等；自動採礦用 35，交給呼叫端判斷夠不夠近 / 補走最後一段）；0 = 不啟用
+global dhMapPatient := false   ; 點一下就等它走到（自動進場打王用），不一直補點
 DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12, nearGive := 0) {
     global apRunStart, DH_MAP_SHORT
     pid := p.pid
@@ -1740,14 +1815,35 @@ DhRunTowardMap(p, tx, tz, stopDist, maxStill := 12, nearGive := 0) {
             }
             from := me
             ApWait(() => (ApGuardAny(), DhMoved(pid, from, 25)), 900)
+            ; v1.3.90.132 自動進場打王：目的地在地圖框裡、遊戲記的目標也對 → 不再一直補點（每點一下人物會重新找路、走起來一頓一頓），
+            ; 等它自己走到；停住 1.2 秒以上才回去補點
+            global dhMapPatient
+            if dhMapPatient && aim.inside && IsObject(pg2) && IsObject(gw := DhMapTargetWorld(pg2)) && Abs(gw.x - tx) <= 25 && Abs(gw.z - tz) <= 25 {
+                lastPos := MiningCharState(pid), lastMoveAt := A_TickCount
+                while A_TickCount - lastMoveAt < 1200 {
+                    ApGuardAny()
+                    Sleep 150
+                    cur := MiningCharState(pid)
+                    if !IsObject(cur)
+                        break
+                    if Sqrt((tx - cur.x) ** 2 + (tz - cur.z) ** 2) <= stopDist
+                        break
+                    if IsObject(lastPos) && Sqrt((cur.x - lastPos.x) ** 2 + (cur.z - lastPos.z) ** 2) >= 2
+                        lastMoveAt := A_TickCount, apRunStart := A_TickCount
+                    lastPos := cur
+                }
+            }
             now := MiningCharState(pid)
             moved := IsObject(now) ? Sqrt((now.x - from.x) ** 2 + (now.z - from.z) ** 2) : 0
             if dist < bestDist - 60
                 bestDist := dist, bestAt := clicks
-            else if clicks - bestAt >= 30   ; 點了 15 次都沒有更靠近（路被擋住 / 目的地在地圖框外一直繞）：不要再耗，交給地面點擊
+            else if clicks - bestAt >= (dhMapPatient ? 8 : 30)   ; 點了 15 次都沒有更靠近（路被擋住 / 目的地在地圖框外一直繞）：不要再耗，交給地面點擊
+                                                                ; 自動進場打王 8 次就換（11/24 20:03 欸等卡在王東邊 41 次、70 秒）
                 throw Error("點了 " clicks " 次地圖，離目標還差 " Round(dist) "，沒有更靠近")
             if moved < 4 {
                 still += 1, lvl := still
+                ; （v1.3.90.136 曾在這裡改成照原目的地再點；v1.3.90.150 撤回：站位在大地圖框外時一直點框邊遊戲不收，
+                ;   11/24 22:39 三隻都點 9 次沒反應、改走地面又被擋住。改點離人物較近的點才走得過去）
                 if still <= DH_MAP_SHORT.Length
                     EventLog(p.name, "DH_MAPMOVE", "點了但人物沒動（第 " still " 次）｜改點離人物較近 / 換角度的點：" DH_MAP_SHORT[still][1] " 倍、偏 " DH_MAP_SHORT[still][2] "°｜目標讀回" (IsObject(pg2) ? "有更新" : "沒更新（遊戲沒記到這一下）"))
                 if nearGive > 0 && dist <= nearGive {   ; 離目標很近了：遊戲不收離人物太近的地圖點擊（11/13 實測停在 13～26 單位後每顆白點 3 次，約 6 秒）

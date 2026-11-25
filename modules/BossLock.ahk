@@ -17,9 +17,10 @@ BlCfg(name) {
     bar := g("Bar", "1"), slot := g("Slot", "1")
     return {on: g("On", "0") = "1"
         , bar: IsInteger(bar) ? Min(4, Max(1, Integer(bar))) : 1
-        , slot: IsInteger(slot) ? Min(10, Max(1, Integer(slot))) : 1}
+        , slot: IsInteger(slot) ? Min(10, Max(1, Integer(slot))) : 1
+        , card: Trim(g("Card", ""))}   ; 自動進場打王用的傳送卡名稱（空白 = 預設「波斯貓傳送卡」；卡名跟著冒險小隊名稱變）
 }
-; 頁面：角色名~開(0/1)~欄~格
+; 頁面：角色名~開(0/1)~欄~格[~傳送卡名稱]
 BossLockCharSet(rawValue) {
     global INI
     f := StrSplit(rawValue, "~")
@@ -29,8 +30,12 @@ BossLockCharSet(rawValue) {
     IniWrite f[2] = "1" ? "1" : "0", INI, "BossLock", name "|On"
     IniWrite IsInteger(f[3]) ? Min(4, Max(1, Integer(f[3]))) : 1, INI, "BossLock", name "|Bar"
     IniWrite IsInteger(f[4]) ? Min(10, Max(1, Integer(f[4]))) : 1, INI, "BossLock", name "|Slot"
+    if f.Length >= 5 {
+        card := SubStr(Trim(RegExReplace(f[5], "[\r\n\t|=\[\]]", "")), 1, 30)
+        IniWrite card, INI, "BossLock", name "|Card"
+    }
     c := BlCfg(name)
-    EventLog(name, "BL_CFG", "卡右鍵打王：" (c.on ? "參加｜F" c.bar " 第 " BcKey(c.slot) " 格" : "不參加"))
+    EventLog(name, "BL_CFG", "卡右鍵打王：" (c.on ? "參加｜F" c.bar " 第 " BcKey(c.slot) " 格" : "不參加") "｜傳送卡：" (c.card != "" ? c.card : "（預設）波斯貓傳送卡"))
 }
 
 ; ---- 小工具（測試時換成替身）----
@@ -619,7 +624,7 @@ BossLockPushWeb() {
         }
         c := BlCfg(p.name)
         rows .= (rows = "" ? "" : ",") '{"name":"' JsonEscapeWeb(p.name) '","alive":' (alive ? "true" : "false") ',"on":' (c.on ? "true" : "false")
-            . ',"bar":' c.bar ',"slot":' c.slot ',"locked":' (blLocked.Has(p.name) ? "true" : "false") ',"z":' z rc ',"names":[' bars ']}'
+            . ',"bar":' c.bar ',"slot":' c.slot ',"card":"' JsonEscapeWeb(c.card) '","locked":' (blLocked.Has(p.name) ? "true" : "false") ',"z":' z rc ',"names":[' bars ']}'
     }
     br := "", brNm := "BrWebJson"   ; 自動進場打王的資料（BossRaid.ahk；測試只載入這個檔時沒有）
     try {
