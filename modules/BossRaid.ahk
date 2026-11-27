@@ -29,6 +29,31 @@ global brCast := Map()   ; 角色名 → {n, cast, idleSince}   ; 舊版用的�
 global BR_LOOT_COUNT := 5   ; 路西法打完地上要撿的道具數（每隻角色）
 global BR_CARD := "波斯貓傳送卡"
 global BR_MAP_GATHER := 179, BR_MAP_BOSS := 201
+; v1.3.90.189：每個冒險小隊的集結區 / 王的地圖代碼不一樣（11/27 另一台「炮兵團」：集結區 174、王的地圖 196），
+; 用傳送卡 / 按空白後第一次到的地圖記下來（[BossRaid] GatherMaps / BossMaps），之後 BrMap 都換成 179 / 201 回傳
+global brGatherMaps := Map(179, 1), brBossMaps := Map(201, 1)
+BrLoadMaps() {
+    global brGatherMaps, brBossMaps
+    for kv in [["GatherMaps", brGatherMaps], ["BossMaps", brBossMaps]] {
+        raw := ""
+        try raw := BrIni(kv[1], "")
+        for x in StrSplit(raw, ",")
+            if IsInteger(Trim(x))
+                kv[2][Integer(Trim(x))] := 1
+    }
+}
+BrLearnMap(kind, main, who) {
+    global INI, brGatherMaps, brBossMaps
+    m := kind = "gather" ? brGatherMaps : brBossMaps
+    if m.Has(main)
+        return
+    m[main] := 1
+    out := ""
+    for k in m
+        out .= (out = "" ? "" : ",") k
+    try IniWrite out, INI, "BossRaid", kind = "gather" ? "GatherMaps" : "BossMaps"
+    EventLog(who, "BR_LEARN_MAP", "記下" (kind = "gather" ? "集結區" : "王的地圖") "的地圖代碼：" main "（目前認得：" out "）")
+}
 global BR_CIRCLE := {x: 13.4, z: -11.2}, BR_STAND := {x: -136, z: 60}, BR_EXIT := {x: -169, z: -160}
 global BR_EXIT_OK := {x: 507, y: 306}   ; 出發點「學院廣場：移動到該地」的「確認」（1024x768）
 global BR_LAST_BOSS := "路西法"
@@ -119,13 +144,26 @@ BrSay(text) {
 ; 地圖代碼：王的地圖回傳 201（BR_MAP_BOSS）；其他地圖回傳主編號；學院廣場回傳 2010。
 ; 學院廣場和王的地圖主編號都是 201。v1.3.90.143 只認子編號 6，20:41 欸等在王的地圖裡（子編號不是 6）被判成不在、用傳送卡傳出去了。
 ; v1.3.90.144：主編號 201 時看「是不是安全區」（學院廣場是安全區、王的地圖不是）；讀不到地圖資料時，看附近有沒有王
+BrMainMap(pid) {   ; 地圖主編號（讀不到回傳 0）
+    id := ""
+    try id := ReadGameMapId(pid)
+    return id != "" && RegExMatch(id, "^(\d+)-", &m) ? Integer(m[1]) : 0
+}
 BrMap(pid) {
     id := ""
     try id := ReadGameMapId(pid)
     if id = "" || !RegExMatch(id, "^(\d+)-(\d+)$", &m)
         return 0
     main := Integer(m[1])
-    if main != 201
+    global brGatherMaps, brBossMaps
+    static mapsLoaded := false
+    if !mapsLoaded {
+        mapsLoaded := true
+        try BrLoadMaps()
+    }
+    if brGatherMaps.Has(main)
+        return 179
+    if !brBossMaps.Has(main)
         return main
     if IsObject(BrFindBoss(pid))   ; 附近有王 = 一定在王的地圖
         return 201
@@ -316,7 +354,11 @@ BrEnterCore(p) {
             DailyStep(ctx, "右鍵 " cardName)
             DailyClickCell(ctx, card, "Right")
             MnOwnAct()
-            DailyWaitUntil(ctx, "右鍵" cardName "後 30 秒還沒到波斯貓集結區", () => BrMap(pid) = BR_MAP_GATHER && GameCharacterLoaded(pid), 30000)
+            m0 := 0
+            try m0 := BrMainMap(pid)
+            DailyWaitUntil(ctx, "右鍵" cardName "後 30 秒還沒到波斯貓集結區", () => GameCharacterLoaded(pid) && (BrMap(pid) = BR_MAP_GATHER || (BrMainMap(pid) != m0 && BrMainMap(pid) > 0)), 30000)
+            if BrMap(pid) != BR_MAP_GATHER
+                BrLearnMap("gather", BrMainMap(pid), p.name)
             MnCloseWindows(p)
             ApWait(() => (ApGuardAny(), false), 1500)
         }
@@ -326,7 +368,9 @@ BrEnterCore(p) {
         entered := false
         Loop 3 {
             ApKey(p, "Space")
-            if ApWait(() => (ApGuardAny(), BrMap(pid) = BR_MAP_BOSS && GameCharacterLoaded(pid)), 8000) {
+            if ApWait(() => (ApGuardAny(), GameCharacterLoaded(pid) && (BrMap(pid) = BR_MAP_BOSS || (BrMap(pid) != BR_MAP_GATHER && BrMainMap(pid) > 0))), 8000) {
+                if BrMap(pid) != BR_MAP_BOSS
+                    BrLearnMap("boss", BrMainMap(pid), p.name)
                 entered := true
                 break
             }
