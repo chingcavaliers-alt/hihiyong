@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.185",
+    "version":  "v1.3.90.186",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "9344ea9a8c00f0ef65349426d13888fa9d9274b43f81a653e1e22d6756c3066f"
+                      "sha256":  "bb934235557338a534f4625a9a75d91459365b98ca37caa661227c3289b04e0d"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "9570b7d557aba9c4cbda28befc5edd15515fe51569480cfcc72705dcee61ac1a"
+                      "sha256":  "475c4c526487a47c8b1c30d28ff1ba50b7d3b0c5074e61528f39c80da78337c8"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -406,6 +406,34 @@
                       "sha256":  "e169a10f8cf585a0742f7f24271cd71b4237ceeeb84a93890f031b459a5d4423"
                   },
                   {
+                      "path":  "tools\\claude-monitor\\find_app.ps1",
+                      "sha256":  "9fa7c2bb2e3d03fa29770a953cd6aebcf0f39f0c2530e989bb096e00db0cfe02"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\raid_ctl.ps1",
+                      "sha256":  "f89470fc7934a6cf650d288a102f5b6363f0e1d0e9616efd8c3bbb129a737ee4"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\README.md",
+                      "sha256":  "134d65168cd8db1522484937a41e42c8527f799f0bd1c06234059d7bfe3faf3b"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\round_summary.sh",
+                      "sha256":  "1affeac8310232e0813baa91d1a6c7843f1283c83400102df26d97be6e880967"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\shot.ps1",
+                      "sha256":  "32a1fa6cf02b20fd0fc489fbe943c5162796c0b4d2a562d71e27020c7765a231"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\status.md",
+                      "sha256":  "67f5d4c0ea1d7ef734a02043fa1d37c3311a673b55dc3b00b7a42ce32d727219"
+                  },
+                  {
+                      "path":  "tools\\claude-monitor\\watch.sh",
+                      "sha256":  "d776b989a3e9820e7c9b401129bfb1d020e7d1b70ba40f863de90e85a35b7e7e"
+                  },
+                  {
                       "path":  "tools\\derive_game_offsets.py",
                       "sha256":  "40423265b667bba13d21538754155113e4610b69b18900fa0ba64fb6fcfc2636"
                   },
@@ -571,7 +599,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "b5d4eecde7d7cac48d7cecf847c84c438bb720e88f9676a9b9c6978363a1b19f"
+                      "sha256":  "c5ea79d557dc344b055ff39f3542f6beddd1af3150a095bc7abb17df64ee67bf"
                   },
                   {
                       "path":  "登入測試.bat",
