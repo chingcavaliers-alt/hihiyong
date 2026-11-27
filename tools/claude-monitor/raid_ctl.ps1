@@ -23,10 +23,21 @@ function Run-Ini([string]$key, [string]$val) {
 if ($Loop -ne '') { Run-Ini 'Loop' ($(if ($Loop -eq 'on') { '1' } else { '0' })) }
 if ($Restart) {
     Run-Ini 'ResumeOnStart' '1'
-    Get-CimInstance Win32_Process -Filter "Name='AutoHotkey64.exe'" |
-        Where-Object { $_.CommandLine -like '*HIHIYONG_MultiAccount_Manager*' } |
-        ForEach-Object { "stop $($_.ProcessId)"; Stop-Process -Id $_.ProcessId -Force }
-    Start-Sleep 2
-    Start-Process $ahk -ArgumentList "`"$main`"" -WorkingDirectory $app -Verb RunAs
-    "started " + (Get-Date -Format T) + "（約 40 秒後自動接續打王）"
+    # 管理程式以系統管理員執行，一般權限讀不到它的命令列：關舊的、開新的都交給系統管理員權限的 AutoHotkey 做
+    $code = @"
+n := 0
+for proc in ComObjGet("winmgmts:").ExecQuery("Select ProcessId, CommandLine from Win32_Process where Name='AutoHotkey64.exe'")
+    if InStr(proc.CommandLine, "HIHIYONG_MultiAccount_Manager") {
+        ProcessClose proc.ProcessId
+        n += 1
+    }
+Sleep 2000
+Run '"$ahk" "$main"', "$app"
+FileAppend "stopped " n, "$out"
+ExitApp
+"@
+    [IO.File]::WriteAllText($tmp, $code, (New-Object Text.UTF8Encoding $true))
+    Remove-Item $out -ErrorAction SilentlyContinue
+    Start-Process $ahk -ArgumentList "`"$tmp`"" -Verb RunAs -Wait
+    (Get-Content $out -ErrorAction SilentlyContinue) + "｜started " + (Get-Date -Format T) + "（約 40 秒後自動接續打王）"
 }

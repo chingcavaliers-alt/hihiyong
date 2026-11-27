@@ -490,7 +490,7 @@ BrAlignCamera(p) {
 }
 ; ---- 開始 / 停止 ----
 BossRaidStart() {
-    global BR_STATE, brStop, brEntered, foregroundOwner, apBusy, apRunStart, apLastOwn, BL_STATE
+    global BR_STATE, brStop, brEntered, foregroundOwner, apBusy, apRunStart, apLastOwn, BL_STATE, INI
     if BR_STATE != "idle" || BL_STATE = "running"
         return
     why := ""
@@ -567,6 +567,7 @@ BossRaidStart() {
     try BlStackWindows(chars, anchor)
     BrSetState("entering", "進場中（不要動滑鼠鍵盤）")
     EventLog("GLOBAL", "BR_START", "自動進場打王開始｜" BcJoin(BrNames(chars)))
+    try IniWrite "1", INI, "BossRaid", "Running"
     global brRound
     brRound := {t0: A_TickCount, when: FormatTime(, "MM/dd HH:mm"), enterMs: 0, fightT0: 0, leaveT0: 0, leaveMs: 0, bosses: [], chars: BcJoin(BrNames(chars))}
     SetTimer BrEnterAll.Bind(chars), -10
@@ -683,6 +684,10 @@ BrEnterAll(chars) {
     }
     note := (skipped.Length ? "｜沒有傳送卡略過：" BcJoin(skipped) : "") (failed.Length ? "｜進場失敗：" BcJoin(failed) : "")
     if brStop || !brEntered.Length {
+        if !fakeOnline {
+            global INI
+            try IniWrite "0", INI, "BossRaid", "Running"
+        }
         BrSetState("idle", (brStop ? "已停止" : "沒有角色進場") note)
         EventLog("GLOBAL", "BR_END", (brStop ? "已停止" : "沒有角色進場") note)
         brRound := 0
@@ -1597,6 +1602,8 @@ BrFinish(why) {
     nextMsg := BrLoopNext(why, failed.Length)
     if nextMsg != ""
         msg .= "｜" nextMsg
+    else
+        try IniWrite "0", INI, "BossRaid", "Running"   ; 不接下一輪了：重開管理程式也不自動接續
     try brRound.leaveMs := A_TickCount - brRound.leaveT0
     if !failed.Length
         IniWrite A_NowUTC, INI, "BossRaid", "LastLeaveUTC"
@@ -1682,8 +1689,9 @@ BrLeaveCore(p) {
     throw Error("走回出發點點了 3 次確認，還在王的地圖裡")
 }
 BossRaidStop() {
-    global BR_STATE, brStop, brLearnSince, brLoopN
+    global BR_STATE, brStop, brLearnSince, brLoopN, INI
     SetTimer BrLoopStart, 0   ; 等著接下一輪的也取消
+    try IniWrite "0", INI, "BossRaid", "Running"   ; 你按停止：重開管理程式也不自動接續
     brLoopN := 0
     if brLearnSince {
         brLearnSince := 0
@@ -1723,6 +1731,10 @@ BrForceIdle() {
 global brResumeT0 := A_TickCount
 BrResumeCheck() {
     global INI, BR_STATE, brResumeT0, profiles
+    ; v1.3.90.188：打王在跑（Running=1，包含兩輪之間等王重生）時管理程式被重開（例如自動更新），也自動接續。
+    ; （11/27 11:59 另一台在兩輪之間按了立即更新，重開後沒接續，閒置 18 分鐘）
+    if IniRead(INI, "BossRaid", "Running", "0") = "1" && IniRead(INI, "BossRaid", "ResumeOnStart", "0") != "1"
+        IniWrite "1", INI, "BossRaid", "ResumeOnStart"
     if IniRead(INI, "BossRaid", "ResumeOnStart", "0") != "1" {
         SetTimer BrResumeCheck, 0
         return
@@ -1842,6 +1854,7 @@ BossRaidEmergency() {
     try {
         global INI
         IniWrite "0", INI, "BossRaid", "ResumeOnStart"
+        IniWrite "0", INI, "BossRaid", "Running"
     }
     if BL_STATE = "waiting" || BL_STATE = "running"
         try BlSetState("locked", "")
