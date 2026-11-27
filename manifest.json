@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.186",
+    "version":  "v1.3.90.187",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "bb934235557338a534f4625a9a75d91459365b98ca37caa661227c3289b04e0d"
+                      "sha256":  "0480635271200f59db0358d97f554122d59990585fa746bd6a21eb9195334480"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "475c4c526487a47c8b1c30d28ff1ba50b7d3b0c5074e61528f39c80da78337c8"
+                      "sha256":  "bc8bc0f291a6a972032f546c881098c58cc730e74ef2e732dd88967366bdca4f"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -419,7 +419,7 @@
                   },
                   {
                       "path":  "tools\\claude-monitor\\round_summary.sh",
-                      "sha256":  "1affeac8310232e0813baa91d1a6c7843f1283c83400102df26d97be6e880967"
+                      "sha256":  "f398269c0d8117019654d7fc9f6ba485013e3711077d8ac4a96b259012f340ea"
                   },
                   {
                       "path":  "tools\\claude-monitor\\shot.ps1",
@@ -431,7 +431,7 @@
                   },
                   {
                       "path":  "tools\\claude-monitor\\watch.sh",
-                      "sha256":  "d776b989a3e9820e7c9b401129bfb1d020e7d1b70ba40f863de90e85a35b7e7e"
+                      "sha256":  "abb9cc2435caef78b9772d7c3f998289910bce2c61e771ef1d4cda3c16b35903"
                   },
                   {
                       "path":  "tools\\derive_game_offsets.py",
@@ -599,7 +599,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "c5ea79d557dc344b055ff39f3542f6beddd1af3150a095bc7abb17df64ee67bf"
+                      "sha256":  "fa2fed73c36c6fa05f54e6baaabdda712b75e7974514b8880c2b06c2677b99d5"
                   },
                   {
                       "path":  "登入測試.bat",
