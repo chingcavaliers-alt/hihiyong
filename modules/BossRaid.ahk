@@ -1800,6 +1800,12 @@ BrResumeCheck() {
     try why := ApBlockerRaw()
     if !ready || why != "" || !BlChars().Length
         return
+    ; v1.3.90.190：剛離場沒多久就重開（例如兩輪之間按立即更新）：補足離場後要等的秒數再進，不然王還沒重生
+    ; （11/27 15:01 / 15:03 另一台：地圖只空 17 秒就進場，沒王）
+    lv := BrIni("LastLeaveUTC", ""), d := BrIni("LoopDelaySec", "150"), gone := -1
+    try gone := DateDiff(A_NowUTC, lv, "Seconds")
+    if lv != "" && IsInteger(d) && gone >= 0 && gone < Max(5, Integer(d))
+        return
     IniWrite "0", INI, "BossRaid", "ResumeOnStart"
     SetTimer BrResumeCheck, 0
     EventLog("GLOBAL", "BR_RESUME", "重開管理程式後自動接續自動進場打王")

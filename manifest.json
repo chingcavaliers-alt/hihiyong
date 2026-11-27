@@ -1,613 +1,613 @@
 {
-    "version":  "v1.3.90.189",
-    "files":  [
-                  {
-                      "path":  ".gitattributes",
-                      "sha256":  "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
-                  },
-                  {
-                      "path":  "CHANGELOG.md",
-                      "sha256":  "b6741cb06284cd55486c7accd61f69d612a4010c7b98c8efd3c9824fcbd570ca"
-                  },
-                  {
-                      "path":  "DailyTemplates\\character_title.bmp",
-                      "sha256":  "323b521df1c8f90603e7506ebfa78437e6cc2c2790ee71140c53c255d6a5e3b8"
-                  },
-                  {
-                      "path":  "DailyTemplates\\choice_title.bmp",
-                      "sha256":  "a091530d68a985b787028ca78c110cb242365a56fd9b0aef2847fb0a73ac1185"
-                  },
-                  {
-                      "path":  "DailyTemplates\\confirm_take.bmp",
-                      "sha256":  "b300aaed79a0c0d906f177870db3fa1aeeb8fc5b518d096109cf5abe3153d6e0"
-                  },
-                  {
-                      "path":  "DailyTemplates\\inventory_title.bmp",
-                      "sha256":  "96a60d0fc4a5d74926b89bfb7c7946137a30a63c052f943d8bbfa36061aaf7ac"
-                  },
-                  {
-                      "path":  "DailyTemplates\\revive_button.bmp",
-                      "sha256":  "960dcafb56e704708c7031f6a443ddad25b1d805c010ebc227e086f6e7a09dfc"
-                  },
-                  {
-                      "path":  "DailyTemplates\\revive_town_button.bmp",
-                      "sha256":  "f7c43b0fd305aef5f36096dae0a4ac0fc3934b0c6ee38f150f3986c1b6bce2da"
-                  },
-                  {
-                      "path":  "DisconnectTemplates\\DisconnectConfirm.bmp",
-                      "sha256":  "508c2d5f04aede10f30d4ad5aadc0a5d7993a61cbe1f3e5353097c33cd3aad9d"
-                  },
-                  {
-                      "path":  "DisconnectTemplates\\DisconnectText.bmp",
-                      "sha256":  "2594d3422aa2aad3f1947c3f84d7c0b24d99872ecd4b2beb68e837210fe09aaa"
-                  },
-                  {
-                      "path":  "docs\\mining_monitor_notes.md",
-                      "sha256":  "eb279456c6c4261268700556c561c672a3df03cc6e7844d526bc67eec0131f84"
-                  },
-                  {
-                      "path":  "docs\\mining_notes.md",
-                      "sha256":  "ff605786d0ae65b2b78685360f4f00f16c754213ee9a6af3893bd3d021cb9df0"
-                  },
-                  {
-                      "path":  "HiHiyong_default.ico",
-                      "sha256":  "856c174610030eb16f3c6e08244fa083a506849c8d1d212c12201360bc5a501b"
-                  },
-                  {
-                      "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "7ac19f3b6787969c8bd80aa7f70bdefc320958a8aaa86ca5d3e11f9750f97973"
-                  },
-                  {
-                      "path":  "Lib\\ComVar.ahk",
-                      "sha256":  "ec4737bc2e577b0171015dda32a445a63ecfb09f641170f8f10d300d43771ca0"
-                  },
-                  {
-                      "path":  "Lib\\Promise.ahk",
-                      "sha256":  "55badd351716cc8c345ef719806098f705b560e70eee7eabc9f6180ab19b777b"
-                  },
-                  {
-                      "path":  "Lib\\WebView2\\64bit\\WebView2Loader.dll",
-                      "sha256":  "bf2fefaff7fd4775ea1e07328cc3142721943948f16d261fb82cbd978b7f99e2"
-                  },
-                  {
-                      "path":  "Lib\\WebView2\\WebView2.ahk",
-                      "sha256":  "cbdde2c8e6d9624e3f0f78ff19dddd13e677d998fb17cc71701bdad5505440ee"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__末日禁地島.bmp",
-                      "sha256":  "fc522c8f0011c39910634c12548dc6b6f2855ddbd363a697c314d3341ccaf969"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__波斯宮.bmp",
-                      "sha256":  "8060787f389b2c2a16509dc34dd44ffc688d82d3c6185511c0fe9f97865eac68"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__重力迴廊.bmp",
-                      "sha256":  "0c836fc6a3f17cde4baa6a5834565847162dcf082f40a3b78553553854c65822"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__異形空降區.bmp",
-                      "sha256":  "5d949d411c8826ca9634a1e9783b21d58909c733901ed9e1bef07b34b7b46f6e"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__童話世界.bmp",
-                      "sha256":  "9dab19b680f3d15404d270933bb96d7b23bd60589623649a654b9ea94c3965c8"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__裂變時空.bmp",
-                      "sha256":  "a82a1c8a834a3d0d75e996f3b851cf3c3fde7222feaaedd919075d8b88debd51"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__機械區.bmp",
-                      "sha256":  "370dbbdc5c506ea44bd998bf60a3317b4bf30e4b08498764fa5a1965f492d633"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__機械區_2區.bmp",
-                      "sha256":  "561fd3759c27317c56165a31d69b9244ef953c8e87c961d6cf2c4c868b277cf4"
-                  },
-                  {
-                      "path":  "MapTemplates\\NORMAL__魔術區.bmp",
-                      "sha256":  "754c7515ce0e332e0a01eff29ceb19f4f8be07e2502853c03fbbe18297dd5c75"
-                  },
-                  {
-                      "path":  "MapTemplates\\REVIVE__玄岩學院.bmp",
-                      "sha256":  "b240a0fda4fbadde72c0f2e015ce003ea6e7f60ec14767da06f96cbc3db6dfca"
-                  },
-                  {
-                      "path":  "MapTemplates\\REVIVE__聖門學院.bmp",
-                      "sha256":  "3b8e88e028e22a357866ca1bf406088b7d5fdb4ded9fd546a4a19ef7dc5e5eda"
-                  },
-                  {
-                      "path":  "MapTemplates\\REVIVE__鳳凰學院.bmp",
-                      "sha256":  "28f5ecf0dc743b4f4d1992e0aff92c5935ff0e2c5fa689b05bd18eaa687cce0a"
-                  },
-                  {
-                      "path":  "MapTemplates\\REVIVE__學院廣場.bmp",
-                      "sha256":  "68db8bcd0b22fa209af4f02cea645a417e01245cb3ca82718a63e4669238c641"
-                  },
-                  {
-                      "path":  "modules\\Activity.ahk",
-                      "sha256":  "0e0c1dccbc428ab61eb8865ae935022bb6f9bd015b16014533565ec39306bad8"
-                  },
-                  {
-                      "path":  "modules\\AsyncLoading.ahk",
-                      "sha256":  "5b91132bd4a69c21d36141b5cf7449fe243845c12363f08a02958eafa686bf96"
-                  },
-                  {
-                      "path":  "modules\\AutoAttack.ahk",
-                      "sha256":  "e2c0499a0dce3a07a8e85fd6597964e41b56cee15c255a5c3f924cf3331a0cfe"
-                  },
-                  {
-                      "path":  "modules\\AutoMining.ahk",
-                      "sha256":  "a2430e1ae34c010d00bdea1f87c1984d91edb9999e2148b6d78958aa89bfa5ef"
-                  },
-                  {
-                      "path":  "modules\\AutoMiningSchedule.ahk",
-                      "sha256":  "4a274e790bcc1ee0f81c9a85e78259fa63cac2eca4af83b26fe783a42bd37d95"
-                  },
-                  {
-                      "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "7dc4a83a03835b1552bb026d2f294ffdfeb84c021f8e4a8489dcedd13f5c56a9"
-                  },
-                  {
-                      "path":  "modules\\BossLock.ahk",
-                      "sha256":  "74d5f0bf166afcf79afa8815a35a69aa08a00bbdd1865676bb7e1385be22e313"
-                  },
-                  {
-                      "path":  "modules\\BossRaid.ahk",
-                      "sha256":  "8d6d2a88392fa7b9407609d13acbda83291272c9bdeb4a0d1394666ee0921b17"
-                  },
-                  {
-                      "path":  "modules\\BossTimer.ahk",
-                      "sha256":  "339adb841f748ea855a69c652a311483090bda53504b60f463d00141dab04c46"
-                  },
-                  {
-                      "path":  "modules\\BuffCast.ahk",
-                      "sha256":  "8aba4e95e5be551ba5eec700a7543c43a8e9e26a89863c20d529d2f1970ad508"
-                  },
-                  {
-                      "path":  "modules\\CompanionWatch.ahk",
-                      "sha256":  "5551f07fc7d7ad274373b70da303bcc18ccf5cf8e2ef39cb5ade7ca8743afb63"
-                  },
-                  {
-                      "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "1dba6173562f41948c2f309f8ccc16ecd5d33fa8f0b46ffac40473b8f3604257"
-                  },
-                  {
-                      "path":  "modules\\DailyHuntSchedule.ahk",
-                      "sha256":  "23f26f6742859f78d8ebf4b87082a85a8cd33a55317fb012f0bda3d83b62f5a0"
-                  },
-                  {
-                      "path":  "modules\\DailyItems.ahk",
-                      "sha256":  "1f4513ebcef5ce904e28f2517f68319c0e86f8d985eceb7d6e9fdcac9c0b617e"
-                  },
-                  {
-                      "path":  "modules\\DailyRoutine.ahk",
-                      "sha256":  "8be2233b1e7b69fc327f29f35fd317acb0691cc7cfdccc6ea69537467ca22b60"
-                  },
-                  {
-                      "path":  "modules\\DeathStats.ahk",
-                      "sha256":  "8698cbc8ee8a7830501d92cf3fe5fbe07a62acd63d7b2ce9c1732ee7c1b03d26"
-                  },
-                  {
-                      "path":  "modules\\DesktopShortcut.ahk",
-                      "sha256":  "b9171b2f056c0c0f260d70617b54d4a9fe0fb4347a3fcc146318ef3ef9fb185f"
-                  },
-                  {
-                      "path":  "modules\\Diagnostics.ahk",
-                      "sha256":  "eadd59d1002018854acdc0e427138a951308edf5da18777ed664858b707cbb8e"
-                  },
-                  {
-                      "path":  "modules\\DropRates.ahk",
-                      "sha256":  "752fb44fde43f3fc012d9087a0bb366b64191dc0a52498624c39b05b71888631"
-                  },
-                  {
-                      "path":  "modules\\FeaturePriority.ahk",
-                      "sha256":  "c2dfced384eced9dcf666d8688914f9098d4699f89e349ce0fe051fc58c04d46"
-                  },
-                  {
-                      "path":  "modules\\FocusWatch.ahk",
-                      "sha256":  "58c099816c1bf79cbcf1dcb6c1c34c4092e39e1af300f8cf9780ae924da3605a"
-                  },
-                  {
-                      "path":  "modules\\GameData.ahk",
-                      "sha256":  "453f973e9b3cb7935f0695ffcdc84db77a0d7086aa3accea100d3dbe7a287b13"
-                  },
-                  {
-                      "path":  "modules\\HourlySummary.ahk",
-                      "sha256":  "816f2b0f1e898f42b8bdf9a83cf95dabb12733a3860e0ed9feaa8336fa111c1f"
-                  },
-                  {
-                      "path":  "modules\\IniEncoding.ahk",
-                      "sha256":  "83c3328628e3ddee1b424bef81c5cfd9974d182b52af6c5c7a9e5d114b637eac"
-                  },
-                  {
-                      "path":  "modules\\InventoryCleaner.ahk",
-                      "sha256":  "5772271534b046447e01fc5ed926fc47bf20cccb65f3c268d4e844f192a7eacc"
-                  },
-                  {
-                      "path":  "modules\\InventoryStats.ahk",
-                      "sha256":  "9884482d131b4c04acbd00f0b2a3d8fc2955f153106e217273fe0eaeead1f348"
-                  },
-                  {
-                      "path":  "modules\\KillStats.ahk",
-                      "sha256":  "143b1386425c06f01e0be4d2c3487820bd723d2f11b2475dc6f7cbaf00695728"
-                  },
-                  {
-                      "path":  "modules\\LagFix.ahk",
-                      "sha256":  "708ee019491187cd08c2d7854470feff989824428c3e639d1ea2110101d30ffc"
-                  },
-                  {
-                      "path":  "modules\\LagProbe.ahk",
-                      "sha256":  "37be76c1151bb2ed011b9b7b264a2d08f8bf8bfcbbc74d6e1c89757cadde1081"
-                  },
-                  {
-                      "path":  "modules\\License.ahk",
-                      "sha256":  "d7ad91beda7678b8a916909c5990eda1d6468c71e69c4eacfa0900272c5947aa"
-                  },
-                  {
-                      "path":  "modules\\LoginUi.ahk",
-                      "sha256":  "bba13f20366e25e9e401402f470bdd5c800d51b1441253a824839355801452fb"
-                  },
-                  {
-                      "path":  "modules\\MBox.ahk",
-                      "sha256":  "9466f6ec01decf166449f1d0181d6ef5d73efcd473ddd8f5dbc3280931889b31"
-                  },
-                  {
-                      "path":  "modules\\Mining.ahk",
-                      "sha256":  "8072b7df9fad9c64e6287f8d092aa7b688394a34d182bbe1a2c54efadf2098b4"
-                  },
-                  {
-                      "path":  "modules\\MiniWindow.ahk",
-                      "sha256":  "14c08c7510e854497624fdf3a1f58044c2abb4aa5544a3072d4fca14216e7667"
-                  },
-                  {
-                      "path":  "modules\\NetGuard.ahk",
-                      "sha256":  "8ba56f066e413086db60eb0cbc2ecf75eeedbc788985c3440be868f4c9bd3a32"
-                  },
-                  {
-                      "path":  "modules\\QuietHours.ahk",
-                      "sha256":  "9c0febf0f35e47730756346b24a99ccf9525c1d84c7e90f2b1664254133bd583"
-                  },
-                  {
-                      "path":  "modules\\Recorder.ahk",
-                      "sha256":  "2860d785061f43907cb116893120671b8ac30ec73b4e09af20149ae7b892809e"
-                  },
-                  {
-                      "path":  "modules\\RecoveryBatch.ahk",
-                      "sha256":  "3851eb47a2dfc324866de15fc80140e171d1155da86f50a7a2e7926c971bf1af"
-                  },
-                  {
-                      "path":  "modules\\RecoveryGuard.ahk",
-                      "sha256":  "91b87308a2cbe555593b80204bfe13efb160f6527b5a77ef5c8c0e5fe11c6d6c"
-                  },
-                  {
-                      "path":  "modules\\RecoveryQueue.ahk",
-                      "sha256":  "c28058ab3aea6b9e482e9cd88d5a226ae7fe74d0814be7240634d27ac7176c99"
-                  },
-                  {
-                      "path":  "modules\\RecoveryStats.ahk",
-                      "sha256":  "2c7b85d822f34880fc8e73b47709b007e74d05e24d78d1064e00ee33d11aaf8e"
-                  },
-                  {
-                      "path":  "modules\\RecoveryStatsView.ahk",
-                      "sha256":  "eead9d95ee486c018fb937c11c5afd07f8fb4a360d69f1c8408e4654afcdb376"
-                  },
-                  {
-                      "path":  "modules\\Reports.ahk",
-                      "sha256":  "bce121ce4578fbe7d3af71147552fe0361b8e533314356362c2245dc7bf6f76c"
-                  },
-                  {
-                      "path":  "modules\\ReviveAssist.ahk",
-                      "sha256":  "6504c2f396513bf1f1363083256e89abb962d1a5e4fb69f094123d7aaaff58bd"
-                  },
-                  {
-                      "path":  "modules\\Signals.ahk",
-                      "sha256":  "c8746b874e3e19774208ec8143a803ec304f9b518d51ff0cb3e21765d3ee5842"
-                  },
-                  {
-                      "path":  "modules\\Updater.ahk",
-                      "sha256":  "f18e5d3a70611f0c36a79e27f2be9df45c7a2ac4be47a2778565b54f79f97ee6"
-                  },
-                  {
-                      "path":  "modules\\WebUI.ahk",
-                      "sha256":  "f9d7feba33a1bfa7c33427708fe0b3976a799ac0822e12ff02a53dafe2615f45"
-                  },
-                  {
-                      "path":  "offsets_db\\6AE9CFCB-2103000.ini",
-                      "sha256":  "209403b8ce13b8722b95b976c694605afedace3d8b219e3ff4e1be57d94db74c"
-                  },
-                  {
-                      "path":  "offsets_db\\6AEA545D-210E000.ini",
-                      "sha256":  "e620593e3fdfb2905d8edc31943210268a7b4407f1239f719d0b6ff8aff0736c"
-                  },
-                  {
-                      "path":  "offsets_db\\6AEC4A44-2111000.ini",
-                      "sha256":  "fcb6cc25efb8b6f3e02a52ba14731424782736f4e99bb3bbfef32a68f67d0df1"
-                  },
-                  {
-                      "path":  "offsets_db\\6AED4241-2136000.ini",
-                      "sha256":  "71f5801494b0f34b7beabcd1427e892165e0c67499275bebec93be66ea8f241b"
-                  },
-                  {
-                      "path":  "offsets_db\\6AEDB170-2137000.ini",
-                      "sha256":  "ecefd5542fe5942db05699aa7498773ea7a7a600be58105f7fb42054bbd3f8f2"
-                  },
-                  {
-                      "path":  "offsets_db\\6AEDC837-2137000.ini",
-                      "sha256":  "ba64eca73faa210619cd700dc349b5131d83a5c8009e63c9ddec351de2575493"
-                  },
-                  {
-                      "path":  "offsets_db\\6AEDD84A-2137000.ini",
-                      "sha256":  "f537d03acf8bf2bbfac2711bad2d50851be7bea6b710d73a759542b223ae38ce"
-                  },
-                  {
-                      "path":  "offsets_db\\6AF0283E-214A000.ini",
-                      "sha256":  "d081b4f42fb5d4cc587d22a9f93c3b845d57cab30a232a3fda5c58918d023069"
-                  },
-                  {
-                      "path":  "offsets_db\\6AF0E5A3-2145000.ini",
-                      "sha256":  "c163a4638e5db2dec574811264723ac25a72e896103202fb25fb2dcf761cb42a"
-                  },
-                  {
-                      "path":  "offsets_db\\6AF77EDC-2148000.ini",
-                      "sha256":  "17933fbf4837791251ca34dda7e40cb4cabab577c53872b51947596714a31ded"
-                  },
-                  {
-                      "path":  "offsets_db\\6AF97F88-21CA000.ini",
-                      "sha256":  "bbc96277cdbdcb753e460c98ce529b01b545bfbe73825c71a005f25dc19a2a87"
-                  },
-                  {
-                      "path":  "offsets_db\\6AF9AB5E-21CB000.ini",
-                      "sha256":  "ad4e71dfd6e2650ed8c8a39d9c8a07239bc57939fc853f43372c808b65b1f717"
-                  },
-                  {
-                      "path":  "offsets_db\\6AFB1368-21D8000.ini",
-                      "sha256":  "7b6fe82f2252b6582aaed03feb8f395bb61b29dee033190ab1e55effa66536ae"
-                  },
-                  {
-                      "path":  "offsets_db\\6AFB2B04-21D8000.ini",
-                      "sha256":  "985a4c9d79af1c56afff0a23505fa6ef79ce0461cc1f13c0197c272264cf4dfd"
-                  },
-                  {
-                      "path":  "offsets_db\\6AFC5754-21D8000.ini",
-                      "sha256":  "1c3dcc449d94e02bff9b96c57413cf364684fab70b4e87c647330a39ef90386d"
-                  },
-                  {
-                      "path":  "offsets_db\\6AFEC604-2F39000.ini",
-                      "sha256":  "3235ff41064b9f50dc1c2729984dc2dda935a6f43d2b85e3fdd4fc9eada78cc6"
-                  },
-                  {
-                      "path":  "offsets_db\\6B013031-21D8000.ini",
-                      "sha256":  "e93298090c511f6c6359a91fd55384ea60b002b4c47e37885350c019630aaadb"
-                  },
-                  {
-                      "path":  "offsets_db\\6B01366C-21D9000.ini",
-                      "sha256":  "ae6a5c33fb95e9d1fca3b8cf5be7d3d38807a17d8e2474dd353c7dbebc37a1a5"
-                  },
-                  {
-                      "path":  "offsets_db\\6B019B54-21D9000.ini",
-                      "sha256":  "337ecc76d08abd6c8443bb404d43aadf0b4820249d395920709d80f2a5e10546"
-                  },
-                  {
-                      "path":  "offsets_db\\6B0417A0-21D9000.ini",
-                      "sha256":  "767b1970dc4527a3a380be74d6fa3b2fe5db5a9c2939ab2bdae2536be97332c3"
-                  },
-                  {
-                      "path":  "README_v1.3.13.0.txt",
-                      "sha256":  "c73bda8e35485f805d96ae0ab390d7c1e9707a1e8f36499a509c9e5076a44893"
-                  },
-                  {
-                      "path":  "revoked.txt",
-                      "sha256":  "df0999b1021cdd85609163fa4a284e6339a9f9ab430f9677db8c847b95c8e7f3"
-                  },
-                  {
-                      "path":  "tools\\build_guide.py",
-                      "sha256":  "e169a10f8cf585a0742f7f24271cd71b4237ceeeb84a93890f031b459a5d4423"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\find_app.ps1",
-                      "sha256":  "2ba9ff6be9a73dfc872e8b1e1b741b992b5fdb79e794905af342b79a2ed7f5df"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\raid_ctl.ps1",
-                      "sha256":  "29164361cc09fcec796f5e4a36ee4c6d240bdd790f47ea14e202a164f0f7b285"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\README.md",
-                      "sha256":  "134d65168cd8db1522484937a41e42c8527f799f0bd1c06234059d7bfe3faf3b"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\round_summary.sh",
-                      "sha256":  "f398269c0d8117019654d7fc9f6ba485013e3711077d8ac4a96b259012f340ea"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\shot.ps1",
-                      "sha256":  "32a1fa6cf02b20fd0fc489fbe943c5162796c0b4d2a562d71e27020c7765a231"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\status.md",
-                      "sha256":  "67f5d4c0ea1d7ef734a02043fa1d37c3311a673b55dc3b00b7a42ce32d727219"
-                  },
-                  {
-                      "path":  "tools\\claude-monitor\\watch.sh",
-                      "sha256":  "abb9cc2435caef78b9772d7c3f998289910bce2c61e771ef1d4cda3c16b35903"
-                  },
-                  {
-                      "path":  "tools\\derive_game_offsets.py",
-                      "sha256":  "40423265b667bba13d21538754155113e4610b69b18900fa0ba64fb6fcfc2636"
-                  },
-                  {
-                      "path":  "tools\\droprates\\__pycache__\\droprates.cpython-312.pyc",
-                      "sha256":  "48de448bef8b18fe85f3718eee4fc7bea1f47727d5b8fc55b05a4e03a5d32ea4"
-                  },
-                  {
-                      "path":  "tools\\droprates\\droprates.py",
-                      "sha256":  "e0ea7597bb86a6bc16fc49dff37f64c44eca781efd8bdec19ed0c482da2abb3e"
-                  },
-                  {
-                      "path":  "tools\\droprates\\seed\\20260920-0000.json",
-                      "sha256":  "3ee0313c248accf6311666f280f9d3a1c394bf95d0a500249ced69194a5f2eaa"
-                  },
-                  {
-                      "path":  "tools\\droprates\\seed\\20260924-0800.json",
-                      "sha256":  "351d48a6acc53f922b303d7031f20a15411f1191eeedf747f4cbafa4e5ccf5a8"
-                  },
-                  {
-                      "path":  "tools\\droprates\\seed\\20261014-1824.json",
-                      "sha256":  "d27c2021f22024f6e09af912cacd9af2feb81c75de879cbf2b6d372ec126137d"
-                  },
-                  {
-                      "path":  "tools\\license_verify.ps1",
-                      "sha256":  "154ffe4b78e1190ece81fd48cd1210f7ff0f44a9656586408d48285f2b759169"
-                  },
-                  {
-                      "path":  "tools\\login_test.ahk",
-                      "sha256":  "4d46d5449401c263f1a8448a0f9dae91b17a37c57bc0212737d7fe5bbf04e533"
-                  },
-                  {
-                      "path":  "tools\\mining_status.py",
-                      "sha256":  "e32af84bf74c07157cf4d7ffc628878c1f21e560b35a1cf106405a5cb0023ef1"
-                  },
-                  {
-                      "path":  "tools\\ocr_text.ps1",
-                      "sha256":  "c3d6c10abe2b4224921a2c9b04c8f6f34841aeb66f61d5619f36039391213fe5"
-                  },
-                  {
-                      "path":  "tools\\package\\HiHiyong帳號管理.bat",
-                      "sha256":  "38dbbad49c55e308fae1857a577f0dabc609a28dee951d20b81dce7df6b20cba"
-                  },
-                  {
-                      "path":  "tools\\package\\使用說明.txt",
-                      "sha256":  "ece874059a75a3ccdac2dfc608d19b4b0d47a114a9c88a30baa766c1472cbb89"
-                  },
-                  {
-                      "path":  "tools\\resolve_game_offsets.py",
-                      "sha256":  "69479d9ccb8eccf015c9b2a38b276f8e18ec2b85d5f41186167d8217e290e490"
-                  },
-                  {
-                      "path":  "tools\\static_offsets.py",
-                      "sha256":  "b5164c3b1078d387947ea8df2e3b65220cb14c885579abd38f0ce4250bad7802"
-                  },
-                  {
-                      "path":  "ui\\app.css",
-                      "sha256":  "152f814781f7ac3125d36750d0d94bb8a725468f0e0fbb53aef45ac27c6c8575"
-                  },
-                  {
-                      "path":  "ui\\app.js",
-                      "sha256":  "50866fe9ae89a9106d90c4cc25d767c4dd412fe03a6863eee81a2e6409301c0e"
-                  },
-                  {
-                      "path":  "ui\\guide\\dc_a_gear.png",
-                      "sha256":  "84a49ea4be7165809658603e44f58899ddbb7c8c2e09eeba35cfe0a646446fd3"
-                  },
-                  {
-                      "path":  "ui\\guide\\dc_b_menu.png",
-                      "sha256":  "b89a2e563c208c811ded915b20a0d920e2494cce0dba0d7bb3cb7e4b8282e7ea"
-                  },
-                  {
-                      "path":  "ui\\guide\\dc_c_integrations.png",
-                      "sha256":  "41fdc8898ca8c4775a9ccd7ffb17180c810ee3128f688b460493d3a9b84f04e9"
-                  },
-                  {
-                      "path":  "ui\\guide\\dc_d_webhook.png",
-                      "sha256":  "475413449fe7f9d00881fba4f9019ee833165af1fd15f499cda85785fcd8126b"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd1_01.png",
-                      "sha256":  "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd2_02.png",
-                      "sha256":  "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd2_03.png",
-                      "sha256":  "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd3_04.png",
-                      "sha256":  "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd3_05.png",
-                      "sha256":  "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd4_06.png",
-                      "sha256":  "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd4_07.png",
-                      "sha256":  "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd5_08.png",
-                      "sha256":  "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd5_09.png",
-                      "sha256":  "108c74d101696390e039830ce74759fd165bdac05e3a5bc252528f4f9da467b9"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd6_10.png",
-                      "sha256":  "0af95e2a2aa42dd9c044067205ff37f03d93b7403f56c4cbbc00814c151ff5e5"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd6_11.png",
-                      "sha256":  "02b7fb70bbb4fbfc0a42f461eb1e38bd4fa176fa69ae2a2d8064e8fa5daa17d4"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd6_12.png",
-                      "sha256":  "55d6dbc0b42fb15d5c224281b70d90aa4c364402aa8a6089c1d431d59f635dc7"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd6_13.png",
-                      "sha256":  "3c8d1f77cbdf9c4e366c2cf40589eee4c9be305ecd5c90365013cf03a87cc29d"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_14.png",
-                      "sha256":  "3723da1423b084ea7c884de207e19b5739933ce9bbe566df008f7d5be1772af2"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_15.png",
-                      "sha256":  "63751387405f06acab33948eb9451c8b883107354ca4c279a96f5b34662f3f03"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_16.png",
-                      "sha256":  "cab233caf6e2afb2a4e99ae9d496c546adb1f44c343f2d2b2e39bc7aa1d9c753"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_17.png",
-                      "sha256":  "d2e9e068bf6afa4db882db3adaecd7a57aa0252f4edbb0fd80f4fbbcfc3d25d2"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_18.png",
-                      "sha256":  "54b13628ba5c410e21c570a6bb75f7c04ec17494fe289706c6a2edd6be5a2298"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_19.png",
-                      "sha256":  "4d37be07b24721a09e9778c5ac7604ffc9564047ae858587183add967116b55a"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_20.png",
-                      "sha256":  "e8261456e6f1fe4864d4902bcbc7cf044fd593bcb3a9658c45556bb16ad70e4e"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd7_21.png",
-                      "sha256":  "a19a5db73aca56f53a3d41d96d1cde3ad4dd6bdf351f59c3c39a42d44877d7b7"
-                  },
-                  {
-                      "path":  "ui\\guide\\gd8_22.png",
-                      "sha256":  "f12f13d30dc0c984c128d22c4778d738aa729c6e8fef904d2e7849f3a68bc8e3"
-                  },
-                  {
-                      "path":  "ui\\index.html",
-                      "sha256":  "0c1bb8a04852d7c9c7029a14d0ec68f4e1bc7e6bfb9f28f53d88f3a0f6689726"
-                  },
-                  {
-                      "path":  "登入測試.bat",
-                      "sha256":  "541a9e9b7912eb25f7c719cbde04149fd5381645c55393616bcf69989e956a7c"
-                  }
-              ]
+  "version": "v1.3.90.190",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "705fd4d6451a31d36b3df7de96f83f30ac976c9b4a6d1e51671d8e2f33e2d0da"
+    },
+    {
+      "path": "登入測試.bat",
+      "sha256": "541a9e9b7912eb25f7c719cbde04149fd5381645c55393616bcf69989e956a7c"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "d3f4f3a84b716b1e3a063d8bc1d9e6d3a7f5657d33488c142b0a46f9878dbd81"
+    },
+    {
+      "path": "DailyTemplates\\character_title.bmp",
+      "sha256": "323b521df1c8f90603e7506ebfa78437e6cc2c2790ee71140c53c255d6a5e3b8"
+    },
+    {
+      "path": "DailyTemplates\\choice_title.bmp",
+      "sha256": "a091530d68a985b787028ca78c110cb242365a56fd9b0aef2847fb0a73ac1185"
+    },
+    {
+      "path": "DailyTemplates\\confirm_take.bmp",
+      "sha256": "b300aaed79a0c0d906f177870db3fa1aeeb8fc5b518d096109cf5abe3153d6e0"
+    },
+    {
+      "path": "DailyTemplates\\inventory_title.bmp",
+      "sha256": "96a60d0fc4a5d74926b89bfb7c7946137a30a63c052f943d8bbfa36061aaf7ac"
+    },
+    {
+      "path": "DailyTemplates\\revive_button.bmp",
+      "sha256": "960dcafb56e704708c7031f6a443ddad25b1d805c010ebc227e086f6e7a09dfc"
+    },
+    {
+      "path": "DailyTemplates\\revive_town_button.bmp",
+      "sha256": "f7c43b0fd305aef5f36096dae0a4ac0fc3934b0c6ee38f150f3986c1b6bce2da"
+    },
+    {
+      "path": "DisconnectTemplates\\DisconnectConfirm.bmp",
+      "sha256": "508c2d5f04aede10f30d4ad5aadc0a5d7993a61cbe1f3e5353097c33cd3aad9d"
+    },
+    {
+      "path": "DisconnectTemplates\\DisconnectText.bmp",
+      "sha256": "2594d3422aa2aad3f1947c3f84d7c0b24d99872ecd4b2beb68e837210fe09aaa"
+    },
+    {
+      "path": "docs\\mining_monitor_notes.md",
+      "sha256": "eb279456c6c4261268700556c561c672a3df03cc6e7844d526bc67eec0131f84"
+    },
+    {
+      "path": "docs\\mining_notes.md",
+      "sha256": "ff605786d0ae65b2b78685360f4f00f16c754213ee9a6af3893bd3d021cb9df0"
+    },
+    {
+      "path": "HiHiyong_default.ico",
+      "sha256": "856c174610030eb16f3c6e08244fa083a506849c8d1d212c12201360bc5a501b"
+    },
+    {
+      "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
+      "sha256": "e679a76e225061b4a1adc50c41d9d2f7d0de8f50b141c04e16693e1c2ed48c35"
+    },
+    {
+      "path": "Lib\\ComVar.ahk",
+      "sha256": "ec4737bc2e577b0171015dda32a445a63ecfb09f641170f8f10d300d43771ca0"
+    },
+    {
+      "path": "Lib\\Promise.ahk",
+      "sha256": "55badd351716cc8c345ef719806098f705b560e70eee7eabc9f6180ab19b777b"
+    },
+    {
+      "path": "Lib\\WebView2\\64bit\\WebView2Loader.dll",
+      "sha256": "bf2fefaff7fd4775ea1e07328cc3142721943948f16d261fb82cbd978b7f99e2"
+    },
+    {
+      "path": "Lib\\WebView2\\WebView2.ahk",
+      "sha256": "cbdde2c8e6d9624e3f0f78ff19dddd13e677d998fb17cc71701bdad5505440ee"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__末日禁地島.bmp",
+      "sha256": "fc522c8f0011c39910634c12548dc6b6f2855ddbd363a697c314d3341ccaf969"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__波斯宮.bmp",
+      "sha256": "8060787f389b2c2a16509dc34dd44ffc688d82d3c6185511c0fe9f97865eac68"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__重力迴廊.bmp",
+      "sha256": "0c836fc6a3f17cde4baa6a5834565847162dcf082f40a3b78553553854c65822"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__異形空降區.bmp",
+      "sha256": "5d949d411c8826ca9634a1e9783b21d58909c733901ed9e1bef07b34b7b46f6e"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__童話世界.bmp",
+      "sha256": "9dab19b680f3d15404d270933bb96d7b23bd60589623649a654b9ea94c3965c8"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__裂變時空.bmp",
+      "sha256": "a82a1c8a834a3d0d75e996f3b851cf3c3fde7222feaaedd919075d8b88debd51"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__機械區_2區.bmp",
+      "sha256": "561fd3759c27317c56165a31d69b9244ef953c8e87c961d6cf2c4c868b277cf4"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__機械區.bmp",
+      "sha256": "370dbbdc5c506ea44bd998bf60a3317b4bf30e4b08498764fa5a1965f492d633"
+    },
+    {
+      "path": "MapTemplates\\NORMAL__魔術區.bmp",
+      "sha256": "754c7515ce0e332e0a01eff29ceb19f4f8be07e2502853c03fbbe18297dd5c75"
+    },
+    {
+      "path": "MapTemplates\\REVIVE__玄岩學院.bmp",
+      "sha256": "b240a0fda4fbadde72c0f2e015ce003ea6e7f60ec14767da06f96cbc3db6dfca"
+    },
+    {
+      "path": "MapTemplates\\REVIVE__聖門學院.bmp",
+      "sha256": "3b8e88e028e22a357866ca1bf406088b7d5fdb4ded9fd546a4a19ef7dc5e5eda"
+    },
+    {
+      "path": "MapTemplates\\REVIVE__鳳凰學院.bmp",
+      "sha256": "28f5ecf0dc743b4f4d1992e0aff92c5935ff0e2c5fa689b05bd18eaa687cce0a"
+    },
+    {
+      "path": "MapTemplates\\REVIVE__學院廣場.bmp",
+      "sha256": "68db8bcd0b22fa209af4f02cea645a417e01245cb3ca82718a63e4669238c641"
+    },
+    {
+      "path": "modules\\Activity.ahk",
+      "sha256": "0e0c1dccbc428ab61eb8865ae935022bb6f9bd015b16014533565ec39306bad8"
+    },
+    {
+      "path": "modules\\AsyncLoading.ahk",
+      "sha256": "5b91132bd4a69c21d36141b5cf7449fe243845c12363f08a02958eafa686bf96"
+    },
+    {
+      "path": "modules\\AutoAttack.ahk",
+      "sha256": "e2c0499a0dce3a07a8e85fd6597964e41b56cee15c255a5c3f924cf3331a0cfe"
+    },
+    {
+      "path": "modules\\AutoMining.ahk",
+      "sha256": "a2430e1ae34c010d00bdea1f87c1984d91edb9999e2148b6d78958aa89bfa5ef"
+    },
+    {
+      "path": "modules\\AutoMiningSchedule.ahk",
+      "sha256": "4a274e790bcc1ee0f81c9a85e78259fa63cac2eca4af83b26fe783a42bd37d95"
+    },
+    {
+      "path": "modules\\AutoParty.ahk",
+      "sha256": "7dc4a83a03835b1552bb026d2f294ffdfeb84c021f8e4a8489dcedd13f5c56a9"
+    },
+    {
+      "path": "modules\\BossLock.ahk",
+      "sha256": "74d5f0bf166afcf79afa8815a35a69aa08a00bbdd1865676bb7e1385be22e313"
+    },
+    {
+      "path": "modules\\BossRaid.ahk",
+      "sha256": "c465f9415e2bdce1fca897e00306df7bf7ff57966daa82a701b8ad4b461d2876"
+    },
+    {
+      "path": "modules\\BossTimer.ahk",
+      "sha256": "339adb841f748ea855a69c652a311483090bda53504b60f463d00141dab04c46"
+    },
+    {
+      "path": "modules\\BuffCast.ahk",
+      "sha256": "8aba4e95e5be551ba5eec700a7543c43a8e9e26a89863c20d529d2f1970ad508"
+    },
+    {
+      "path": "modules\\CompanionWatch.ahk",
+      "sha256": "5551f07fc7d7ad274373b70da303bcc18ccf5cf8e2ef39cb5ade7ca8743afb63"
+    },
+    {
+      "path": "modules\\DailyHunt.ahk",
+      "sha256": "1dba6173562f41948c2f309f8ccc16ecd5d33fa8f0b46ffac40473b8f3604257"
+    },
+    {
+      "path": "modules\\DailyHuntSchedule.ahk",
+      "sha256": "23f26f6742859f78d8ebf4b87082a85a8cd33a55317fb012f0bda3d83b62f5a0"
+    },
+    {
+      "path": "modules\\DailyItems.ahk",
+      "sha256": "1f4513ebcef5ce904e28f2517f68319c0e86f8d985eceb7d6e9fdcac9c0b617e"
+    },
+    {
+      "path": "modules\\DailyRoutine.ahk",
+      "sha256": "8be2233b1e7b69fc327f29f35fd317acb0691cc7cfdccc6ea69537467ca22b60"
+    },
+    {
+      "path": "modules\\DeathStats.ahk",
+      "sha256": "8698cbc8ee8a7830501d92cf3fe5fbe07a62acd63d7b2ce9c1732ee7c1b03d26"
+    },
+    {
+      "path": "modules\\DesktopShortcut.ahk",
+      "sha256": "b9171b2f056c0c0f260d70617b54d4a9fe0fb4347a3fcc146318ef3ef9fb185f"
+    },
+    {
+      "path": "modules\\Diagnostics.ahk",
+      "sha256": "eadd59d1002018854acdc0e427138a951308edf5da18777ed664858b707cbb8e"
+    },
+    {
+      "path": "modules\\DropRates.ahk",
+      "sha256": "752fb44fde43f3fc012d9087a0bb366b64191dc0a52498624c39b05b71888631"
+    },
+    {
+      "path": "modules\\FeaturePriority.ahk",
+      "sha256": "c2dfced384eced9dcf666d8688914f9098d4699f89e349ce0fe051fc58c04d46"
+    },
+    {
+      "path": "modules\\FocusWatch.ahk",
+      "sha256": "58c099816c1bf79cbcf1dcb6c1c34c4092e39e1af300f8cf9780ae924da3605a"
+    },
+    {
+      "path": "modules\\GameData.ahk",
+      "sha256": "453f973e9b3cb7935f0695ffcdc84db77a0d7086aa3accea100d3dbe7a287b13"
+    },
+    {
+      "path": "modules\\HourlySummary.ahk",
+      "sha256": "816f2b0f1e898f42b8bdf9a83cf95dabb12733a3860e0ed9feaa8336fa111c1f"
+    },
+    {
+      "path": "modules\\IniEncoding.ahk",
+      "sha256": "83c3328628e3ddee1b424bef81c5cfd9974d182b52af6c5c7a9e5d114b637eac"
+    },
+    {
+      "path": "modules\\InventoryCleaner.ahk",
+      "sha256": "5772271534b046447e01fc5ed926fc47bf20cccb65f3c268d4e844f192a7eacc"
+    },
+    {
+      "path": "modules\\InventoryStats.ahk",
+      "sha256": "9884482d131b4c04acbd00f0b2a3d8fc2955f153106e217273fe0eaeead1f348"
+    },
+    {
+      "path": "modules\\KillStats.ahk",
+      "sha256": "143b1386425c06f01e0be4d2c3487820bd723d2f11b2475dc6f7cbaf00695728"
+    },
+    {
+      "path": "modules\\LagFix.ahk",
+      "sha256": "708ee019491187cd08c2d7854470feff989824428c3e639d1ea2110101d30ffc"
+    },
+    {
+      "path": "modules\\LagProbe.ahk",
+      "sha256": "37be76c1151bb2ed011b9b7b264a2d08f8bf8bfcbbc74d6e1c89757cadde1081"
+    },
+    {
+      "path": "modules\\License.ahk",
+      "sha256": "d7ad91beda7678b8a916909c5990eda1d6468c71e69c4eacfa0900272c5947aa"
+    },
+    {
+      "path": "modules\\LoginUi.ahk",
+      "sha256": "bba13f20366e25e9e401402f470bdd5c800d51b1441253a824839355801452fb"
+    },
+    {
+      "path": "modules\\MBox.ahk",
+      "sha256": "9466f6ec01decf166449f1d0181d6ef5d73efcd473ddd8f5dbc3280931889b31"
+    },
+    {
+      "path": "modules\\Mining.ahk",
+      "sha256": "8072b7df9fad9c64e6287f8d092aa7b688394a34d182bbe1a2c54efadf2098b4"
+    },
+    {
+      "path": "modules\\MiniWindow.ahk",
+      "sha256": "14c08c7510e854497624fdf3a1f58044c2abb4aa5544a3072d4fca14216e7667"
+    },
+    {
+      "path": "modules\\NetGuard.ahk",
+      "sha256": "8ba56f066e413086db60eb0cbc2ecf75eeedbc788985c3440be868f4c9bd3a32"
+    },
+    {
+      "path": "modules\\QuietHours.ahk",
+      "sha256": "9c0febf0f35e47730756346b24a99ccf9525c1d84c7e90f2b1664254133bd583"
+    },
+    {
+      "path": "modules\\Recorder.ahk",
+      "sha256": "2860d785061f43907cb116893120671b8ac30ec73b4e09af20149ae7b892809e"
+    },
+    {
+      "path": "modules\\RecoveryBatch.ahk",
+      "sha256": "3851eb47a2dfc324866de15fc80140e171d1155da86f50a7a2e7926c971bf1af"
+    },
+    {
+      "path": "modules\\RecoveryGuard.ahk",
+      "sha256": "91b87308a2cbe555593b80204bfe13efb160f6527b5a77ef5c8c0e5fe11c6d6c"
+    },
+    {
+      "path": "modules\\RecoveryQueue.ahk",
+      "sha256": "c28058ab3aea6b9e482e9cd88d5a226ae7fe74d0814be7240634d27ac7176c99"
+    },
+    {
+      "path": "modules\\RecoveryStats.ahk",
+      "sha256": "2c7b85d822f34880fc8e73b47709b007e74d05e24d78d1064e00ee33d11aaf8e"
+    },
+    {
+      "path": "modules\\RecoveryStatsView.ahk",
+      "sha256": "eead9d95ee486c018fb937c11c5afd07f8fb4a360d69f1c8408e4654afcdb376"
+    },
+    {
+      "path": "modules\\Reports.ahk",
+      "sha256": "bce121ce4578fbe7d3af71147552fe0361b8e533314356362c2245dc7bf6f76c"
+    },
+    {
+      "path": "modules\\ReviveAssist.ahk",
+      "sha256": "6504c2f396513bf1f1363083256e89abb962d1a5e4fb69f094123d7aaaff58bd"
+    },
+    {
+      "path": "modules\\Signals.ahk",
+      "sha256": "c8746b874e3e19774208ec8143a803ec304f9b518d51ff0cb3e21765d3ee5842"
+    },
+    {
+      "path": "modules\\Updater.ahk",
+      "sha256": "2477e491316aa250ea357b922e05d369b51231e480effe02da00283d4781e71c"
+    },
+    {
+      "path": "modules\\WebUI.ahk",
+      "sha256": "f9d7feba33a1bfa7c33427708fe0b3976a799ac0822e12ff02a53dafe2615f45"
+    },
+    {
+      "path": "offsets_db\\6AE9CFCB-2103000.ini",
+      "sha256": "209403b8ce13b8722b95b976c694605afedace3d8b219e3ff4e1be57d94db74c"
+    },
+    {
+      "path": "offsets_db\\6AEA545D-210E000.ini",
+      "sha256": "e620593e3fdfb2905d8edc31943210268a7b4407f1239f719d0b6ff8aff0736c"
+    },
+    {
+      "path": "offsets_db\\6AEC4A44-2111000.ini",
+      "sha256": "fcb6cc25efb8b6f3e02a52ba14731424782736f4e99bb3bbfef32a68f67d0df1"
+    },
+    {
+      "path": "offsets_db\\6AED4241-2136000.ini",
+      "sha256": "71f5801494b0f34b7beabcd1427e892165e0c67499275bebec93be66ea8f241b"
+    },
+    {
+      "path": "offsets_db\\6AEDB170-2137000.ini",
+      "sha256": "ecefd5542fe5942db05699aa7498773ea7a7a600be58105f7fb42054bbd3f8f2"
+    },
+    {
+      "path": "offsets_db\\6AEDC837-2137000.ini",
+      "sha256": "ba64eca73faa210619cd700dc349b5131d83a5c8009e63c9ddec351de2575493"
+    },
+    {
+      "path": "offsets_db\\6AEDD84A-2137000.ini",
+      "sha256": "f537d03acf8bf2bbfac2711bad2d50851be7bea6b710d73a759542b223ae38ce"
+    },
+    {
+      "path": "offsets_db\\6AF0283E-214A000.ini",
+      "sha256": "d081b4f42fb5d4cc587d22a9f93c3b845d57cab30a232a3fda5c58918d023069"
+    },
+    {
+      "path": "offsets_db\\6AF0E5A3-2145000.ini",
+      "sha256": "c163a4638e5db2dec574811264723ac25a72e896103202fb25fb2dcf761cb42a"
+    },
+    {
+      "path": "offsets_db\\6AF77EDC-2148000.ini",
+      "sha256": "17933fbf4837791251ca34dda7e40cb4cabab577c53872b51947596714a31ded"
+    },
+    {
+      "path": "offsets_db\\6AF97F88-21CA000.ini",
+      "sha256": "bbc96277cdbdcb753e460c98ce529b01b545bfbe73825c71a005f25dc19a2a87"
+    },
+    {
+      "path": "offsets_db\\6AF9AB5E-21CB000.ini",
+      "sha256": "ad4e71dfd6e2650ed8c8a39d9c8a07239bc57939fc853f43372c808b65b1f717"
+    },
+    {
+      "path": "offsets_db\\6AFB1368-21D8000.ini",
+      "sha256": "7b6fe82f2252b6582aaed03feb8f395bb61b29dee033190ab1e55effa66536ae"
+    },
+    {
+      "path": "offsets_db\\6AFB2B04-21D8000.ini",
+      "sha256": "985a4c9d79af1c56afff0a23505fa6ef79ce0461cc1f13c0197c272264cf4dfd"
+    },
+    {
+      "path": "offsets_db\\6AFC5754-21D8000.ini",
+      "sha256": "1c3dcc449d94e02bff9b96c57413cf364684fab70b4e87c647330a39ef90386d"
+    },
+    {
+      "path": "offsets_db\\6AFEC604-2F39000.ini",
+      "sha256": "3235ff41064b9f50dc1c2729984dc2dda935a6f43d2b85e3fdd4fc9eada78cc6"
+    },
+    {
+      "path": "offsets_db\\6B013031-21D8000.ini",
+      "sha256": "e93298090c511f6c6359a91fd55384ea60b002b4c47e37885350c019630aaadb"
+    },
+    {
+      "path": "offsets_db\\6B01366C-21D9000.ini",
+      "sha256": "ae6a5c33fb95e9d1fca3b8cf5be7d3d38807a17d8e2474dd353c7dbebc37a1a5"
+    },
+    {
+      "path": "offsets_db\\6B019B54-21D9000.ini",
+      "sha256": "337ecc76d08abd6c8443bb404d43aadf0b4820249d395920709d80f2a5e10546"
+    },
+    {
+      "path": "offsets_db\\6B0417A0-21D9000.ini",
+      "sha256": "767b1970dc4527a3a380be74d6fa3b2fe5db5a9c2939ab2bdae2536be97332c3"
+    },
+    {
+      "path": "README_v1.3.13.0.txt",
+      "sha256": "c73bda8e35485f805d96ae0ab390d7c1e9707a1e8f36499a509c9e5076a44893"
+    },
+    {
+      "path": "revoked.txt",
+      "sha256": "df0999b1021cdd85609163fa4a284e6339a9f9ab430f9677db8c847b95c8e7f3"
+    },
+    {
+      "path": "tools\\build_guide.py",
+      "sha256": "e169a10f8cf585a0742f7f24271cd71b4237ceeeb84a93890f031b459a5d4423"
+    },
+    {
+      "path": "tools\\claude-monitor\\find_app.ps1",
+      "sha256": "2ba9ff6be9a73dfc872e8b1e1b741b992b5fdb79e794905af342b79a2ed7f5df"
+    },
+    {
+      "path": "tools\\claude-monitor\\raid_ctl.ps1",
+      "sha256": "29164361cc09fcec796f5e4a36ee4c6d240bdd790f47ea14e202a164f0f7b285"
+    },
+    {
+      "path": "tools\\claude-monitor\\README.md",
+      "sha256": "134d65168cd8db1522484937a41e42c8527f799f0bd1c06234059d7bfe3faf3b"
+    },
+    {
+      "path": "tools\\claude-monitor\\round_summary.sh",
+      "sha256": "f398269c0d8117019654d7fc9f6ba485013e3711077d8ac4a96b259012f340ea"
+    },
+    {
+      "path": "tools\\claude-monitor\\shot.ps1",
+      "sha256": "32a1fa6cf02b20fd0fc489fbe943c5162796c0b4d2a562d71e27020c7765a231"
+    },
+    {
+      "path": "tools\\claude-monitor\\status.md",
+      "sha256": "67f5d4c0ea1d7ef734a02043fa1d37c3311a673b55dc3b00b7a42ce32d727219"
+    },
+    {
+      "path": "tools\\claude-monitor\\watch.sh",
+      "sha256": "abb9cc2435caef78b9772d7c3f998289910bce2c61e771ef1d4cda3c16b35903"
+    },
+    {
+      "path": "tools\\derive_game_offsets.py",
+      "sha256": "40423265b667bba13d21538754155113e4610b69b18900fa0ba64fb6fcfc2636"
+    },
+    {
+      "path": "tools\\droprates\\__pycache__\\droprates.cpython-312.pyc",
+      "sha256": "48de448bef8b18fe85f3718eee4fc7bea1f47727d5b8fc55b05a4e03a5d32ea4"
+    },
+    {
+      "path": "tools\\droprates\\droprates.py",
+      "sha256": "e0ea7597bb86a6bc16fc49dff37f64c44eca781efd8bdec19ed0c482da2abb3e"
+    },
+    {
+      "path": "tools\\droprates\\seed\\20260920-0000.json",
+      "sha256": "3ee0313c248accf6311666f280f9d3a1c394bf95d0a500249ced69194a5f2eaa"
+    },
+    {
+      "path": "tools\\droprates\\seed\\20260924-0800.json",
+      "sha256": "351d48a6acc53f922b303d7031f20a15411f1191eeedf747f4cbafa4e5ccf5a8"
+    },
+    {
+      "path": "tools\\droprates\\seed\\20261014-1824.json",
+      "sha256": "d27c2021f22024f6e09af912cacd9af2feb81c75de879cbf2b6d372ec126137d"
+    },
+    {
+      "path": "tools\\license_verify.ps1",
+      "sha256": "154ffe4b78e1190ece81fd48cd1210f7ff0f44a9656586408d48285f2b759169"
+    },
+    {
+      "path": "tools\\login_test.ahk",
+      "sha256": "4d46d5449401c263f1a8448a0f9dae91b17a37c57bc0212737d7fe5bbf04e533"
+    },
+    {
+      "path": "tools\\mining_status.py",
+      "sha256": "e32af84bf74c07157cf4d7ffc628878c1f21e560b35a1cf106405a5cb0023ef1"
+    },
+    {
+      "path": "tools\\ocr_text.ps1",
+      "sha256": "c3d6c10abe2b4224921a2c9b04c8f6f34841aeb66f61d5619f36039391213fe5"
+    },
+    {
+      "path": "tools\\package\\使用說明.txt",
+      "sha256": "ece874059a75a3ccdac2dfc608d19b4b0d47a114a9c88a30baa766c1472cbb89"
+    },
+    {
+      "path": "tools\\package\\HiHiyong帳號管理.bat",
+      "sha256": "38dbbad49c55e308fae1857a577f0dabc609a28dee951d20b81dce7df6b20cba"
+    },
+    {
+      "path": "tools\\resolve_game_offsets.py",
+      "sha256": "69479d9ccb8eccf015c9b2a38b276f8e18ec2b85d5f41186167d8217e290e490"
+    },
+    {
+      "path": "tools\\static_offsets.py",
+      "sha256": "b5164c3b1078d387947ea8df2e3b65220cb14c885579abd38f0ce4250bad7802"
+    },
+    {
+      "path": "ui\\app.css",
+      "sha256": "152f814781f7ac3125d36750d0d94bb8a725468f0e0fbb53aef45ac27c6c8575"
+    },
+    {
+      "path": "ui\\app.js",
+      "sha256": "50866fe9ae89a9106d90c4cc25d767c4dd412fe03a6863eee81a2e6409301c0e"
+    },
+    {
+      "path": "ui\\guide\\dc_a_gear.png",
+      "sha256": "84a49ea4be7165809658603e44f58899ddbb7c8c2e09eeba35cfe0a646446fd3"
+    },
+    {
+      "path": "ui\\guide\\dc_b_menu.png",
+      "sha256": "b89a2e563c208c811ded915b20a0d920e2494cce0dba0d7bb3cb7e4b8282e7ea"
+    },
+    {
+      "path": "ui\\guide\\dc_c_integrations.png",
+      "sha256": "41fdc8898ca8c4775a9ccd7ffb17180c810ee3128f688b460493d3a9b84f04e9"
+    },
+    {
+      "path": "ui\\guide\\dc_d_webhook.png",
+      "sha256": "475413449fe7f9d00881fba4f9019ee833165af1fd15f499cda85785fcd8126b"
+    },
+    {
+      "path": "ui\\guide\\gd1_01.png",
+      "sha256": "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
+    },
+    {
+      "path": "ui\\guide\\gd2_02.png",
+      "sha256": "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
+    },
+    {
+      "path": "ui\\guide\\gd2_03.png",
+      "sha256": "92f3918bafc23555f55326125308aa4460548f7bf2c10460499671420a51d7af"
+    },
+    {
+      "path": "ui\\guide\\gd3_04.png",
+      "sha256": "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
+    },
+    {
+      "path": "ui\\guide\\gd3_05.png",
+      "sha256": "d0b7cdb5a66e06877bbd6e9341266e09631b026353ad5b7a8feca0dd2d7c3afe"
+    },
+    {
+      "path": "ui\\guide\\gd4_06.png",
+      "sha256": "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
+    },
+    {
+      "path": "ui\\guide\\gd4_07.png",
+      "sha256": "e2f7c8289ad9e4cf473e8ad4bdae637afdf382fd5581ae4f2fbb6c7497b5fae8"
+    },
+    {
+      "path": "ui\\guide\\gd5_08.png",
+      "sha256": "061f1646a7fc6b59ced8f77e4f0c3b15fb4d4208b3471db346304090bde70238"
+    },
+    {
+      "path": "ui\\guide\\gd5_09.png",
+      "sha256": "108c74d101696390e039830ce74759fd165bdac05e3a5bc252528f4f9da467b9"
+    },
+    {
+      "path": "ui\\guide\\gd6_10.png",
+      "sha256": "0af95e2a2aa42dd9c044067205ff37f03d93b7403f56c4cbbc00814c151ff5e5"
+    },
+    {
+      "path": "ui\\guide\\gd6_11.png",
+      "sha256": "02b7fb70bbb4fbfc0a42f461eb1e38bd4fa176fa69ae2a2d8064e8fa5daa17d4"
+    },
+    {
+      "path": "ui\\guide\\gd6_12.png",
+      "sha256": "55d6dbc0b42fb15d5c224281b70d90aa4c364402aa8a6089c1d431d59f635dc7"
+    },
+    {
+      "path": "ui\\guide\\gd6_13.png",
+      "sha256": "3c8d1f77cbdf9c4e366c2cf40589eee4c9be305ecd5c90365013cf03a87cc29d"
+    },
+    {
+      "path": "ui\\guide\\gd7_14.png",
+      "sha256": "3723da1423b084ea7c884de207e19b5739933ce9bbe566df008f7d5be1772af2"
+    },
+    {
+      "path": "ui\\guide\\gd7_15.png",
+      "sha256": "63751387405f06acab33948eb9451c8b883107354ca4c279a96f5b34662f3f03"
+    },
+    {
+      "path": "ui\\guide\\gd7_16.png",
+      "sha256": "cab233caf6e2afb2a4e99ae9d496c546adb1f44c343f2d2b2e39bc7aa1d9c753"
+    },
+    {
+      "path": "ui\\guide\\gd7_17.png",
+      "sha256": "d2e9e068bf6afa4db882db3adaecd7a57aa0252f4edbb0fd80f4fbbcfc3d25d2"
+    },
+    {
+      "path": "ui\\guide\\gd7_18.png",
+      "sha256": "54b13628ba5c410e21c570a6bb75f7c04ec17494fe289706c6a2edd6be5a2298"
+    },
+    {
+      "path": "ui\\guide\\gd7_19.png",
+      "sha256": "4d37be07b24721a09e9778c5ac7604ffc9564047ae858587183add967116b55a"
+    },
+    {
+      "path": "ui\\guide\\gd7_20.png",
+      "sha256": "e8261456e6f1fe4864d4902bcbc7cf044fd593bcb3a9658c45556bb16ad70e4e"
+    },
+    {
+      "path": "ui\\guide\\gd7_21.png",
+      "sha256": "a19a5db73aca56f53a3d41d96d1cde3ad4dd6bdf351f59c3c39a42d44877d7b7"
+    },
+    {
+      "path": "ui\\guide\\gd8_22.png",
+      "sha256": "f12f13d30dc0c984c128d22c4778d738aa729c6e8fef904d2e7849f3a68bc8e3"
+    },
+    {
+      "path": "ui\\index.html",
+      "sha256": "ab90c366bba2dc19e7c5ebb513782c0efdbc6bcfc18eafdeeb010e8225895d65"
+    }
+  ]
 }

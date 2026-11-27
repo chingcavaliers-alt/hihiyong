@@ -134,6 +134,12 @@ UpdatePopupMaybe() {
         return false
     if !UpdatePopupDue(updateInfo, IniRead(INI, "Update", "SkipVersion", ""), updatePopupSnoozeUntil, A_TickCount)
         return false
+    ; v1.3.90.190：自動進場打王在跑（含兩輪之間）時不跳：提醒視窗會蓋住遊戲畫面，讓離場時「游標下不是遊戲視窗」而停掉
+    ; （11/27 14:57 另一台）。等打王停了再跳（每分鐘看一次）；畫面上方的「有新版」照舊
+    if IniRead(INI, "BossRaid", "Running", "0") = "1" || IniRead(INI, "BossRaid", "ResumeOnStart", "0") = "1" {
+        SetTimer UpdatePopupMaybe, -60000
+        return false
+    }
     UpdatePopupShow(updateInfo)
     return true
 }
