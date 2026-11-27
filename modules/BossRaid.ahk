@@ -25,6 +25,7 @@ global brPauseReq := "", brPauseWhy := "", brPausedAt := 0
 global brDhYieldAt := 0   ; 每日討伐請打王暫停的時間（換完圖清掉）
 ; 施法監看（v1.3.90.134）：打王中每 0.5 秒看每隻的人物動作，記「施法中」的比例（每隻王結束時寫日誌）；
 ; 某一隻連續 8 秒都沒在施法（卡住的右鍵掉了 / 游標跑掉）→ 自動幫它重卡
+global brPauseEmptyAt := 0   ; 暫停中王的地圖從什麼時候開始沒人（A_TickCount；0 = 有人在）
 global brCast := Map()   ; 角色名 → {n, cast, idleSince}   ; 舊版用的離場時間（現在存設定檔 LastLeaveUTC）/ 這一輪地圖空了幾秒
 global BR_LOOT_COUNT := 5   ; 路西法打完地上要撿的道具數（每隻角色）
 global BR_CARD := "波斯貓傳送卡"
@@ -1166,7 +1167,8 @@ BrPauseNeeded() {
 BrPause(why) {
     global brPauseReq, brPauseWhy, brPausedAt, BR_STATE
     SetTimer BrFightTick, 0
-    brPauseWhy := why, brPausedAt := A_TickCount
+    global brPauseEmptyAt
+    brPauseWhy := why, brPausedAt := A_TickCount, brPauseEmptyAt := 0
     EventLog("GLOBAL", "BR_PAUSE", "冒險小隊打王暫停：" why "｜先放開右鍵讓路，做完再回來")
     try BossLockStop()
     brPauseReq := ""
@@ -1195,6 +1197,23 @@ BrPauseTick() {
         brDhYieldAt := 0
     why := ""
     try why := ApBlockerRaw()
+    ; v1.3.90.192：暫停中大家都離開王的地圖（重新登入、手動操作）：地圖要空滿 LoopDelaySec 秒王才會重生，補足再回去
+    ; （11/27 21:58 另一台：暫停後地圖只空約 40 秒就重進，王沒重生，那輪只打到最後 2 隻）
+    global brPauseEmptyAt, brEntered, BR_MAP_BOSS
+    inMap := false
+    for q in BlChars()
+        try inMap := inMap || BrMap(q.pid) = BR_MAP_BOSS
+    if inMap
+        brPauseEmptyAt := 0
+    else if !brPauseEmptyAt
+        brPauseEmptyAt := A_TickCount
+    if !busy && why = "" && brPauseEmptyAt {
+        d := BrIni("LoopDelaySec", "150"), need := (IsInteger(d) ? Max(5, Integer(d)) : 150) * 1000
+        if A_TickCount - brPauseEmptyAt < need {
+            BrSetState("paused", "暫停中：王的地圖空了 " Round((A_TickCount - brPauseEmptyAt) / 1000) " 秒，等滿 " need // 1000 " 秒王重生再回去")
+            busy := true
+        }
+    }
     if !busy && why = "" {   ; 重新登入 / 換道具都做完了：隊伍也要組好才回去打
         global brEntered
         nm := []
@@ -1580,7 +1599,7 @@ BrFinish(why) {
     lastDone := InStr(why, "最後一隻")
     ; v1.3.90.110：只讓一隻撿（11/24 14:05 欸等一隻就撿到 5 個，欸等等空按 25 秒）。撿的那隻先做，其他隻直接走
     looter := BrLooter()
-    lootGot := -1, lootFull := Map()
+    lootGot := -1, lootFull := Map(), picked := Map()
     lootBefore := lastDone ? BrLootAll() : ""   ; v1.3.90.180：撿之前 / 離開後每隻背包各有幾個（查掉落物跑到誰身上）
     if lootBefore != ""
         EventLog("GLOBAL", "BR_LOOT_CHECK", "撿之前每隻背包的" BR_LOOT_ITEM "：" lootBefore)
@@ -1598,8 +1617,11 @@ BrFinish(why) {
             tries := 0
             loop {
                 try {
-                    if lastDone && p = looter {
-                        lootGot := BrPickLoot(p)
+                    ; v1.3.90.192：離開被打斷重做時不再重撿（11/27 另一台：重撿從「現在」的背包算 → 多了 0 個 → 誤判背包滿、換人撿）
+                    if picked.Has(p.name) {
+                    }
+                    else if lastDone && p = looter {
+                        lootGot := BrPickLoot(p), picked[p.name] := 1
                         if lootGot = 0 {
                             brLootFull[p.name] := A_TickCount
                             try SendDiscordMessage("⚠️ HIHIYONG 冒險小隊打王：" p.name " 撿不到掉落物（背包可能滿了），改由其他角色撿；請有空時清一下 " p.name " 的背包")
@@ -1609,7 +1631,7 @@ BrFinish(why) {
                         ; v1.3.90.179：只換一隻試（11/26 13:34 四隻輪流各撿 25 秒都 0 個：掉落物多半只有隊長 / 撿的那隻撿得到）
                         ; v1.3.90.178：撿的那隻一個都沒撿到（11/26 13:02 欸等「裝備道具欄已滿」）→ 還沒離開的下一隻接著撿
                         EventLog(p.name, "BR_LOOT", "上一隻沒撿到掉落物（背包可能滿了），改由 " p.name " 撿")
-                        lootGot := BrPickLoot(p)
+                        lootGot := BrPickLoot(p), picked[p.name] := 1
                         if lootGot = 0
                             lootFull[p.name] := 1, brLootFull[p.name] := A_TickCount
                     }
