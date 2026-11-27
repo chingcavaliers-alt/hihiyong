@@ -1458,8 +1458,59 @@ BrLoopNext(why, failedN) {
         }
     } else
         brNoBossN := 0
+    mr := ""
+    try mr := BrMemRestart()
+    if mr != "" {   ; 重開遊戲、重新登入：BrLoopStart 會等登入完、隊伍組好才進
+        SetTimer BrLoopStart, -Max(delay, 60000)
+        return mr "｜登入完、組好隊後接第 " (brLoopN + 1) " 輪"
+    }
     SetTimer BrLoopStart, -delay
     return Round(delay / 1000) " 秒後接第 " (brLoopN + 1) " 輪（等王重生）"
+}
+; v1.3.90.193：兩輪之間，遊戲的私有記憶體加起來超過實體記憶體的 MemRestartPct%（預設 85，0 = 不做）→ 參加打王、有開自動恢復的角色
+; 關掉遊戲重新登入（最多每 2 小時一次）。11/27 另一台 16GB：四隻掛 11.7 小時合計 19.4GB，進場每隻 55 秒、走不到站位、
+; 第一隻王來不及打；23:40 重開後合計 6.2GB，進場 2 分 10 秒、站位都走到、10 隻打滿。回傳給人看的說明（沒重開回傳 ""）
+BrMemRestart() {
+    global profiles, INI
+    pct := BrIni("MemRestartPct", "85")
+    if !IsInteger(pct) || Integer(pct) <= 0
+        return ""
+    last := BrIni("MemRestartUTC", ""), ago := 99999
+    try ago := DateDiff(A_NowUTC, last, "Seconds")
+    if last != "" && ago >= 0 && ago < 7200
+        return ""
+    ms := Buffer(64, 0)
+    NumPut("UInt", 64, ms, 0)
+    if !DllCall("GlobalMemoryStatusEx", "Ptr", ms)
+        return ""
+    ramMB := NumGet(ms, 8, "UInt64") // 1048576
+    sum := 0
+    for q in profiles {
+        if !q.pid || !ProcessExist(q.pid)
+            continue
+        info := 0
+        try info := LagProcInfo(q.pid)
+        if IsObject(info)
+            sum += info.priv // 1048576
+    }
+    if !ramMB || sum * 100 < ramMB * Integer(pct)
+        return ""
+    names := []
+    fn := "SoftDisconnectConfirmed"
+    for i, q in profiles
+        for p in BlChars()
+            if q.name = p.name && q.pid && q.HasOwnProp("softAutoRecover") && q.softAutoRecover {
+                names.Push(q.name)
+                q.memSoftAlerted := 1
+                try %fn%(i, q, "冒險小隊打王：遊戲記憶體合計 " sum "MB，超過實體記憶體 " ramMB "MB 的 " pct "%，兩輪之間重開遊戲")
+            }
+    IniWrite A_NowUTC, INI, "BossRaid", "MemRestartUTC"
+    if !names.Length {
+        EventLog("GLOBAL", "BR_MEM_RESTART", "遊戲記憶體合計 " sum "MB／實體 " ramMB "MB（門檻 " pct "%），但參加的角色都沒開假在線自動恢復，沒有重開")
+        return ""
+    }
+    EventLog("GLOBAL", "BR_MEM_RESTART", "遊戲記憶體合計 " sum "MB／實體 " ramMB "MB（門檻 " pct "%）｜重開遊戲重新登入：" BcJoin(names))
+    return "遊戲記憶體太高（" sum "/" ramMB "MB），重開 " BcJoin(names)
 }
 BrLoopStart() {
     global BR_STATE, dailyRunQueue, dailyRunning
