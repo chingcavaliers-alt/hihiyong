@@ -231,8 +231,12 @@ DailyClientInfo(p) {
 DailyRoutineRun(idx) {
     global profiles,foregroundOwner,activeRecoveryHwnd,activeRecoveryPid,dailyRunning,Status,INI,dailyTestDriver
     p:=profiles[idx]
+    ; v1.3.90.191：遊戲視窗縮到最小時先還原（不搶焦點）再換，換完縮回去；之前讀到畫面 0x0 就跳過不換
+    wasMin:=DailyUnminimize(p)
     reason:=DailyRoutineBlocker(p)
     if reason!="" {
+        if wasMin
+            DailyReminimize(p)
         EventLog(p.name,"DAILY_SKIP",reason)
         p.dailyFail:=reason
         AddRecentEvent("⚠ " p.name " 無法自動更換每日道具：" reason)
@@ -275,6 +279,8 @@ DailyRoutineRun(idx) {
             p.dailyFailExpiry:=p.dailyExpiry
     }
     DailyRestorePosition(ctx)
+    if wasMin
+        DailyReminimize(p)
     dailyCurWeaponKw:=""
     activeRecoveryHwnd:=0,activeRecoveryPid:=0
     foregroundOwner:="",dailyRunning:=""
@@ -734,6 +740,30 @@ DailyEnsureOnScreen(ctx) {
     WinMove nx,ny,,,"ahk_id " ctx.hwnd
     Sleep 500
     EventLog(ctx.name,"DAILY_STEP","遊戲視窗部分在螢幕外，暫時移到 (" nx "," ny ")，完成後移回")
+}
+
+; 縮到最小的遊戲視窗：還原（不搶焦點），等畫面大小讀得到（最多 2 秒）；有還原回傳 true
+DailyUnminimize(p) {
+    global dailyTestDriver
+    if IsObject(dailyTestDriver) || !p.hwnd
+        return false
+    try {
+        if WinGetMinMax("ahk_id " p.hwnd)!=-1
+            return false
+        DllCall("ShowWindow","Ptr",p.hwnd,"Int",4)   ; SW_SHOWNOACTIVATE
+        Loop 20 {
+            Sleep 100
+            WinGetClientPos(,,&cw,&ch,"ahk_id " p.hwnd)
+            if WinGetMinMax("ahk_id " p.hwnd)!=-1 && cw>0 && ch>0
+                break
+        }
+        EventLog(p.name,"DAILY_UNMIN","遊戲視窗縮到最小，先還原再換每日道具（換完會縮回去）")
+        return true
+    }
+    return false
+}
+DailyReminimize(p) {
+    try DllCall("ShowWindow","Ptr",p.hwnd,"Int",7)   ; SW_SHOWMINNOACTIVE
 }
 
 DailyRestorePosition(ctx) {
