@@ -74,7 +74,16 @@ LoginCfgText(p) => !LoginReturnOf(p) ? "留在城裡" : LoginF6Of(p) ? "前點�
 
 ; 登入後按鍵（例如「F6,A」）：這個角色不開 F6 時拿掉 F6，其他鍵照舊
 LoginPostKeysOf(p, post) {
-    if LoginF6Of(p)
+    ; v1.3.90.176：冒險小隊打王的角色重新登入後不按 F6（11/26 08:41 重登後欸等等、小白貓被開了自動攻擊，回王的地圖一直打不到王）
+    raid := false, brNm := "BrIsRaiding"
+    try raid := %brNm%(p)
+    if !raid {
+        try {
+            blNm := "BlCfg", bsNm := "BrStateNow"
+            raid := %blNm%(p.name).on && %bsNm%() != "idle"
+        }
+    }
+    if LoginF6Of(p) && !raid
         return post
     out:=""
     for key in StrSplit(post,",")

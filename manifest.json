@@ -1,5 +1,5 @@
 {
-    "version":  "v1.3.90.170",
+    "version":  "v1.3.90.185",
     "files":  [
                   {
                       "path":  ".gitattributes",
@@ -7,7 +7,7 @@
                   },
                   {
                       "path":  "CHANGELOG.md",
-                      "sha256":  "4524a4a1a84734c1dc1448c025246c628ac679a600fb2adb9c6d0754643fc2ec"
+                      "sha256":  "9344ea9a8c00f0ef65349426d13888fa9d9274b43f81a653e1e22d6756c3066f"
                   },
                   {
                       "path":  "DailyTemplates\\character_title.bmp",
@@ -55,7 +55,7 @@
                   },
                   {
                       "path":  "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-                      "sha256":  "8f02542e1e44c7368f322563aa07949e463fc2d3b04129888a5171a643c830fc"
+                      "sha256":  "9570b7d557aba9c4cbda28befc5edd15515fe51569480cfcc72705dcee61ac1a"
                   },
                   {
                       "path":  "Lib\\ComVar.ahk",
@@ -147,7 +147,7 @@
                   },
                   {
                       "path":  "modules\\AutoParty.ahk",
-                      "sha256":  "2ee70e66ddc37a83e3269235ad443b7b01c950231efbb54f6d8d9bd763a1e24b"
+                      "sha256":  "7dc4a83a03835b1552bb026d2f294ffdfeb84c021f8e4a8489dcedd13f5c56a9"
                   },
                   {
                       "path":  "modules\\BossLock.ahk",
@@ -155,7 +155,7 @@
                   },
                   {
                       "path":  "modules\\BossRaid.ahk",
-                      "sha256":  "7fe5b1a9ec6e19bca937c3dd5676eb5a9397f72232b27431e04a772d29935f15"
+                      "sha256":  "e5eec070749ee66be5c2dc218428a465002ffbbb5385d31af1b9de28fc69d540"
                   },
                   {
                       "path":  "modules\\BossTimer.ahk",
@@ -171,7 +171,7 @@
                   },
                   {
                       "path":  "modules\\DailyHunt.ahk",
-                      "sha256":  "42d5abf062dda22f13dc0c0e3f9dd49033669757fc44c03e5dd29acf2ff23b02"
+                      "sha256":  "1dba6173562f41948c2f309f8ccc16ecd5d33fa8f0b46ffac40473b8f3604257"
                   },
                   {
                       "path":  "modules\\DailyHuntSchedule.ahk",
@@ -279,7 +279,7 @@
                   },
                   {
                       "path":  "modules\\RecoveryGuard.ahk",
-                      "sha256":  "b6d8869df647f71fbc173a81beb92c0117af11d4fcb2467bd469275a83541ce0"
+                      "sha256":  "91b87308a2cbe555593b80204bfe13efb160f6527b5a77ef5c8c0e5fe11c6d6c"
                   },
                   {
                       "path":  "modules\\RecoveryQueue.ahk",
@@ -571,7 +571,7 @@
                   },
                   {
                       "path":  "ui\\index.html",
-                      "sha256":  "6fd902149818c06333e78184f30c52796e982c70fd94e32be7d2da9c4831ceee"
+                      "sha256":  "b5d4eecde7d7cac48d7cecf847c84c438bb720e88f9676a9b9c6978363a1b19f"
                   },
                   {
                       "path":  "登入測試.bat",

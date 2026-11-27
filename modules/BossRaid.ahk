@@ -295,6 +295,9 @@ BrEnterCore(p) {
         if !ApActivate(p)
             throw Error("叫不到前面")
         try BlReleaseOne(p)   ; 重開管理程式前可能還卡著右鍵（程式不記得），卡著會一直施法、走不動
+        ; v1.3.90.176：自動攻擊開著（例如重新登入後被按了 F6）會跟卡右鍵打架，一直打不到王：先關掉
+        ; （11/26 08:41 重登後欸等等、小白貓自動攻擊開著，08:47～08:55 換高度試了好幾輪都沒施法）
+        try DhEnsureAutoHuntOff(p)
         apLastOwn := A_TickCount
         ApWait(() => (ApGuardAny(), false), 500)
     } else {
@@ -504,6 +507,19 @@ BossRaidStart() {
         return
     }
     chars := BlChars()
+    ; v1.3.90.185：隊伍還沒組好就先不進（王地圖分身是跟著隊伍的，各自進去會被分到不同分身）；「打完自動接下一輪」開著就 30 秒後再試
+    if BrIni("Loop", "0") = "1" {
+        nmList := []
+        for q in chars
+            if !BrInDailyHunt(q)
+                nmList.Push(q.name)
+        pw := BrPartyWait(nmList)
+        if pw != "" {
+            BrSetState("idle", "現在不能開始：" pw "（30 秒後再試）")
+            SetTimer BrLoopStart, -30000
+            return
+        }
+    }
     ; v1.3.90.155：正在跑每日討伐的角色這一輪先不帶（11/25 06:00 欸等的每日討伐定時啟動，剛好在兩輪之間把欸等帶走）；
     ; 每日討伐跑完，下一輪自動把它帶回來
     dhSkip := []
@@ -563,7 +579,7 @@ BrNames(list) {
 }
 BrEnterAll(chars) {
     global brStop, brEntered, foregroundOwner, apBusy, apRunStart, apLastOwn, brRound
-    skipped := [], failed := []
+    skipped := [], failed := [], cardFail := [], fakeOnline := false
     apBusy := true, foregroundOwner := "bossraid", apRunStart := A_TickCount, apLastOwn := A_TickCount
     try {
         for p in chars {
@@ -583,6 +599,29 @@ BrEnterAll(chars) {
                     ; v1.3.90.131：11/24 19:18 欸等等「道具視窗被蓋住，無法叫回最上層」就直接略過。現在除了按停止，什麼錯誤都先關掉遊戲裡開著的視窗再試（最多 3 次）
                     if brStop || InStr(e.Message, "已按停止") || A_Index = 4
                         break
+                    ; v1.3.90.183：右鍵傳送卡沒反應、到現在還沒有任何一隻傳得過去，連續兩次（可以是不同隻）→ 判定假在線
+                    ; （11/27 03:21 四隻都假在線：畫面正常、伺服器時間也在動，但傳送卡右鍵都沒反應，試了 25 分鐘；
+                    ;   打王的角色不看血量、又站在安全區，原本的假在線判定都抓不到）
+                    if InStr(e.Message, "還沒到波斯貓集結區") && !brEntered.Length {
+                        has := false
+                        for x in cardFail
+                            if x.name = p.name
+                                has := true
+                        if !has
+                            cardFail.Push(p)
+                        if cardFail.Length >= 2 || A_Index >= 2 {
+                            fakeOnline := true
+                            break
+                        }
+                    }
+                    ; v1.3.90.177：有角色在重新登入：等它登入完（最多 5 分鐘）再試，不要 3 秒內就把 3 次用完
+                    if InStr(e.Message, "重新登入") {
+                        EventLog(p.name, "BR_WAIT", "進場途中有角色在重新登入，等它登入完再繼續這隻")
+                        t1 := A_TickCount
+                        while !brStop && A_TickCount - t1 < 300000 && BrPauseNeeded() != ""
+                            Sleep 1000
+                        Sleep 3000
+                    }
                     try MnCloseWindows(p)
                     EventLog(p.name, "BR_PAUSE", e.Message "｜等 3 秒再繼續這隻（第 " A_Index " 次）")
                     BrSay("等一下再繼續…（" p.name "：" e.Message "）")
@@ -592,6 +631,8 @@ BrEnterAll(chars) {
                     apLastOwn := A_TickCount, apRunStart := A_TickCount
                 }
             }
+            if fakeOnline
+                break
             if IsObject(err) {
                 failed.Push(p.name)
                 EventLog(p.name, "BR_FAIL", "進場失敗｜" err.Message)
@@ -607,8 +648,12 @@ BrEnterAll(chars) {
             } else
                 brEntered.Push(p)
         }
+        if fakeOnline {
+            BrFakeOnline(chars)
+            failed := []
+        }
         ; 其他角色都進完了，失敗的再補一次（關掉遊戲裡的視窗再進）
-        if !brStop && failed.Length {
+        if !brStop && !fakeOnline && failed.Length {
             retryNames := failed.Clone(), failed := []
             for nm in retryNames {
                 p := 0
@@ -654,12 +699,24 @@ BrEnterAll(chars) {
 ; 置頂角色（有進場的）；沒設定 / 沒進場 = 最後進場的那隻
 ; 撿掉落物的角色：頁面選的（有進場的）；沒選 = 最前面的角色
 BrLooter() {
-    global brEntered
+    global brEntered, brLootFull
     nm := Trim(BrIni("Looter", ""))
     for p in brEntered
-        if p.name = nm
+        if p.name = nm && !BrLootFullNow(p.name)
             return p
-    return BrTop()
+    top := BrTop()
+    if IsObject(top) && !BrLootFullNow(top.name)
+        return top
+    for p in brEntered   ; 設定的 / 最前面的背包都滿了：找一隻背包沒滿的
+        if !BrLootFullNow(p.name)
+            return p
+    return top
+}
+; v1.3.90.178：撿不到（背包滿了）的角色 1 小時內不再先叫它撿（你清背包後最多 1 小時就會再輪到它）
+global brLootFull := Map()
+BrLootFullNow(name) {
+    global brLootFull
+    return brLootFull.Has(name) && A_TickCount - brLootFull[name] < 3600000
 }
 BossRaidSetLooter(name) {
     global INI
@@ -705,6 +762,23 @@ BrBeginFight(note := "") {
     brInv := Map()   ; v1.3.90.112：不再在這裡讀背包（撿東西時才讀撿之前的背包）
     EventLog("GLOBAL", "BR_STEP", "開始卡右鍵流程")
     BrSetState("fighting", "等王出現" note)
+    ; v1.3.90.185：每隻看到的王不一樣 = 被分到不同的王地圖分身（隊伍還沒組好就各自進場）→ 全部離開，組好隊再重進
+    ; （11/27 07:59 重新登入後三隻在組隊前各自進場，欸等等打劫炎魔皇、小白貓闇獄蜂后、嗨朵拉的盒子萬象神裁，欸等等整輪打不到）
+    bossNames := Map()
+    for q in brEntered {
+        bq := 0
+        try bq := BrFindBoss(q.pid)
+        if IsObject(bq)
+            bossNames[bq.name] := (bossNames.Has(bq.name) ? bossNames[bq.name] "、" : "") q.name
+    }
+    if bossNames.Count > 1 {
+        txt := ""
+        for nm, who in bossNames
+            txt .= (txt = "" ? "" : "｜") who "：" nm
+        EventLog("GLOBAL", "BR_INSTANCE", "每隻看到的王不一樣（被分到不同的王地圖分身）：" txt "｜全部離開，組好隊再重進")
+        BrFinish("分到不同的王地圖分身")
+        return
+    }
     ; 置頂角色叫到前面、游標放到王的血條上，再全部卡右鍵（置頂角色最後卡，做完它在最前面）
     ; v1.3.90.112：11/24 14:14 進場完成後命運箱子插進來開箱，之後一直停在「進場中」、按停止也沒反應。
     ; 卡右鍵做完之前先佔著遊戲視窗（命運箱子等這段做完再開）
@@ -956,11 +1030,74 @@ BrDhYield(p) {
         return "多開打王卡右鍵中"
     if BR_STATE = "paused"
         return ""
+    ; v1.3.90.175：最後一隻（路西法）出現後到撿完掉落物、離開，不暫停（11/26 06:57 路西法剛死就暫停讓每日討伐換圖，
+    ; 回來晚了快 1 分鐘才撿，一個都沒撿到）。每日討伐等這一輪打完再換
+    global brSawLast
+    if brSawLast || BR_STATE = "leaving"
+        return "冒險小隊打王在打最後一隻 / 撿掉落物，等這一輪打完"
     if brDhYieldAt = 0 {
         brDhYieldAt := A_TickCount
         brPauseReq := "每日討伐換圖（" p.name "）"
     }
     return "等冒險小隊打王先暫停（放開右鍵）"
+}
+; v1.3.90.174：打王的角色有設定組隊、但隊伍還沒組好（例如重新登入後被踢出隊伍）→ 回傳原因；組好了 / 沒開自動組隊回傳空字串。
+; 暫停後要回去打、或兩輪之間要接下一輪之前，先等自動組隊把人邀回來（最多 5 分鐘）
+global brPartyWaitSince := 0
+BrPartyPending(names) {
+    global profiles
+    try {
+        global AP_ENABLED
+        if !AP_ENABLED
+            return ""
+    } catch
+        return ""
+    for L in profiles {
+        isLeader := false
+        try isLeader := L.enabled && ApIsLeader(L)
+        if !isLeader
+            continue
+        grp := []
+        try grp := ApGroupNames(L)
+        hit := false
+        for nm in names
+            if ApHasName(grp, nm) || nm = L.name
+                hit := true
+        if !hit
+            continue
+        pl := 0
+        try pl := ApPlan(L)
+        if !IsObject(pl)
+            continue
+        if pl.err != "" {
+            if InStr(pl.err, "還沒登入完成")
+                return "等 " L.name " 登入完成再組隊"
+            continue   ; 其他狀況（例如隊長換人）交給自動組隊的邀回 / 交還
+        }
+        for mp in pl.todo
+            for nm in names
+                if mp.name = nm
+                    return "等自動組隊把 " nm " 邀回 " L.name " 的隊伍"
+    }
+    return ""
+}
+BrPartyWait(names) {   ; 要等就回傳原因（等超過 5 分鐘就不等了，回傳空字串）
+    global brPartyWaitSince
+    why := BrPartyPending(names)
+    if why = "" {
+        brPartyWaitSince := 0
+        return ""
+    }
+    if !brPartyWaitSince {
+        brPartyWaitSince := A_TickCount
+        EventLog("GLOBAL", "BR_WAIT", why "（最多等 5 分鐘）")
+    }
+    if A_TickCount - brPartyWaitSince > 300000 {
+        EventLog("GLOBAL", "BR_WAIT", "等組隊超過 5 分鐘（" why "），先繼續打王")
+        brPartyWaitSince := 0
+        return ""
+    }
+    return why
 }
 ; 打王中要不要暫停：每日更換道具要做了、或有角色在重新登入 / 載入
 BrPauseNeeded() {
@@ -1009,6 +1146,17 @@ BrPauseTick() {
         brDhYieldAt := 0
     why := ""
     try why := ApBlockerRaw()
+    if !busy && why = "" {   ; 重新登入 / 換道具都做完了：隊伍也要組好才回去打
+        global brEntered
+        nm := []
+        for q in brEntered
+            nm.Push(q.name)
+        pw := BrPartyWait(nm)
+        if pw != "" {
+            BrSetState("paused", "暫停中：" pw)
+            busy := true
+        }
+    }
     if busy || why != "" {
         if A_TickCount - brPausedAt > 1800000 {   ; 等了 30 分鐘還不能回來：結束這一輪（角色留在原地）
             SetTimer BrPauseTick, 0
@@ -1027,6 +1175,23 @@ BrPauseTick() {
 BrResumeFight() {
     global brEntered, foregroundOwner, apBusy, apRunStart, apLastOwn, brRelockAt, brStop, brLastBossAt
     ok := []
+    ; v1.3.90.177：這一輪有勾參加的角色都帶回來（不只暫停前已經在打的）：11/26 08:41 進場途中碰到重新登入，
+    ; 小白貓、嗨朵拉的盒子「進場失敗」被排除，暫停回來只剩欸等等一隻在打
+    back := []
+    try {
+        for q in BlChars()
+            if !BrInDailyHunt(q)
+                back.Push(q)
+    }
+    for q in brEntered {
+        has := false
+        for x in back
+            if x.name = q.name
+                has := true
+        if !has
+            back.Push(q)
+    }
+    brEntered := back
     try BlStackWindows(brEntered, BrTop())   ; 重新登入後視窗可能被搬回記錄的位置：再疊一次
     apBusy := true, foregroundOwner := "bossraid", apRunStart := A_TickCount, apLastOwn := A_TickCount
     try {
@@ -1101,17 +1266,27 @@ BrCastSample(now) {
     stuck := 0
     for p in brEntered {
         if !brCast.Has(p.name)
-            brCast[p.name] := {n: 0, cast: 0, idleSince: now}
+            brCast[p.name] := {n: 0, cast: 0, idleSince: now, w: 0, wc: 0}
         c := brCast[p.name]
+        if !c.HasOwnProp("w")
+            c.w := 0, c.wc := 0
         me := 0
         try me := MiningCharState(p.pid)
         if !IsObject(me) || !me.HasOwnProp("action")
             continue
-        c.n += 1
+        c.n += 1, c.w += 1
         if me.action = 3
-            c.cast += 1, c.idleSince := now
+            c.cast += 1, c.wc += 1, c.idleSince := now
         else if now - c.idleSince >= 8000 && !IsObject(stuck)
             stuck := p
+        ; v1.3.90.181：斷斷續續有施法（不會連續 8 秒沒施法）但 30 秒內施法不到 40%，也當作沒打到王處理（走回站位、重卡）。
+        ; （11/26 15:27 小白貓進場走到離站位 17 被擋住，整輪施法 15%，因為偶爾有施法一直沒被救）
+        if c.w >= 60 {
+            low := c.wc * 100 < c.w * 40
+            c.w := 0, c.wc := 0
+            if low && !IsObject(stuck)
+                stuck := p
+        }
     }
     return stuck
 }
@@ -1153,6 +1328,38 @@ BrCastReport(bossName) {
     EventLog("GLOBAL", "BR_CAST_RATE", (bossName != "" ? bossName "：" : "") "施法中比例（每 0.5 秒看一次人物動作）｜" txt)
     for nm, c in brCast
         c.n := 0, c.cast := 0
+}
+; v1.3.90.183：傳送卡右鍵都沒反應 = 假在線：這一輪參加的角色全部關掉遊戲重新登入（有開「假在線自動恢復」的），
+; 重新登入完、隊伍組好再自動接下一輪（BrLoopStart 會等重新登入 / 組隊）
+BrFakeOnline(chars) {
+    global profiles
+    ; v1.3.90.184：這一輪沒帶的參加角色（例如在跑每日討伐）也一起重新登入：同一時間通常一起假在線（11/27 06:00 欸等也是）
+    all := chars.Clone()
+    try {
+        for q in BlChars() {
+            has := false
+            for x in all
+                if x.name = q.name
+                    has := true
+            if !has
+                all.Push(q)
+        }
+    }
+    chars := all
+    names := []
+    for p in chars
+        names.Push(p.name)
+    EventLog("GLOBAL", "BR_FAKE_ONLINE", "右鍵傳送卡沒反應（連續兩次、沒有任何一隻傳得過去），判定假在線｜重新登入：" BcJoin(names))
+    try SendDiscordMessage("🔌 HIHIYONG 冒險小隊打王：傳送卡右鍵沒反應，判定假在線，重新登入 " BcJoin(names) "，登入完、組好隊後自動接著打")
+    fn := "SoftDisconnectConfirmed"
+    for i, q in profiles
+        for p in chars
+            if q.name = p.name {
+                q.memSoftAlerted := 1
+                try %fn%(i, q, "冒險小隊打王：右鍵傳送卡沒反應（假在線）")
+            }
+    if BrIni("Loop", "0") = "1"
+        SetTimer BrLoopStart, -60000
 }
 ; 一輪結束：要不要接下一輪。回傳給人看的說明（不接回傳空字串）
 BrLoopNext(why, failedN) {
@@ -1196,7 +1403,15 @@ BrLoopStart() {
         if why = "" && (dailyRunQueue.Length || dailyRunning != "")
             why := "每日更換道具排隊中"
     }
-    if why != "" {   ; 被擋住（例如有角色在重新登入、要換每日道具）：30 秒後再看
+    if why = "" {
+        nm := []
+        try {
+            for q in BlChars()
+                nm.Push(q.name)
+        }
+        why := BrPartyWait(nm)
+    }
+    if why != "" {   ; 被擋住（例如有角色在重新登入、要換每日道具、隊伍還沒組好）：30 秒後再看
         SetTimer BrLoopStart, -30000
         return
     }
@@ -1306,6 +1521,7 @@ BrRunsJson() {
     return out
 }
 BrFinish(why) {
+    global brLootFull
     global brEntered, brSeen, foregroundOwner, apBusy, apRunStart, apLastOwn, brStop, INI
     BrSetState("leaving", why "｜放開右鍵、離開地圖")
     try brRound.leaveT0 := A_TickCount
@@ -1315,6 +1531,10 @@ BrFinish(why) {
     lastDone := InStr(why, "最後一隻")
     ; v1.3.90.110：只讓一隻撿（11/24 14:05 欸等一隻就撿到 5 個，欸等等空按 25 秒）。撿的那隻先做，其他隻直接走
     looter := BrLooter()
+    lootGot := -1, lootFull := Map()
+    lootBefore := lastDone ? BrLootAll() : ""   ; v1.3.90.180：撿之前 / 離開後每隻背包各有幾個（查掉落物跑到誰身上）
+    if lootBefore != ""
+        EventLog("GLOBAL", "BR_LOOT_CHECK", "撿之前每隻背包的" BR_LOOT_ITEM "：" lootBefore)
     order := [looter]
     for p in brEntered
         if p != looter
@@ -1329,8 +1549,21 @@ BrFinish(why) {
             tries := 0
             loop {
                 try {
-                    if lastDone && p = looter
-                        BrPickLoot(p)
+                    if lastDone && p = looter {
+                        lootGot := BrPickLoot(p)
+                        if lootGot = 0 {
+                            brLootFull[p.name] := A_TickCount
+                            try SendDiscordMessage("⚠️ HIHIYONG 冒險小隊打王：" p.name " 撿不到掉落物（背包可能滿了），改由其他角色撿；請有空時清一下 " p.name " 的背包")
+                        }
+                    }
+                    else if lastDone && lootGot = 0 && !lootFull.Has(p.name) && lootFull.Count = 0 {
+                        ; v1.3.90.179：只換一隻試（11/26 13:34 四隻輪流各撿 25 秒都 0 個：掉落物多半只有隊長 / 撿的那隻撿得到）
+                        ; v1.3.90.178：撿的那隻一個都沒撿到（11/26 13:02 欸等「裝備道具欄已滿」）→ 還沒離開的下一隻接著撿
+                        EventLog(p.name, "BR_LOOT", "上一隻沒撿到掉落物（背包可能滿了），改由 " p.name " 撿")
+                        lootGot := BrPickLoot(p)
+                        if lootGot = 0
+                            lootFull[p.name] := 1, brLootFull[p.name] := A_TickCount
+                    }
                     BrLeave(p)
                     left.Push(p.name)
                     break
@@ -1355,6 +1588,10 @@ BrFinish(why) {
         }
     } finally {
         foregroundOwner := "", apBusy := false, apRunStart := 0
+    }
+    if lastDone {
+        lootAfter := BrLootAll()
+        EventLog("GLOBAL", "BR_LOOT_CHECK", "離開後每隻背包的" BR_LOOT_ITEM "：" lootAfter "（撿之前：" lootBefore "）")
     }
     msg := why "｜打了 " brSeen.Length " 隻" (left.Length ? "｜回學院廣場：" BcJoin(left) : "") (failed.Length ? "｜沒離開：" BcJoin(failed) : "")
     nextMsg := BrLoopNext(why, failed.Length)
@@ -1403,6 +1640,16 @@ BrPickLoot(p) {
     have := BrLootHave(p)
     EventLog(p.name, "BR_LOOT", "撿掉落物｜背包多了 " n " 個" (n < BR_LOOT_COUNT ? "（不到 " BR_LOOT_COUNT " 個）" : "") (txt != "" ? "：" txt : "") (have >= 0 ? "｜背包現在共 " have " 個" BR_LOOT_ITEM : ""))
     return n
+}
+BrLootAll() {
+    global brEntered, BR_LOOT_ITEM
+    out := ""
+    for q in brEntered {
+        n := -1
+        try n := BrLootHave(q)
+        out .= (out = "" ? "" : "、") q.name " " (n >= 0 ? n : "?")
+    }
+    return out
 }
 BrLeave(p) {
     global dhMapPatient

@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.170"
+global APP_VERSION := "v1.3.90.185"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -2310,6 +2310,8 @@ MemoryHPMonitorTick() {
 
         if MiningGatherActive(p)   ; 採礦：角色站著採 60 秒，血量不變，不能當作斷線
             p.memHpLastChangeTick:=A_TickCount
+        if SoftInSafeZone(p)   ; 安全區：站著不動血量本來就不會變（見 SoftHpStaticMs）
+            p.softSafeTick:=A_TickCount
         staticMs:=A_TickCount-p.memHpLastChangeTick
         if staticMs>p.memHpMaxStaticMs
             p.memHpMaxStaticMs:=staticMs
@@ -2350,6 +2352,8 @@ MemoryHPMonitorTick() {
             }
             continue
         }
+        ; 下面兩種只看血量的判定：在安全區的時間不算（伺服器沒送資料的判定在上面，安全區照樣有效）
+        staticMs:=SoftHpStaticMs(p)
         ; 多視窗輔助判定：各角色 60 秒血量無變化即成為候選，達到指定帳號數便確認。
         ; 30 秒 Recovery 保護只排除該角色的假在線投票，不阻塞 Recovery Queue。
         if SoftMultiAssistCB.Value {
@@ -2403,6 +2407,21 @@ SoftDisconnectConfirmed(i, p, detail) {
     }
 }
 
+; v1.3.90.171：角色在安全區（學院廣場等）不算假在線：站著不動血量本來就不會變。
+; （11/25 22:47 另一台電腦四隻站在學院廣場，被判「多視窗 60 秒無血量變化」假在線）
+SoftInSafeZone(p) {
+    info:=0
+    try info:=ProfileMapInfo(p)
+    return IsObject(info) && info.peace
+}
+; 血量多久沒變（只看血量的假在線判定用）：從安全區出來後重新算，不把在安全區站著的時間算進去
+SoftHpStaticMs(p) {
+    ms:=A_TickCount-p.memHpLastChangeTick
+    if p.HasOwnProp("softSafeTick")
+        ms:=Min(ms,A_TickCount-p.softSafeTick)
+    return ms
+}
+
 EvaluateMultiWindowFakeOnline() {
     global profiles,SoftMinVotesEdit,softMultiConfirmTick
     required:=Max(1,SoftMinVotesEdit.Value+0)
@@ -2421,8 +2440,10 @@ EvaluateMultiWindowFakeOnline() {
             if %brNm%(p)
                 continue
         }
+        if SoftInSafeZone(p)   ; v1.3.90.171：安全區的角色不投票
+            continue
         voters+=1   ; 活著、在監控中、能投票的角色（死亡中的不算：死掉本來就不會動）
-        staticMs:=A_TickCount-p.memHpLastChangeTick
+        staticMs:=SoftHpStaticMs(p)
         if staticMs<60000
             continue
         ; 「門檻降低」時要的較強證據：自動攻擊開著，而且血量 / 金幣 / 經驗 / 背包 3 分鐘都沒變

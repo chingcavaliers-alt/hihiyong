@@ -736,6 +736,18 @@ DhPlan(p) {
         else if st.staleN >= 6 {
             st.refreshedAt := 0, st.next := A_TickCount + 60000
             st.text := "遊戲的任務資料一直沒換成今天（試了 " st.staleN " 次），1 分鐘後再試；仍不行請重新登入這個角色"
+            ; v1.3.90.184：一直開 T 都不更新 = 假在線（11/27 06:00 欸等假在線，開 T 開了 1 個半小時都沒更新）→ 自動重新登入（30 分鐘最多一次）
+            if st.staleN >= 9 && (!st.HasOwnProp("staleRelogAt") || A_TickCount - st.staleRelogAt > 1800000) {
+                st.staleRelogAt := A_TickCount
+                global profiles
+                fn := "SoftDisconnectConfirmed"
+                for idx, q in profiles
+                    if q.name = p.name {
+                        EventLog(p.name, "DH_FAKE_ONLINE", "開 T 試了 " st.staleN " 次任務資料都沒換成今天，判定假在線｜重新登入")
+                        q.memSoftAlerted := 1
+                        try %fn%(idx, q, "每日討伐：開 T 任務資料一直沒更新（假在線）")
+                    }
+            }
         }
         tasks := 0
     } else if IsObject(tasks)

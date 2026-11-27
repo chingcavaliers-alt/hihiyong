@@ -2062,6 +2062,20 @@ ApInviteOne(L, M, &opened, &minimized) {
     row := ApFindRow(ui, f.id)
     if !IsObject(row)
         return "fail|好友名單裡找不到那一列"
+    ; v1.3.90.182：目標在目前畫面的上面（上一個人在名單下方、名單已經往下捲了）：關掉好友視窗再打開，名單回到最上面，
+    ; 不要往上捲（11/26 22:19 邀欸等等時往下捲了 3 格，接著邀第 3 列的小白貓卻「捲動後還是看不到那一列」被跳過）
+    if !row.vis && IsObject(ui.listPos) && row.index < ui.listTop {
+        ApKey(L, "f")
+        ApWait(() => (u := ApUi(L.pid), IsObject(u) && !u.friendOpen), 1500)
+        ApKey(L, "f")
+        if !ApWait(() => (u := ApUi(L.pid), IsObject(u) && u.friendOpen))
+            return "fail|好友視窗沒有打開"
+        Sleep 200
+        ui := ApUi(L.pid)
+        row := IsObject(ui) ? ApFindRow(ui, f.id) : 0
+        if !IsObject(row)
+            return "fail|好友名單裡找不到那一列"
+    }
     if !row.vis {
         ; 目標在名單畫面外：在名單上滾滾輪，每次都讀遊戲記憶體確認真的捲動了、那一列進到可見範圍才點
         row := ApScrollToRow(L, f.id, &ui)
