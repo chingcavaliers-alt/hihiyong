@@ -228,7 +228,7 @@ BrAimChar(p) {
 ; 每隻：用這隻王記住的高度（沒有就預設）卡右鍵 → 1.5 秒內人物動作有沒有變成「技能」→ 沒有就放開、換下一個高度再卡；
 ; 成功的高度記在這隻王的名字下（之後直接用）。回傳 Map(角色名 → 成功的高度或 -1)
 BrLockAll(list, b) {
-    global INI, blLocked
+    global INI, blLocked, brStop
     res := Map(), okNames := [], badNames := []
     first := BrAimH(b.name)
     cands := [first]
@@ -237,7 +237,14 @@ BrLockAll(list, b) {
             cands.Push(h)
     for p in list {
         res[p.name] := -1
+        if brStop   ; v1.3.90.196：按了 F10 / 停止就不再換下一隻（11/28 11:27 另一台按 F10 後還試了 40 秒高度、搶滑鼠）
+            break
         for i, h in cands {
+            if brStop {
+                try BlReleaseOne(p)
+                try blLocked.Delete(p.name)
+                break
+            }
             pb := BrFindBoss(p.pid)
             if !IsObject(pb)
                 pb := b
