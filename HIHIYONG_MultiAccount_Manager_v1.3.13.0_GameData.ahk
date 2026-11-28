@@ -8,7 +8,7 @@ SetKeyDelay 60, 60
 SetMouseDelay 60
 CoordMode "Mouse", "Screen"
 
-global APP_VERSION := "v1.3.90.193"
+global APP_VERSION := "v1.3.90.195"
 global APP_TITLE := "HIHIYONG 多帳號管理器 " APP_VERSION " Game Data"
 ; 遊戲視窗標題：11/15 官方新版從「HIHIYong2.0」改成「HIHIYong」。WinGetList(GAME_TITLE) 用部分比對，兩種都抓得到；逐一比對標題用 IsGameTitle
 global GAME_TITLE := "HIHIYong"
@@ -1657,8 +1657,17 @@ MonitorTick() {
         ; 避免 Recovery/健康確認期間仍拿舊 HWND 再次排入 Queue。
         if (p.state != "監控中")
             continue
-        if !ProfileGameAlive(p)
-            EnqueueRecovery(i,"偵測到 game.exe PID / HWND 綁定失效")
+        ; v1.3.90.194：遊戲還在跑、視窗也還在（例如剛縮小 / 還原、標題暫時讀不到）：連續 3 次（約 6 秒）都不對才算綁定失效
+        if !ProfileGameAlive(p) {
+            p.aliveFailN := (p.HasOwnProp("aliveFailN") ? p.aliveFailN : 0) + 1
+            stillThere := false
+            try stillThere := p.pid && ProcessExist(p.pid) && p.hwnd && WinExist("ahk_id " p.hwnd)
+            if !stillThere || p.aliveFailN >= 3 {
+                p.aliveFailN := 0
+                EnqueueRecovery(i,"偵測到 game.exe PID / HWND 綁定失效")
+            }
+        } else
+            p.aliveFailN := 0
         ; v0.7.4.2: 背景監控禁止 WinActivate / 位置輪詢，避免搶前景視窗。
     }
     if (!processingQueue && recoveryQueue.Length)
@@ -5243,9 +5252,14 @@ ProfileGameAlive(p) {
             return false
         if WinGetProcessName("ahk_id " p.hwnd) != "game.exe"
             return false
-        if !IsGameTitle(WinGetTitle("ahk_id " p.hwnd))
+        ; v1.3.90.194：縮到最小的視窗標題可能讀成別的（11/28 10:33 椰奶縮小後被判綁定失效）：PID、程序都對就算還在
+        if !IsGameTitle(WinGetTitle("ahk_id " p.hwnd)) && WinGetMinMax("ahk_id " p.hwnd) != -1
             return false
     } catch {
+        try {
+            if ProcessExist(p.pid) && WinGetMinMax("ahk_id " p.hwnd) = -1
+                return true
+        }
         return false
     }
     return true

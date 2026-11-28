@@ -1164,6 +1164,11 @@ BrPauseNeeded() {
     }
     return ""
 }
+BrBlockedNow() {
+    why := ""
+    try why := ApBlockerRaw()
+    return why != "" || BrPauseNeeded() != ""
+}
 BrPause(why) {
     global brPauseReq, brPauseWhy, brPausedAt, BR_STATE
     SetTimer BrFightTick, 0
@@ -1189,6 +1194,13 @@ BrPauseTick() {
         return
     }
     busy := BrPauseNeeded() != ""
+    ; v1.3.90.195：重新登入的流程中間有一小段旗標都沒亮（11/28 11:17 另一台小白貓斷線重登，還沒登入完就被判「做完了」回去打）：
+    ; 參加的角色都回到「監控中」才算做完
+    try {
+        for q in BlChars()
+            if q.enabled && (!q.HasOwnProp("state") || q.state != "監控中")
+                busy := true
+    }
     try busy := busy || dailyRunQueue.Length > 0 || dailyRunning != ""
     global brDhYieldAt
     if brDhYieldAt && A_TickCount - brDhYieldAt < 180000   ; 每日討伐還沒做完那一步（最多等 3 分鐘）
@@ -1242,7 +1254,7 @@ BrPauseTick() {
 ; 不在王地圖的角色重新進場（在裡面的走回站位），然後重新卡右鍵
 BrResumeFight() {
     global brEntered, foregroundOwner, apBusy, apRunStart, apLastOwn, brRelockAt, brStop, brLastBossAt
-    ok := []
+    ok := [], reblock := ""
     ; v1.3.90.177：這一輪有勾參加的角色都帶回來（不只暫停前已經在打的）：11/26 08:41 進場途中碰到重新登入，
     ; 小白貓、嗨朵拉的盒子「進場失敗」被排除，暫停回來只剩欸等等一隻在打
     back := []
@@ -1275,15 +1287,26 @@ BrResumeFight() {
                     EventLog(p.name, "BR_FAIL", "回王的地圖失敗（第 " A_Index " 次）｜" e.Message)
                     if InStr(e.Message, "已按停止")
                         break
+                    if InStr(e.Message, "中途有其他動作開始") {   ; v1.3.90.195：又被重新登入等擋住：回去暫停等，不要整輪結束
+                        reblock := e.Message
+                        break
+                    }
                     Sleep 3000
                     apLastOwn := A_TickCount, apRunStart := A_TickCount
                 }
             }
             if r = "ok"
                 ok.Push(p)
+            if reblock != ""
+                break
         }
     } finally {
         foregroundOwner := "", apBusy := false, apRunStart := 0
+    }
+    if reblock != "" && !brStop {
+        BrSetState("fighting", "")
+        BrPause(StrReplace(reblock, "中途有其他動作開始：", ""))
+        return
     }
     if !ok.Length {
         BrSetState("fighting", "")
@@ -1695,7 +1718,8 @@ BrFinish(why) {
                         EventLog(p.name, "BR_WAIT", "離開被打斷（" e.Message "）｜等你停手 5 秒再重做（第 " tries " 次）")
                         foregroundOwner := "", apBusy := false
                         t0 := A_TickCount
-                        while A_TimeIdlePhysical < 5000 && A_TickCount - t0 < 300000 && !brStop
+                        ; v1.3.90.195：被重新登入等擋住時也等它做完（以前只等你停手，馬上重做 3 次都失敗 → 沒離開、不接下一輪）
+                        while (A_TimeIdlePhysical < 5000 || BrBlockedNow()) && A_TickCount - t0 < 300000 && !brStop
                             Sleep 500
                         apBusy := true, foregroundOwner := "bossraid", apLastOwn := A_TickCount
                         continue

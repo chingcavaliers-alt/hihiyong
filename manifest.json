@@ -1,5 +1,5 @@
 {
-  "version": "v1.3.90.193",
+  "version": "v1.3.90.195",
   "files": [
     {
       "path": ".gitattributes",
@@ -11,7 +11,7 @@
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "b2bd1b4573e49350862672e00b4a8ee70269ca4d086473463e10e385ade2430b"
+      "sha256": "ae9d91e3b9d3b3e0e533118739a9cc8a99f118aa7fa9d84073385a2dea9a86f4"
     },
     {
       "path": "DailyTemplates\\character_title.bmp",
@@ -59,7 +59,7 @@
     },
     {
       "path": "HIHIYONG_MultiAccount_Manager_v1.3.13.0_GameData.ahk",
-      "sha256": "961a5581abba68dfb05788156cb7670bc802a0c92a575aa1ad6223d62838431b"
+      "sha256": "0a9c005d7ae63d4fe58a394d66548eb607a6f226ca32c91ea6b79ab485505118"
     },
     {
       "path": "Lib\\ComVar.ahk",
@@ -159,7 +159,7 @@
     },
     {
       "path": "modules\\BossRaid.ahk",
-      "sha256": "ac3e63e6507e5ede56bd0b7be117f61ff212db28cf5f321c02e4926ac24309d1"
+      "sha256": "f83092e843b6b84ddd860adeb2cb58a3e9af111a816c127f771e709965f3c718"
     },
     {
       "path": "modules\\BossTimer.ahk",
@@ -607,7 +607,7 @@
     },
     {
       "path": "ui\\index.html",
-      "sha256": "e0ed5fe48741b5d25774eb5456249f432524af0ce769e0e49d2d0d58def83136"
+      "sha256": "737a96168b4522939a362ebd904df85f37dc10ba31c1402fa6cad041a1df581d"
     }
   ]
 }
